@@ -1,0 +1,2 @@
+local MOAIHttpTask = {}
+return MOAIHttpTask

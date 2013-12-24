@@ -1,0 +1,2 @@
+local MOAIThread = {}
+return MOAIThread

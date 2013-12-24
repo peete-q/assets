@@ -1,0 +1,20 @@
+local rig = {}
+local CONST = MOAIParticleScript.packConst
+local render = MOAIParticleScript.new()
+render:sprite()
+render:mul(MOAIParticleScript.PARTICLE_X, MOAIParticleScript.PARTICLE_X, MOAIParticleScript.SPRITE_X_SCL)
+render:mul(MOAIParticleScript.PARTICLE_Y, MOAIParticleScript.PARTICLE_Y, MOAIParticleScript.SPRITE_Y_SCL)
+render:ease(MOAIParticleScript.SPRITE_RED, CONST(0.5333333333333333), CONST(0.43137254901960786), MOAIEaseType.SHARP_EASE_IN)
+render:ease(MOAIParticleScript.SPRITE_GREEN, CONST(1), CONST(0.9254901960784314), MOAIEaseType.SHARP_EASE_IN)
+render:ease(MOAIParticleScript.SPRITE_BLUE, CONST(1), CONST(0.9254901960784314), MOAIEaseType.SHARP_EASE_IN)
+render:ease(MOAIParticleScript.SPRITE_OPACITY, CONST(0.75), CONST(0), MOAIEaseType.SHARP_EASE_IN)
+local system = MOAIParticleSystem.new()
+system:reserveParticles(512, 0)
+system:reserveSprites(512)
+system:reserveStates(1)
+local state = MOAIParticleState.new()
+state:setTerm(3, 3)
+state:setInitScript(nil)
+state:setRenderScript(render)
+system:setState(1, state)
+return system, "ribbonTexture.png"
