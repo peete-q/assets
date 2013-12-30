@@ -7,8 +7,6 @@ local Sprite = require "Sprite"
 local distance = math2d.distance
 local distanceSq = math2d.distanceSq
 
-local none = false
-
 local Entity = {
 }
 
@@ -23,20 +21,22 @@ local _defaultProps = {
 	guardRange = 160,
 	bulletSpeed = 10,
 	impactRange = 1,
+	shots = 1,
 	kind = "normal",
 	movable = true,
-	specialPower = none,
+	lockTarget = true,
+	specialPower = nil,
 	
-	bodyGfx = none,
-	propellerGfx = none,
-	muzzleGfx = none,
-	fireSfx = none,
-	impactGfx = none,
-	impactSfx = none,
-	explodeGfx = none,
-	explodeSfx = none,
-	bulletGfx = none,
-	bulletPropellerGfx = none,
+	bodyGfx = nil,
+	propellerGfx = nil,
+	muzzleGfx = nil,
+	fireSfx = nil,
+	impactGfx = nil,
+	impactSfx = nil,
+	explodeGfx = nil,
+	explodeSfx = nil,
+	bulletGfx = nil,
+	bulletPropellerGfx = nil,
 }
 
 Entity.__index = function(self, key)
@@ -54,7 +54,6 @@ Entity.__newindex = function(self, key, value)
 		self._props[key] = value
 		return
 	end
-	error(string.format("[error] write undefined entity property '%s'", key))
 end
 
 function Entity.new(props, layer)
@@ -64,11 +63,12 @@ function Entity.new(props, layer)
 		_props = props or {},
 		_lastAttackTicks = 0,
 		_attackPriorities = {},
-		_motionDriver = none,
-		_target = none,
-		_rigid = none,
-		_scene = none,
 		_stopRange = 0,
+		_lastTargets = {},
+		_scene = nil,
+		_motionDriver = nil,
+		_target = nil,
+		_rigid = nil,
 	}
 	
 	self._body = Sprite.new(props.bodyGfx, layer)
@@ -93,7 +93,7 @@ function Entity:destroy()
 	
 	if self._rigid then
 		self._rigid:destroy()
-		self._rigid = none
+		self._rigid = nil
 	end
 end
 
@@ -125,7 +125,7 @@ end
 function Entity:stop()
 	if self:isMoving() then
 		self._motionDriver:stop()
-		self._motionDriver = none
+		self._motionDriver = nil
 	end
 end
 
@@ -140,7 +140,7 @@ end
 function Entity:_cancelRigid()
 	if self._rigid then
 		self._rigid:destroy()
-		self._rigid = none
+		self._rigid = nil
 	end
 end
 
@@ -172,11 +172,11 @@ function Entity:update(ticks)
 	self:_checkStop()
 	
 	if self._target and self._target:isDead() then
-		self._target = none
+		self._target = nil
 	end
 	
 	if not self._target then
-		self._target = self:_searchAttackTarget()
+		self._target = self:searchTarget()
 		if self._target then
 			self:chase(self._target)
 		end
@@ -190,6 +190,9 @@ function Entity:update(ticks)
 end
 
 function Entity:chase(target)
+	if self:isInRange(target, self.attackRange - self._stopRange) then
+		return
+	end
 	local x, y = target:getWorldLoc()
 	local sx, sy = self:getWorldLoc()
 	local mx = sx * self.attackRange * 2 / self._scene.WIDTH
@@ -198,27 +201,110 @@ function Entity:chase(target)
 	self._stopRange = math.random(self.bodySize * 2)
 end
 
+local function _bullet_update(self)
+end
+
+local function _bullet_noop(self)
+end
+
+local function _bullet_destroy(self)
+end
+
+function Entity.fire(x, y, target, speed, range, damage, bulletGfx, propellerGfx, impactGfx, impactSfx)
+	local bullet = {
+		update = _bullet_update,
+		destroy = _bullet_destroy,
+	}
+end
+
+function Entity.fireTo(scene, x, y, tx, ty, speed, range, damage, bulletGfx, propellerGfx, impactGfx, impactSfx)
+	local bullet = {
+		update = _bullet_noop,
+		destroy = _bullet_destroy,
+	}
+	bullet._body = Sprite.new(bulletGfx)
+	if propellerGfx then
+		local o = Sprite.new(propellerGfx)
+		bullet:add(o)
+	end
+	scene:addUnit(Scene.UNIT_BULLET, bullet)
+	bullet:setWorldLoc(x, y)
+	bullet._thread = MOAIThread.new()
+	bullet._thread:run(function()
+		local dist = distance(x, y, tx, ty)
+		MOAIThread.blockOnAction(bullet._body:seekLoc(tx, ty, speed * dist, MOAIEaseType.LINEAR))
+	end)
+end
+
 function Entity:attack(target)
-	target = target or self._target
-	target:applyDamage(self.attackPower)
+	local targets = self:getAttackTargets()
+	local x, y = self:getWorldLoc()
+	for k, v in pairs(targets) do
+		if self.lockTarget then
+			Entity.fire(v, self.bulletSpeed, self.impactRange, self.attackPower,
+				self.bulletGfx, self.bulletPropellerGfx, self.impactGfx, self.impactSfx)
+		else
+			local tx, ty = v:getWorldLoc()
+			Entity.fireTo(self._scene, x, y, tx, ty, self.bulletSpeed, self.impactRange, self.attackPower,
+				self.bulletGfx, self.bulletPropellerGfx, self.impactGfx, self.impactSfx)
+		end
+	end
+end
+
+function Entity:getAttackTargets()
+	self._lastTargets[self._target] = self._target
+	local n = 0
+	local targets = {}
+	for k, v in pairs(self._lastTargets) do
+		if v:isAlive() then
+			targets[v] = [v]
+			n = n + 1
+		end
+	end
+	for i = 1, self.shots - n do
+		local e = self:searchNearesTarget(self.attackRange, targets)
+		targets[e] = e
+	end
+	self._lastTargets = targets
+	return targets
 end
 
 function Entity:attackPriority(target)
 	return self._attackPriorities[target.kind] or 0
 end
 
-function Entity:_searchAttackTarget()
+function Entity:searchTarget(range, exclusion)
+	range = range or self.guardRange
 	local force = self:getHostileForce()
-	local dist = self.guardRange ^ 2
+	local dist = range ^ 2
 	local priority = 0
-	local target = none
+	local target = nil
 	for k, v in pairs(force) do
-		local d = self:distanceSq(v)
-		local p = self:attackPriority(v)
-		if p > priority or (p == priority and d < dist) then
-			priority = p
-			dist = d
-			target = v
+		if v:isAlive() and (not exclusion or not exclusion[v]) then
+			local d = self:distanceSq(v)
+			local p = self:attackPriority(v)
+			if p > priority or (p == priority and d < dist) then
+				priority = p
+				dist = d
+				target = v
+			end
+		end
+	end
+	return target
+end
+
+function Entity:searchNearesTarget(range, exclusion)
+	range = range or self.guardRange
+	local force = self:getHostileForce()
+	local dist = range ^ 2
+	local target = nil
+	for k, v in pairs(force) do
+		if v:isAlive() and (not exclusion or not exclusion[v]) then
+			local d = self:distanceSq(v)
+			if d < dist then
+				dist = d
+				target = v
+			end
 		end
 	end
 	return target
@@ -229,10 +315,14 @@ function Entity:getMyForce()
 end
 
 function Entity:getHostileForce()
-	if self._force == Scene.FORCE_SELF then
-		return self._scene:getForce(Scene.FORCE_ENEMY)
+	return self._scene:getForce(self:getEnemy())
+end
+
+function Entity:getEnemy()
+	if self._force == Scene.UINT_ME then
+		return Scene.UNIT_ENEMY
 	end
-	return self._scene:getForce(Scene.FORCE_SELF)
+	return Scene.UINT_ME
 end
 
 function Entity:isInRange(target, range)
