@@ -1,4 +1,8 @@
 
+local util = require "util"
+local Prim = require "Prim"
+local breakstr = util.breakstr
+
 local Sprite = {}
 
 local function Sprite_getSize(self)
@@ -7,73 +11,70 @@ local function Sprite_getSize(self)
 	end
 	return self._deck:getSize(self.deckLayer)
 end
-local function Sprite_setImage(self, url)
-	local queryStr
-	url, queryStr = breakstr(url, "?")
-	local deckName, layerName = breakstr(url, "#")
-	local deck = resource.deck(deckName)
+
+local function Sprite_setUrl(self, url)
+	local deckName, queryStr = breakstr(url, "?")
+	deck = resource.deck(deckName)
 	self:setDeck(deck)
-	if layerName ~= nil then
-		self:setIndex(deck:indexOf(layerName))
-		self.deckLayer = layerName
-	end
-	self.deckIndex = deck:indexOf(layerName)
-	if queryStr ~= nil then
+	if queryStr then
 		local q = url.parse_query(queryStr)
-		if q.scl ~= nil then
+		if q.image then
+			self:setIndex(deck:indexOf(q.image))
+		elseif q.index then
+			self:setIndex(tonumber(q.index))
+		elseif q.anim then
+			self:playAnim(q.anim)
+		end
+		if q.scl then
 			local scl = tonumber(q.scl)
 			self:setScl(scl, scl)
 		end
-		if q.rot ~= nil then
+		if q.rot then
 			local rot = tonumber(q.rot)
 			self:setRot(rot)
 		end
-		if q.pri ~= nil then
+		if q.pri then
 			local pri = tonumber(q.pri)
 			self:setPriority(pri)
 		end
-		if q.loc ~= nil then
+		if q.loc then
 			local x, y = breakstr(q.loc, ",")
 			self:setLoc(tonumber(x), tonumber(y))
 		end
-		if q.alpha ~= nil then
+		if q.alpha then
 			self:setColor(1, 1, 1, tonumber(q.alpha))
 		end
 	end
-	self._deck = deck
 end
+
+local function Sprite_setImage(self, name)
+	local index = self._deck:indexOf(name)
+	self:setIndex(index)
+end
+
 local function Sprite_stopAnim(self)
-	if self._anim ~= nil then
+	if self._anim then
 		self._anim:stop()
 		self._anim = nil
 	end
-	if self._animProp ~= nil then
+	if self._animProp then
 		self.remove(self._animProp)
 		self._animProp = nil
 	end
 end
-local function Sprite_defaultCallback(self)
-	if self._anim ~= nil then
-		self._anim:stop()
-		self._anim = nil
-	end
-	if self._animProp ~= nil then
-		self.remove(self._animProp)
-		self._animProp = nil
-	end
-end
+
 local function Sprite_playAnim(self, animName, callback, looping)
-	if self._anim ~= nil then
+	if self._anim then
 		self._anim:stop()
 		self._anim:clear()
 		self._anim = nil
 	end
-	if self._animProp ~= nil then
+	if self._animProp then
 		self.remove(self._animProp)
 		self._animProp = nil
 	end
 	if not looping and callback == nil then
-		callback = Sprite_defaultCallback
+		callback = Sprite_stopAnim
 	end
 	if not animName or not self._deck or not self._deck._animCurves then
 		return nil
@@ -145,55 +146,34 @@ local function Sprite_playAnim(self, animName, callback, looping)
 	self._anim = anim
 	return anim:start()
 end
-function Sprite.new(url)
-	local o = MOAIProp2D.new()
+
+function Sprite.new(source, layer)
+	local o = Prim.new(MOAIProp2D.new())
 	local deck
-	if type(url) == "userdata" then
+	if type(source) == "userdata" then
 		deck = MOAIGfxQuad2D.new()
 		do
-			local tex = url
+			local tex = source
 			deck:setTexture(tex)
 			local w, h = tex:getSize()
 			deck:setRect(-w / 2, -h / 2, w / 2, h / 2)
 			o:setDeck(deck)
 		end
+		o._sourceName = tostring(source)
 	else
-		local deckName, queryStr = breakstr(url, "?")
-		deck = resource.deck(deckName)
-		o:setDeck(deck)
-		if queryStr ~= nil then
-			local q = url.parse_query(queryStr)
-			if q.image ~= nil then
-				o:setIndex(deck:indexOf(q.image))
-			elseif q.index ~= nil then
-				o:setIndex(tonumber(q.index))
-			end
-			if q.scl ~= nil then
-				local scl = tonumber(q.scl)
-				o:setScl(scl, scl)
-			end
-			if q.rot ~= nil then
-				local rot = tonumber(q.rot)
-				o:setRot(rot)
-			end
-			if q.pri ~= nil then
-				local pri = tonumber(q.pri)
-				o:setPriority(pri)
-			end
-			if q.loc ~= nil then
-				local x, y = breakstr(q.loc, ",")
-				o:setLoc(tonumber(x), tonumber(y))
-			end
-			if q.alpha ~= nil then
-				o:setColor(1, 1, 1, tonumber(q.alpha))
-			end
-		end
+		Sprite_setUrl(o, source)
+		o._sourceName = source
 	end
-	o._sprName = url
+	if layer then
+		o:setLayer(layer)
+	end
 	o._deck = deck
 	o.getSize = Sprite_getSize
+	o.setUrl = Sprite_setUrl
 	o.setImage = Sprite_setImage
 	o.playAnim = Sprite_playAnim
 	o.stopAnim = Sprite_stopAnim
 	return o
 end
+
+return Sprite

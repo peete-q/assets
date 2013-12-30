@@ -1,7 +1,8 @@
 
 local math2d = require "math2d"
 local resource = require "resource"
-local Arena = require "Arena"
+local Scene = require "Scene"
+local Sprite = require "Sprite"
 
 local distance = math2d.distance
 local distanceSq = math2d.distanceSq
@@ -13,24 +14,29 @@ local Entity = {
 
 local _defaultProps = {
 	hp = 100,
-	attackPower = 0,
+	maxHp = 100,
+	bodySize = 10,
+	moveSpeed = 10,
+	attackPower = 1,
 	attackSpeed = 10,
 	attackRange = 100,
 	guardRange = 160,
-	bodySize = 10,
-	moveSpeed = 10,
-	kind = "(none)",
+	bulletSpeed = 10,
+	impactRange = 1,
+	kind = "normal",
 	movable = true,
 	specialPower = none,
-	layer = "units_layer",
 	
 	bodyGfx = none,
 	propellerGfx = none,
 	muzzleGfx = none,
+	fireSfx = none,
 	impactGfx = none,
 	impactSfx = none,
-	fireSfx = none,
 	explodeGfx = none,
+	explodeSfx = none,
+	bulletGfx = none,
+	bulletPropellerGfx = none,
 }
 
 Entity.__index = function(self, key)
@@ -51,23 +57,27 @@ Entity.__newindex = function(self, key, value)
 	error(string.format("[error] write undefined entity property '%s'", key))
 end
 
-function Entity.new(props, sprite)
+function Entity.new(props, layer)
 	local self = {
 		_force = force,
 		_children = {},
 		_props = props or {},
 		_lastAttackTicks = 0,
 		_attackPriorities = {},
-		_sprite = sprite or none,
 		_motionDriver = none,
 		_target = none,
 		_rigid = none,
-		_arena = none,
+		_scene = none,
 		_stopRange = 0,
 	}
 	
-	self._sprite = MOAIProp2D.new ()
-	
+	self._body = Sprite.new(props.bodyGfx, layer)
+	if props.propellerGfx then
+		self._propeller = Sprite.new(props.propellerGfx, layer)
+	end
+	if props.muzzleGfx then
+		self._muzzle = Sprite.new(props.muzzleGfx, layer)
+	end
 	setmetatable(self, Entity)
 	return self
 end
@@ -87,12 +97,16 @@ function Entity:destroy()
 	end
 end
 
+function Entity:setLayer(layer)
+	self._body:setLayer(layer)
+end
+
 function Entity:setWorldLoc(x, y)
-	self._sprite:setLoc(x, y)
+	self._body:setLoc(x, y)
 end
 
 function Entity:getWorldLoc()
-	return self._sprite:getLoc()
+	return self._body:getLoc()
 end
 
 function Entity:moveTo(x, y)
@@ -101,7 +115,7 @@ function Entity:moveTo(x, y)
 	end
 	self:_cancelRigid()
 	self:stop()
-	self._motionDriver = self._sprite:seekLoc(x, y, self.moveSpeed, MOAIEaseType.LINEAR)
+	self._motionDriver = self._body:seekLoc(x, y, self.moveSpeed, MOAIEaseType.LINEAR)
 end
 
 function Entity:isMoving()
@@ -120,7 +134,7 @@ function Entity:_doRigid()
 	self._rigid = world:addBody(MOAIBox2DBody.DYNAMIC)
 	local x, y = self:getWorldLoc()
 	self._rigid:addCircle(x, y, self.bodySize)
-	self._sprite:setParent(self._rigid)
+	self._body:setParent(self._rigid)
 end
 
 function Entity:_cancelRigid()
@@ -178,7 +192,7 @@ end
 function Entity:chase(target)
 	local x, y = target:getWorldLoc()
 	local sx, sy = self:getWorldLoc()
-	local mx = sx * self.attackRange * 2 / self._arena.WIDTH
+	local mx = sx * self.attackRange * 2 / self._scene.WIDTH
 	x = math.random(mx - self.bodySize, mx + self.bodySize)
 	self:moveTo(x, y)
 	self._stopRange = math.random(self.bodySize * 2)
@@ -211,14 +225,14 @@ function Entity:_searchAttackTarget()
 end
 
 function Entity:getMyForce()
-	return self._arena:getForce(self._force)
+	return self._scene:getForce(self._force)
 end
 
 function Entity:getHostileForce()
-	if self._force == Arena.FORCE_SELF then
-		return self._arena:getForce(Arena.FORCE_ENEMY)
+	if self._force == Scene.FORCE_SELF then
+		return self._scene:getForce(Scene.FORCE_ENEMY)
 	end
-	return self._arena:getForce(Arena.FORCE_SELF)
+	return self._scene:getForce(Scene.FORCE_SELF)
 end
 
 function Entity:isInRange(target, range)

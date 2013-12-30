@@ -1,5 +1,5 @@
 
-local Arena = {
+local Scene = {
 	FORCE_SELF = 1,
 	FORCE_ENEMY = 2,
 	
@@ -8,46 +8,50 @@ local Arena = {
 
 local SPACE_SIZE = 10
 
-Arena.__index = Arena
+Scene.__index = Scene
 
-function Arena.new(w, h, seed)
+function Scene.new(w, h, layer, seed)
 	local self = {
 		WIDTH = w,
 		HEIGHT = h,
 		
 		_forces = {
-			[Arena.FORCE_SELF] = {},
-			[Arena.FORCE_ENEMY] = {},
+			[Scene.FORCE_SELF] = {},
+			[Scene.FORCE_ENEMY] = {},
 		},
 		_myY = -h / 2,
 		_enemyY = h / 2,
+		_layer = layer,
 	}
-	setmetatable(self, Arena)
+	self._partition = MOAIPartition.new()
+	self._layer:setPartition(self._partition)
+	setmetatable(self, Scene)
 	return self
 end
 
-function Arena:destroy()
+function Scene:destroy()
 end
 
-function Arena:addUnit(force, spawn)
+function Scene:addUnit(force, spawn)
 	local e = spawn()
-	e._arena = self
+	e._scene = self
+	e:setLayer(self._layer)
 	self._forces[force][e] = e
 	return e
 end
 
-function Arena:spawnUnit(force, spawn)
+function Scene:spawnUnit(force, spawn)
 	local e = self:addUnit(force, spawn)
 	local n = (self.WIDTH / 2) / SPACE_SIZE
 	local x = math.random(-n, n) * SPACE_SIZE
 	e:setWorldLoc(x, self._myY - e.bodySize)
 end
 
-function Arena:getForce(nb)
+function Scene:getForce(nb)
 	return self._forces[nb]
 end
 
-function Arena:update(ticks)
+function Scene:update(ticks)
 	for _, force in ipairs(self._forces) do
 		for _, entity in pairs(force) do
 			entity:update(ticks)
@@ -55,4 +59,4 @@ function Arena:update(ticks)
 	end
 end
 
-return Arena
+return Scene

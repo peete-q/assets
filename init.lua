@@ -78,6 +78,6 @@ function print(...)
 	for i = 2, #arg do
 		s = s.." "..tostring(arg[i])
 	end
-	MOAILogMgr.log(s)
+	MOAILogMgr.log(s.."\n")
 end
 

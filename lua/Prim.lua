@@ -1,4 +1,6 @@
 
+local Prim = {}
+
 local function Prim_setLayer(self, layer)
 	if self._layer == layer then
 		return
@@ -21,11 +23,13 @@ local function Prim_setLayer(self, layer)
 		end
 	end
 end
+
 local function Prim_unparentChild(child)
 	Prim_setLayer(child, nil)
 	child._parent = nil
 	child:setParent(nil)
 end
+
 local function Prim_add(self, child)
 	assert(child ~= nil, "Child must not be null")
 	assert(child._layer == nil or child._layer ~= child, "Nested viewports not supported")
@@ -44,6 +48,7 @@ local function Prim_add(self, child)
 	Prim_setLayer(child, self._layer)
 	return child
 end
+
 local function Prim_removeAll(self, fullClear)
 	if self._children ~= nil then
 		for k, v in pairs(self._children) do
@@ -55,6 +60,7 @@ local function Prim_removeAll(self, fullClear)
 		self._children = nil
 	end
 end
+
 local function Prim_remove(self, child)
 	if child == nil then
 		if self._parent ~= nil then
@@ -73,6 +79,7 @@ local function Prim_remove(self, child)
 	end
 	return false
 end
+
 function Prim.new(o)
 	assert(type(o) == "userdata" and getmetatable(o) ~= nil, "Improper use of Prim_new")
 	o.add = Prim_add
@@ -81,3 +88,5 @@ function Prim.new(o)
 	o.removeAll = Prim_removeAll
 	return o
 end
+
+return Prim
