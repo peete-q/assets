@@ -3,12 +3,12 @@ local math2d = require "math2d"
 local resource = require "resource"
 local Scene = require "Scene"
 local Sprite = require "Sprite"
+local Bullet = require "Bullet"
 
 local distance = math2d.distance
 local distanceSq = math2d.distanceSq
 
-local Entity = {
-}
+local Entity = {}
 
 local _defaultProps = {
 	hp = 100,
@@ -19,8 +19,6 @@ local _defaultProps = {
 	attackSpeed = 10,
 	attackRange = 100,
 	guardRange = 160,
-	bulletSpeed = 10,
-	impactRange = 1,
 	shots = 1,
 	kind = "normal",
 	movable = true,
@@ -31,12 +29,9 @@ local _defaultProps = {
 	propellerGfx = nil,
 	muzzleGfx = nil,
 	fireSfx = nil,
-	impactGfx = nil,
-	impactSfx = nil,
 	explodeGfx = nil,
 	explodeSfx = nil,
-	bulletGfx = nil,
-	bulletPropellerGfx = nil,
+	bullet = _defaultBullet,
 }
 
 Entity.__index = function(self, key)
@@ -201,52 +196,20 @@ function Entity:chase(target)
 	self._stopRange = math.random(self.bodySize * 2)
 end
 
-local function _bullet_update(self)
-end
-
-local function _bullet_noop(self)
-end
-
-local function _bullet_destroy(self)
-end
-
-function Entity.fire(x, y, target, speed, range, damage, bulletGfx, propellerGfx, impactGfx, impactSfx)
-	local bullet = {
-		update = _bullet_update,
-		destroy = _bullet_destroy,
-	}
-end
-
-function Entity.fireTo(scene, x, y, tx, ty, speed, range, damage, bulletGfx, propellerGfx, impactGfx, impactSfx)
-	local bullet = {
-		update = _bullet_noop,
-		destroy = _bullet_destroy,
-	}
-	bullet._body = Sprite.new(bulletGfx)
-	if propellerGfx then
-		local o = Sprite.new(propellerGfx)
-		bullet:add(o)
-	end
-	scene:addUnit(Scene.UNIT_BULLET, bullet)
-	bullet:setWorldLoc(x, y)
-	bullet._thread = MOAIThread.new()
-	bullet._thread:run(function()
-		local dist = distance(x, y, tx, ty)
-		MOAIThread.blockOnAction(bullet._body:seekLoc(tx, ty, speed * dist, MOAIEaseType.LINEAR))
-	end)
-end
-
 function Entity:attack(target)
 	local targets = self:getAttackTargets()
 	local x, y = self:getWorldLoc()
+	local n = 0
 	for k, v in pairs(targets) do
 		if self.lockTarget then
-			Entity.fire(v, self.bulletSpeed, self.impactRange, self.attackPower,
-				self.bulletGfx, self.bulletPropellerGfx, self.impactGfx, self.impactSfx)
+			Bullet.fire(self.bullet, x, y, v)
 		else
 			local tx, ty = v:getWorldLoc()
-			Entity.fireTo(self._scene, x, y, tx, ty, self.bulletSpeed, self.impactRange, self.attackPower,
-				self.bulletGfx, self.bulletPropellerGfx, self.impactGfx, self.impactSfx)
+			Bullet.fireTo(self._scene, x, y, tx, ty, self.bullet)
+		end
+		n = n + 1
+		if n >= self.shots then
+			break
 		end
 	end
 end

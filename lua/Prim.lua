@@ -80,8 +80,20 @@ local function Prim_remove(self, child)
 	return false
 end
 
+local function Prim_destroy(self)
+	if self._children ~= nil then
+		for k, v in pairs(self._children) do
+			v:destroy()
+		end
+		self._children = nil
+	end
+	self._olderPrimDestroy(self)
+end
+
 function Prim.new(o)
 	assert(type(o) == "userdata" and getmetatable(o) ~= nil, "Improper use of Prim_new")
+	o._olderPrimDestroy = o.destroy
+	o.destroy = Prim_destroy
 	o.add = Prim_add
 	o.setLayer = Prim_setLayer
 	o.remove = Prim_remove

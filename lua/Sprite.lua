@@ -14,16 +14,21 @@ end
 
 local function Sprite_setUrl(self, url)
 	local deckName, queryStr = breakstr(url, "?")
-	deck = resource.deck(deckName)
+	local deck = resource.deck(deckName)
 	self:setDeck(deck)
 	if queryStr then
 		local q = url.parse_query(queryStr)
+		if q.duration then
+			self._duration = tonumber(q.duration)
+		end
 		if q.image then
 			self:setIndex(deck:indexOf(q.image))
 		elseif q.index then
 			self:setIndex(tonumber(q.index))
-		elseif q.anim then
-			self:playAnim(q.anim)
+		elseif q.play then
+			self:playAnim(q.play, true)
+		elseif q.playOnce then
+			self:playAnim(q.playOnce)
 		end
 		if q.scl then
 			local scl = tonumber(q.scl)
@@ -52,29 +57,35 @@ local function Sprite_setImage(self, name)
 	self:setIndex(index)
 end
 
+local function Sprite_defaultCallback(self)
+	self:stopAnim()
+	self:remove()
+end
+
 local function Sprite_stopAnim(self)
 	if self._anim then
 		self._anim:stop()
 		self._anim = nil
 	end
 	if self._animProp then
-		self.remove(self._animProp)
+		self:remove(self._animProp)
 		self._animProp = nil
 	end
 end
 
-local function Sprite_playAnim(self, animName, callback, looping)
+local function Sprite_playAnim(self, animName, loopingOrCallback)
 	if self._anim then
 		self._anim:stop()
 		self._anim:clear()
 		self._anim = nil
 	end
 	if self._animProp then
-		self.remove(self._animProp)
+		self:remove(self._animProp)
 		self._animProp = nil
 	end
-	if not looping and callback == nil then
-		callback = Sprite_stopAnim
+	local callback = loopingOrCallback
+	if loopingOrCallback == true or loopingOrCallback == nil then
+		callback = Sprite_defaultCallback
 	end
 	if not animName or not self._deck or not self._deck._animCurves then
 		return nil
@@ -88,7 +99,7 @@ local function Sprite_playAnim(self, animName, callback, looping)
 		do
 			local consts = self._deck._animConsts[animName]
 			local curLink = 1
-			self._animProp = ui_new(MOAIProp2D.new())
+			self._animProp = Prim.new(MOAIProp2D.new())
 			self._animProp:setDeck(self._deck)
 			self:add(self._animProp)
 			anim:reserveLinks(self._deck._numCurves[animName])
@@ -136,7 +147,7 @@ local function Sprite_playAnim(self, animName, callback, looping)
 		anim:reserveLinks(1)
 		anim:setLink(1, curve, self, MOAIProp2D.ATTR_INDEX)
 	end
-	if looping then
+	if loopingOrCallback == true then
 		anim:setMode(MOAITimer.LOOP)
 	else
 		anim:setListener(MOAITimer.EVENT_TIMER_LOOP, function()
@@ -147,11 +158,31 @@ local function Sprite_playAnim(self, animName, callback, looping)
 	return anim:start()
 end
 
-function Sprite.new(source, layer)
+local function Sprite_destroy(self)
+	self:stopAnim()
+	self._olderSpriteDestroy(self)
+end
+
+local function Sprite_setDeck(self, deck)
+	self._deck = deck
+	self._olderSpriteSetDeck(self)
+end
+
+function Sprite.new(source)
 	local o = Prim.new(MOAIProp2D.new())
-	local deck
+	
+	o._olderSpriteSetDeck = o.setDeck
+	o.setDeck = Sprite_setDeck
+	o._olderSpriteDestroy = o.destroy
+	o.destroy = Sprite_destroy
+	o.getSize = Sprite_getSize
+	o.setUrl = Sprite_setUrl
+	o.setImage = Sprite_setImage
+	o.playAnim = Sprite_playAnim
+	o.stopAnim = Sprite_stopAnim
+	
 	if type(source) == "userdata" then
-		deck = MOAIGfxQuad2D.new()
+		local deck = MOAIGfxQuad2D.new()
 		do
 			local tex = source
 			deck:setTexture(tex)
@@ -164,15 +195,6 @@ function Sprite.new(source, layer)
 		Sprite_setUrl(o, source)
 		o._sourceName = source
 	end
-	if layer then
-		o:setLayer(layer)
-	end
-	o._deck = deck
-	o.getSize = Sprite_getSize
-	o.setUrl = Sprite_setUrl
-	o.setImage = Sprite_setImage
-	o.playAnim = Sprite_playAnim
-	o.stopAnim = Sprite_stopAnim
 	return o
 end
 
