@@ -225,7 +225,7 @@ function Entity:getAttackTargets()
 		end
 	end
 	for i = 1, self.shots - n do
-		local e = self:searchNearesTarget(self.attackRange, targets)
+		local e = self:searchNearestTarget(self.attackRange, targets)
 		targets[e] = e
 	end
 	self._lastTargets = targets
@@ -256,7 +256,7 @@ function Entity:searchTarget(range, exclusion)
 	return target
 end
 
-function Entity:searchNearesTarget(range, exclusion)
+function Entity:searchNearestTarget(range, exclusion)
 	range = range or self.guardRange
 	local force = self:getHostileForce()
 	local dist = range ^ 2
