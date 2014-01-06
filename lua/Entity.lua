@@ -31,8 +31,10 @@ local _defaultProps = {
 	fireSfx = nil,
 	explodeGfx = nil,
 	explodeSfx = nil,
-	bullet = _defaultBullet,
+	bullet = Bullet._defaultProps,
 }
+
+Entity._defaultProps = _defaultProps
 
 Entity.__index = function(self, key)
 	if self._props[key] ~= nil then
@@ -49,9 +51,10 @@ Entity.__newindex = function(self, key, value)
 		self._props[key] = value
 		return
 	end
+	rawset(self, key, value)
 end
 
-function Entity.new(props, layer)
+function Entity.new(props)
 	local self = {
 		_force = force,
 		_children = {},
@@ -66,12 +69,13 @@ function Entity.new(props, layer)
 		_rigid = nil,
 	}
 	
-	self._body = Sprite.new(props.bodyGfx, layer)
+	self._body = Sprite.new(props.bodyGfx)
 	if props.propellerGfx then
-		self._propeller = Sprite.new(props.propellerGfx, layer)
+		self._propeller = Sprite.new(props.propellerGfx)
+		self._body:add(self._propeller)
 	end
 	if props.muzzleGfx then
-		self._muzzle = Sprite.new(props.muzzleGfx, layer)
+		self._muzzle = Sprite.new(props.muzzleGfx)
 	end
 	setmetatable(self, Entity)
 	return self
@@ -202,10 +206,10 @@ function Entity:attack(target)
 	local n = 0
 	for k, v in pairs(targets) do
 		if self.lockTarget then
-			Bullet.fire(self.bullet, x, y, v)
+			-- Bullet.fire(self.bullet, x, y, v, self:getEnemy())
 		else
 			local tx, ty = v:getWorldLoc()
-			Bullet.fireTo(self._scene, x, y, tx, ty, self.bullet)
+			Bullet.fireTo(self.bullet, self._scene, x, y, tx, ty, self:getEnemy())
 		end
 		n = n + 1
 		if n >= self.shots then
@@ -220,7 +224,7 @@ function Entity:getAttackTargets()
 	local targets = {}
 	for k, v in pairs(self._lastTargets) do
 		if v:isAlive() then
-			targets[v] = [v]
+			targets[v] = v
 			n = n + 1
 		end
 	end

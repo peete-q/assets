@@ -1,4 +1,4 @@
-
+local url = require "url"
 local util = require "util"
 local Prim = require "Prim"
 local breakstr = util.breakstr
@@ -12,23 +12,15 @@ local function Sprite_getSize(self)
 	return self._deck:getSize(self.deckLayer)
 end
 
-local function Sprite_setUrl(self, url)
-	local deckName, queryStr = breakstr(url, "?")
+local function Sprite_parse(self, path)
+	local deckName, queryStr = breakstr(path, "?")
 	local deck = resource.deck(deckName)
 	self:setDeck(deck)
 	if queryStr then
 		local q = url.parse_query(queryStr)
-		if q.duration then
-			self._duration = tonumber(q.duration)
-		end
-		if q.image then
-			self:setIndex(deck:indexOf(q.image))
-		elseif q.index then
-			self:setIndex(tonumber(q.index))
-		elseif q.play then
-			self:playAnim(q.play, true)
-		elseif q.playOnce then
-			self:playAnim(q.playOnce)
+		local dur
+		if q.dur then
+			dur = tonumber(q.dur)
 		end
 		if q.scl then
 			local scl = tonumber(q.scl)
@@ -48,6 +40,15 @@ local function Sprite_setUrl(self, url)
 		end
 		if q.alpha then
 			self:setColor(1, 1, 1, tonumber(q.alpha))
+		end
+		if q.image then
+			self:setIndex(deck:indexOf(q.image))
+		elseif q.index then
+			self:setIndex(tonumber(q.index))
+		elseif q.play then
+			self:playAnim(q.play, nil, true)
+		elseif q.playOnce then
+			self:playAnim(q.playOnce)
 		end
 	end
 end
@@ -73,7 +74,7 @@ local function Sprite_stopAnim(self)
 	end
 end
 
-local function Sprite_playAnim(self, animName, loopingOrCallback)
+local function Sprite_playAnim(self, animName, callback, looping)
 	if self._anim then
 		self._anim:stop()
 		self._anim:clear()
@@ -83,8 +84,7 @@ local function Sprite_playAnim(self, animName, loopingOrCallback)
 		self:remove(self._animProp)
 		self._animProp = nil
 	end
-	local callback = loopingOrCallback
-	if loopingOrCallback == true or loopingOrCallback == nil then
+	if looping == true or callback == nil then
 		callback = Sprite_defaultCallback
 	end
 	if not animName or not self._deck or not self._deck._animCurves then
@@ -147,7 +147,7 @@ local function Sprite_playAnim(self, animName, loopingOrCallback)
 		anim:reserveLinks(1)
 		anim:setLink(1, curve, self, MOAIProp2D.ATTR_INDEX)
 	end
-	if loopingOrCallback == true then
+	if looping == true then
 		anim:setMode(MOAITimer.LOOP)
 	else
 		anim:setListener(MOAITimer.EVENT_TIMER_LOOP, function()
@@ -165,18 +165,19 @@ end
 
 local function Sprite_setDeck(self, deck)
 	self._deck = deck
-	self._olderSpriteSetDeck(self)
+	self._olderSpriteSetDeck(self, deck)
 end
 
 function Sprite.new(source)
-	local o = Prim.new(MOAIProp2D.new())
+	assert(source, "need 'userdata' or url")
 	
+	local o = Prim.new(MOAIProp2D.new())
 	o._olderSpriteSetDeck = o.setDeck
 	o.setDeck = Sprite_setDeck
 	o._olderSpriteDestroy = o.destroy
 	o.destroy = Sprite_destroy
 	o.getSize = Sprite_getSize
-	o.setUrl = Sprite_setUrl
+	o.parse = Sprite_parse
 	o.setImage = Sprite_setImage
 	o.playAnim = Sprite_playAnim
 	o.stopAnim = Sprite_stopAnim
@@ -192,7 +193,7 @@ function Sprite.new(source)
 		end
 		o._sourceName = tostring(source)
 	else
-		Sprite_setUrl(o, source)
+		Sprite_parse(o, source)
 		o._sourceName = source
 	end
 	return o
