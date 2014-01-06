@@ -19,6 +19,7 @@ function Scene.new(w, h, layer, seed)
 		_units = {
 			[Scene.UINT_ME] = {},
 			[Scene.UNIT_ENEMY] = {},
+			[Scene.UNIT_BULLET] = {},
 		},
 		_myY = -h / 2,
 		_enemyY = h / 2,

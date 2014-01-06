@@ -11,9 +11,8 @@ local _defaultProps = {
 	moveSpeed = 10,
 	damage = 1,
 	bombRange = 10,
-	bodySize = 10,
 	
-	bodyGfx = nil,
+	bodyGfx = "bg.png?scl=0.5,0.5",
 	propellerGfx = nil,
 	bombGfx = nil,
 	bombSfx = nil,
@@ -32,6 +31,10 @@ function Bullet.impact(self, target)
 end
 
 function Bullet.bomb(self, target)
+	if self._body then
+		self._body:setLayer(nil)
+		self._dead = true
+	end
 	self:impact(target)
 	if self._props.bombRange <= 0 then
 		return
@@ -51,6 +54,10 @@ end
 
 function Bullet.getWorldLoc(self)
 	return self._body:getLoc()
+end
+
+function Bullet.setWorldLoc(self, x, y)
+	return self._body:setLoc(x, y)
 end
 
 function Bullet.update(self)
@@ -92,6 +99,10 @@ function Bullet.destroy(self)
 	end
 end
 
+function Bullet.setLayer(self, layer)
+	self._body:setLayer(layer)
+end
+
 function Bullet.new(props)
 	local self = {
 		_props = props,
@@ -111,6 +122,7 @@ function Bullet.fire(props, x, y, target, force)
 	target._scene:addUnit(Scene.UNIT_BULLET, self)
 	self:setWorldLoc(x, y)
 	self._tx, self._ty = target:getWorldLoc()
+	self._target = target
 	self:update()
 	return self
 end

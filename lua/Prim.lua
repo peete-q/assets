@@ -87,7 +87,9 @@ local function Prim_destroy(self)
 		end
 		self._children = nil
 	end
-	self._olderPrimDestroy(self)
+	if self._oldrePrimDestroy then
+		self._olderPrimDestroy(self)
+	end
 end
 
 function Prim.new(o)

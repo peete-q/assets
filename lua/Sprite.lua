@@ -160,7 +160,9 @@ end
 
 local function Sprite_destroy(self)
 	self:stopAnim()
-	self._olderSpriteDestroy(self)
+	if self._olderSpriteDestroy then
+		self._olderSpriteDestroy(self)
+	end
 end
 
 local function Sprite_setDeck(self, deck)

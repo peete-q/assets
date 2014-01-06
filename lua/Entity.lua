@@ -206,7 +206,7 @@ function Entity:attack(target)
 	local n = 0
 	for k, v in pairs(targets) do
 		if self.lockTarget then
-			-- Bullet.fire(self.bullet, x, y, v, self:getEnemy())
+			Bullet.fire(self.bullet, x, y, v, self:getEnemy())
 		else
 			local tx, ty = v:getWorldLoc()
 			Bullet.fireTo(self.bullet, self._scene, x, y, tx, ty, self:getEnemy())
