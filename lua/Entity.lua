@@ -184,11 +184,13 @@ function Entity:update(ticks)
 	if self._target and self._lastAttackTicks + self.attackSpeed < ticks then
 		if self:isInRange(self._target) then
 			self:attack(self._target)
+			self._lastAttackTicks = ticks
 		end
 	end
 end
 
 function Entity:chase(target)
+	print("Entity:chase", self, target)
 	if self:isInRange(target, self.attackRange - self._stopRange) then
 		return
 	end
@@ -247,7 +249,7 @@ function Entity:searchTarget(range, exclusion)
 	local priority = 0
 	local target = nil
 	for k, v in pairs(force) do
-		if v:isAlive() and (not exclusion or not exclusion[v]) then
+		if v ~= self and v:isAlive() and (not exclusion or not exclusion[v]) then
 			local d = self:distanceSq(v)
 			local p = self:attackPriority(v)
 			if p > priority or (p == priority and d < dist) then
@@ -266,7 +268,7 @@ function Entity:searchNearestTarget(range, exclusion)
 	local dist = range ^ 2
 	local target = nil
 	for k, v in pairs(force) do
-		if v:isAlive() and (not exclusion or not exclusion[v]) then
+		if v ~= self and v:isAlive() and (not exclusion or not exclusion[v]) then
 			local d = self:distanceSq(v)
 			if d < dist then
 				dist = d
@@ -323,6 +325,7 @@ function Entity:distanceSq(other)
 end
 
 function Entity:applyDamage(amount, source)
+	print("Entity:applyDamage")
 end
 
 return Entity

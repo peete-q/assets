@@ -60,15 +60,15 @@ function Scene:update(ticks)
 	end
 end
 
-function Scene:getForceInRound(nb, x, y, r)
-	local force = {}
-	local props = {self._partition:propListForRect(x - r, y - r, x + r, y + r)}
-	for k, v in pairs(props) do
-		if v:isAlive() and v._force == nb then
-			table.insert(force, v)
+function Scene:getForceInRound(nbForce, x, y, r)
+	local units = {}
+	local force = self:getForce(nbForce)
+	for k, v in pairs(force) do
+		if v:isAlive() and v:isPtInRange(x, y, r) then
+			table.insert(units, v)
 		end
 	end
-	return force
+	return units
 end
 
 return Scene

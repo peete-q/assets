@@ -1,4 +1,5 @@
-
+package.path = "../?.lua;?.lua"
+require "init"
 require "constants"
 
 local function printf ( ... )
@@ -58,10 +59,12 @@ end
 
 function clickCallbackR(down)
 	if down then
-		for i = 1, 10 do
+		for i = 1, 1 do
 			local e = Entity.new({bodyGfx="bg.png"})
-			scene:spawnUnit(2, e)
-			e:moveTo(x, H / 2)
+			-- scene:spawnUnit(2, e)
+			-- e:moveTo(x, H / 2)
+			scene:addUnit(2, e)
+			e:setWorldLoc(X, Y)
 		end
 	end
 end

@@ -44,7 +44,7 @@ function Bullet.bomb(self, target)
 		local bomb = Sprite.new(self._props.bombGfx)
 		table.insert(self._children, bomb)
 	end
-	local force = self._scene:getForceInRound(self._force, x, y, self._props.bombRange)
+	local force = self._scene:getForceInRound(self._enemyForce, x, y, self._props.bombRange)
 	for k, v in pairs(force) do
 		if v ~= target then
 			self:impact(v)
@@ -117,12 +117,13 @@ function Bullet.new(props)
 	return self
 end
 
-function Bullet.fire(props, x, y, target, force)
+function Bullet.fire(props, x, y, target, enemyForce)
 	local self = Bullet.new(props)
 	target._scene:addUnit(Scene.UNIT_BULLET, self)
 	self:setWorldLoc(x, y)
 	self._tx, self._ty = target:getWorldLoc()
 	self._target = target
+	self._enemyForce = enemyForce
 	self:update()
 	return self
 end
