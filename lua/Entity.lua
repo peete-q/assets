@@ -57,7 +57,6 @@ end
 function Entity.new(props)
 	local self = {
 		_force = force,
-		_children = {},
 		_props = props or {},
 		_lastAttackTicks = 0,
 		_attackPriorities = {},
@@ -82,12 +81,14 @@ function Entity.new(props)
 end
 
 function Entity:destroy()
-	for k, v in pairs(self._children) do
-		v:destroy()
+	if self._body then
+		self._body:destroy()
+		self._body = nil
 	end
 	
 	if self._motionDriver then
 		self._motionDriver:destroy()
+		self._motionDriver = nil
 	end
 	
 	if self._rigid then
@@ -98,6 +99,14 @@ end
 
 function Entity:setLayer(layer)
 	self._body:setLayer(layer)
+end
+
+function Entity:add(fx)
+	self._body:add(fx)
+end
+
+function Entity:remove(fx)
+	self._body:remove(fx)
 end
 
 function Entity:setWorldLoc(x, y)

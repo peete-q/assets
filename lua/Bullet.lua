@@ -12,7 +12,7 @@ local _defaultProps = {
 	damage = 1,
 	bombRange = 10,
 	
-	bodyGfx = "bg.png?scl=0.5,0.5",
+	bodyGfx = "bg.png",
 	propellerGfx = nil,
 	bombGfx = nil,
 	bombSfx = nil,
