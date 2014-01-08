@@ -11,6 +11,7 @@ local _defaultProps = {
 	moveSpeed = 0.01,
 	damage = 1,
 	bombRange = 10,
+	force = nil,
 	
 	bodyGfx = "bg.png?scl=0.5",
 	propellerGfx = nil,
@@ -19,7 +20,7 @@ local _defaultProps = {
 	impactGfx = nil,
 }
 
-local _bulletLockDistance = 3
+local _lockDistance = 3
 
 local Bullet = {}
 
@@ -41,10 +42,11 @@ function Bullet.bomb(self, target)
 	if self._props.bombGfx then
 		local bomb = Sprite.new(self._props.bombGfx)
 		bomb.update = Bullet.noop
-		self._scene:addUnit(Scene.UNIT_BOMB, bomb)
+		self._scene:addProjectile(bomb)
 	end
-	local force = self._scene:getForceInRound(self._enemyForce, x, y, self._props.bombRange)
-	for k, v in pairs(force) do
+	local force = self._props.force or self._enemyForce
+	local units = self._scene:getUnitsInRound(force, x, y, self._props.bombRange)
+	for k, v in pairs(units) do
 		if v ~= target then
 			self:impact(v)
 		end
@@ -71,7 +73,7 @@ function Bullet.update(self)
 		self:bomb(self._target)
 		return
 	end
-	if self._tx and self._ty and distance(self._tx, self._ty, tx, ty) < _bulletLockDistance then
+	if self._tx and self._ty and distance(self._tx, self._ty, tx, ty) < _lockDistance then
 		return
 	end
 	self._tx = tx
@@ -86,7 +88,7 @@ function Bullet.noop(self)
 end
 
 function Bullet.destroy(self)
-	self._scene:removeUnit(self)
+	self._scene:remove(self)
 	
 	if self._body then
 		self._body:destroy()
@@ -118,7 +120,7 @@ end
 
 function Bullet.fire(props, x, y, target, enemyForce)
 	local self = Bullet.new(props)
-	target._scene:addUnit(Scene.UNIT_BULLET, self)
+	target._scene:addProjectile(self)
 	self:setWorldLoc(x, y)
 	self._target = target
 	self._enemyForce = enemyForce
@@ -129,7 +131,7 @@ end
 function Bullet.fireTo(props, scene, x, y, tx, ty, enemyForce)
 	local self = Bullet.new(props)
 	self.update = Bullet.noop
-	scene:addUnit(Scene.UNIT_BULLET, self)
+	scene:addProjectile(self)
 	self:setWorldLoc(x, y)
 	self._enemyForce = enemyForce
 	self._thread = MOAIThread.new()

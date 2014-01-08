@@ -45,7 +45,7 @@ function clickCallbackL(down)
 	if down then
 		if not e then
 			e = Entity.new({movable=false, bodyGfx="bg.png", attackRange = 10}, 1)
-			scene:addUnit(1, e)
+			scene:addUnit(e)
 			
 			local thread = MOAIThread.new()
 			thread:run(function()
@@ -64,9 +64,9 @@ function clickCallbackR(down)
 	if down then
 		for i = 1, 1 do
 			local e = Entity.new({bodyGfx="bg.png"})
-			-- scene:spawnUnit(2, e)
+			-- scene:spawnUnit(e)
 			-- e:moveTo(x, H / 2)
-			scene:addUnit(2, e)
+			scene:addUnit(e)
 			e:setWorldLoc(X, Y)
 		end
 	end

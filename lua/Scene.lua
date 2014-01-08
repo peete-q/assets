@@ -1,34 +1,26 @@
 
 local Scene = {
-	UINT_ME = 1,
-	UNIT_ENEMY = 2,
-	UNIT_BULLET = 3,
-	UNIT_BOMB = 4,
-	
-	_layers = {},
+	SPACE = 1,
+	SKY = 2,
 }
 
-local SPACE_SIZE = 10
+local GRID_SIZE = 10
 
 Scene.__index = Scene
 
-function Scene.new(w, h, layer, seed)
+function Scene.new(w, h, spaceLayer, skyLayer, seed)
 	local self = {
 		WIDTH = w,
 		HEIGHT = h,
 		
-		_forces = {
-			[Scene.UINT_ME] = {},
-			[Scene.UNIT_ENEMY] = {},
-			[Scene.UNIT_BULLET] = {},
-			[Scene.UNIT_BOMB] = {},
-		},
+		_units = {},
+		_projectiles = {},
 		_myY = -h / 2,
 		_enemyY = h / 2,
-		_layer = layer,
+		_spaceLayer = spaceLayer,
+		_skyLayer = skyLayer,
 	}
-	self._partition = MOAIPartition.new()
-	self._layer:setPartition(self._partition)
+	
 	setmetatable(self, Scene)
 	return self
 end
@@ -36,47 +28,54 @@ end
 function Scene:destroy()
 end
 
-function Scene:addUnit(force, e)
+function Scene:addUnit(e)
 	e._scene = self
-	e._force = force
-	e:setLayer(self._layer)
-	self._forces[force][e] = e
+	e:setLayer(self._spaceLayer)
+	self._units[e] = e
 	return e
 end
 
-function Scene:removeUnit(e)
-	e:setLayer(nil)
-	self._forces[e._force][e] = nil
+function Scene:addProjectile(e)
+	e._scene = self
+	e:setLayer(self._spaceLayer)
+	self._projectiles[e] = e
+	return e
 end
 
-function Scene:spawnUnit(force, e)
-	self:addUnit(force, e)
-	local n = (self.WIDTH / 2) / SPACE_SIZE
-	local x = math.random(-n, n) * SPACE_SIZE
+function Scene:remove(e)
+	e:setLayer(nil)
+	self._units[e] = nil
+	self._projectiles[e] = nil
+end
+
+function Scene:spawnUnit(e)
+	self:addUnit(e)
+	local n = (self.WIDTH / 2) / GRID_SIZE
+	local x = math.random(-n, n) * GRID_SIZE
 	e:setWorldLoc(x, self._myY - e.bodySize)
 end
 
-function Scene:getForce(nb)
-	return self._forces[nb]
+function Scene:getUnits()
+	return self._units
 end
 
 function Scene:update(ticks)
-	local units = {}
-	for _, force in pairs(self._forces) do
-		for _, v in pairs(force) do
-			units[v] = v
-		end
+	local tb = {}
+	for _, v in pairs(self._units) do
+		tb[v] = v
 	end
-	for _, v in pairs(units) do
+	for _, v in pairs(self._projectiles) do
+		tb[v] = v
+	end
+	for _, v in pairs(tb) do
 		v:update(ticks)
 	end
 end
 
-function Scene:getForceInRound(nbForce, x, y, r)
+function Scene:getUnitsInRound(force, x, y, r)
 	local units = {}
-	local force = self:getForce(nbForce)
-	for k, v in pairs(force) do
-		if v:isAlive() and v:isPtInRange(x, y, r) then
+	for k, v in pairs(self._units) do
+		if v:isAlive() and v:isForce(force) and v:isPtInRange(x, y, r) then
 			table.insert(units, v)
 		end
 	end

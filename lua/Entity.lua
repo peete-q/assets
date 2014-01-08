@@ -8,7 +8,11 @@ local Bullet = require "Bullet"
 local distance = math2d.distance
 local distanceSq = math2d.distanceSq
 
-local Entity = {}
+local Entity = {
+	FORCE_ME = 1,
+	FORCE_ENEMY = 2,
+	FORCE_ALL = 3,
+}
 
 local _defaultProps = {
 	hp = 100,
@@ -253,12 +257,13 @@ end
 
 function Entity:searchTarget(range, exclusion)
 	range = range or self.guardRange
-	local force = self:getHostileForce()
+	local units = self._scene:getUnits()
+	local enemy = self:getEnemy()
 	local dist = range ^ 2
 	local priority = 0
 	local target = nil
-	for k, v in pairs(force) do
-		if v ~= self and v:isAlive() and (not exclusion or not exclusion[v]) then
+	for k, v in pairs(units) do
+		if v ~= self and v:isAlive() and v:isForce(enemy) and (not exclusion or not exclusion[v]) then
 			local d = self:distanceSq(v)
 			local p = self:attackPriority(v)
 			if p > priority or (p == priority and d < dist) then
@@ -273,11 +278,12 @@ end
 
 function Entity:searchNearestTarget(range, exclusion)
 	range = range or self.guardRange
-	local force = self:getHostileForce()
+	local units = self._scene:getUnits()
+	local enemy = self:getEnemy()
 	local dist = range ^ 2
 	local target = nil
-	for k, v in pairs(force) do
-		if v ~= self and v:isAlive() and (not exclusion or not exclusion[v]) then
+	for k, v in pairs(units) do
+		if v ~= self and v:isAlive() and v:isForce(enemy) and (not exclusion or not exclusion[v]) then
 			local d = self:distanceSq(v)
 			if d < dist then
 				dist = d
@@ -288,19 +294,15 @@ function Entity:searchNearestTarget(range, exclusion)
 	return target
 end
 
-function Entity:getMyForce()
-	return self._scene:getForce(self._force)
-end
-
-function Entity:getHostileForce()
-	return self._scene:getForce(self:getEnemy())
-end
-
 function Entity:getEnemy()
-	if self._force == Scene.UINT_ME then
-		return Scene.UNIT_ENEMY
+	if self._force == Entity.FORCE_ME then
+		return Entity.FORCE_ENEMY
 	end
-	return Scene.UINT_ME
+	return Entity.FORCE_ME
+end
+
+function Entity:isForce(nb)
+	return nb == Entity.FORCE_ALL or nb == self._force
 end
 
 function Entity:isInRange(target, range)
