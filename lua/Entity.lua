@@ -54,7 +54,7 @@ Entity.__newindex = function(self, key, value)
 	rawset(self, key, value)
 end
 
-function Entity.new(props)
+function Entity.new(props, force)
 	local self = {
 		_force = force,
 		_props = props or {},

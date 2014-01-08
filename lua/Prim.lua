@@ -81,6 +81,7 @@ local function Prim_remove(self, child)
 end
 
 local function Prim_destroy(self)
+	self:remove()
 	if self._children ~= nil then
 		for k, v in pairs(self._children) do
 			v:destroy()

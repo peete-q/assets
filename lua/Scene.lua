@@ -3,6 +3,7 @@ local Scene = {
 	UINT_ME = 1,
 	UNIT_ENEMY = 2,
 	UNIT_BULLET = 3,
+	UNIT_BOMB = 4,
 	
 	_layers = {},
 }
@@ -16,10 +17,11 @@ function Scene.new(w, h, layer, seed)
 		WIDTH = w,
 		HEIGHT = h,
 		
-		_units = {
+		_forces = {
 			[Scene.UINT_ME] = {},
 			[Scene.UNIT_ENEMY] = {},
 			[Scene.UNIT_BULLET] = {},
+			[Scene.UNIT_BOMB] = {},
 		},
 		_myY = -h / 2,
 		_enemyY = h / 2,
@@ -36,9 +38,15 @@ end
 
 function Scene:addUnit(force, e)
 	e._scene = self
+	e._force = force
 	e:setLayer(self._layer)
-	self._units[force][e] = e
+	self._forces[force][e] = e
 	return e
+end
+
+function Scene:removeUnit(e)
+	e:setLayer(nil)
+	self._forces[e._force][e] = nil
 end
 
 function Scene:spawnUnit(force, e)
@@ -49,14 +57,18 @@ function Scene:spawnUnit(force, e)
 end
 
 function Scene:getForce(nb)
-	return self._units[nb]
+	return self._forces[nb]
 end
 
 function Scene:update(ticks)
-	for _, force in ipairs(self._units) do
-		for _, entity in pairs(force) do
-			entity:update(ticks)
+	local units = {}
+	for _, force in pairs(self._forces) do
+		for _, v in pairs(force) do
+			units[v] = v
 		end
+	end
+	for _, v in pairs(units) do
+		v:update(ticks)
 	end
 end
 

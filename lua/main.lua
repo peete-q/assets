@@ -40,20 +40,23 @@ function pointerCallback(x, y)
     X, Y = layer:wndToWorld(x, y)
 end
 
+local e
 function clickCallbackL(down)
 	if down then
-		local e = Entity.new({movable=false, bodyGfx="bg.png"})
-		scene:addUnit(1, e)
+		if not e then
+			e = Entity.new({movable=false, bodyGfx="bg.png", attackRange = 10}, 1)
+			scene:addUnit(1, e)
+			
+			local thread = MOAIThread.new()
+			thread:run(function()
+				while true do
+					local n = math.random(80, 100) / 100
+					MOAIThread.blockOnAction(e._body:seekScl(n, n, n, MOAIEaseType.SOFT_SMOOTH))
+					MOAIThread.blockOnAction(e._body:seekScl(1, 1, n, MOAIEaseType.SOFT_SMOOTH))
+				end
+			end)
+		end
 		e:setWorldLoc(X, Y)
-		
-		local thread = MOAIThread.new()
-		thread:run(function()
-			while true do
-				local n = math.random(80, 100) / 100
-				MOAIThread.blockOnAction(e._body:seekScl(n, n, n, MOAIEaseType.SOFT_SMOOTH))
-				MOAIThread.blockOnAction(e._body:seekScl(1, 1, n, MOAIEaseType.SOFT_SMOOTH))
-			end
-		end)
 	end
 end
 

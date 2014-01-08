@@ -8,11 +8,11 @@ local distance = math2d.distance
 local distanceSq = math2d.distanceSq
 
 local _defaultProps = {
-	moveSpeed = 10,
+	moveSpeed = 0.01,
 	damage = 1,
 	bombRange = 10,
 	
-	bodyGfx = "bg.png",
+	bodyGfx = "bg.png?scl=0.5",
 	propellerGfx = nil,
 	bombGfx = nil,
 	bombSfx = nil,
@@ -31,18 +31,17 @@ function Bullet.impact(self, target)
 end
 
 function Bullet.bomb(self, target)
-	if self._body then
-		self._body:setLayer(nil)
-		self._dead = true
+	if target then
+		self:impact(target)
 	end
-	self:impact(target)
 	if self._props.bombRange <= 0 then
 		return
 	end
 	local x, y = self:getWorldLoc()
 	if self._props.bombGfx then
 		local bomb = Sprite.new(self._props.bombGfx)
-		table.insert(self._children, bomb)
+		bomb.update = Bullet.noop
+		self._scene:addUnit(Scene.UNIT_BOMB, bomb)
 	end
 	local force = self._scene:getForceInRound(self._enemyForce, x, y, self._props.bombRange)
 	for k, v in pairs(force) do
@@ -50,6 +49,7 @@ function Bullet.bomb(self, target)
 			self:impact(v)
 		end
 	end
+	self:destroy()
 end
 
 function Bullet.getWorldLoc(self)
@@ -61,6 +61,9 @@ function Bullet.setWorldLoc(self, x, y)
 end
 
 function Bullet.update(self)
+	if self._bombed then
+		return
+	end
 	local x, y = self:getWorldLoc()
 	local tx, ty = self._target:getWorldLoc()
 	local dist = distance(x, y, tx, ty)
@@ -68,7 +71,7 @@ function Bullet.update(self)
 		self:bomb(self._target)
 		return
 	end
-	if distance(self._tx, self._ty, tx, ty) < _bulletLockDistance then
+	if self._tx and self._ty and distance(self._tx, self._ty, tx, ty) < _bulletLockDistance then
 		return
 	end
 	self._tx = tx
@@ -76,13 +79,15 @@ function Bullet.update(self)
 	if self._easeDriver then
 		self._easeDriver:stop()
 	end
-	self._easeDriver = self._body:seekLoc(tx, ty, self._moveSpeed * dist, MOAIEaseType.LINEAR)
+	self._easeDriver = self._body:seekLoc(tx, ty, self._props.moveSpeed * dist, MOAIEaseType.LINEAR)
 end
 
 function Bullet.noop(self)
 end
 
 function Bullet.destroy(self)
+	self._scene:removeUnit(self)
+	
 	if self._body then
 		self._body:destroy()
 		self._body = nil
@@ -90,12 +95,6 @@ function Bullet.destroy(self)
 	if self._thread then
 		self._thread:stop()
 		self._thread = nil
-	end
-	if self._children then
-		for k, v in pairs(self._children) do
-			v:destroy()
-		end
-		self._children = nil
 	end
 end
 
@@ -121,17 +120,18 @@ function Bullet.fire(props, x, y, target, enemyForce)
 	local self = Bullet.new(props)
 	target._scene:addUnit(Scene.UNIT_BULLET, self)
 	self:setWorldLoc(x, y)
-	self._tx, self._ty = target:getWorldLoc()
 	self._target = target
 	self._enemyForce = enemyForce
 	self:update()
 	return self
 end
 
-function Bullet.fireTo(props, scene, x, y, tx, ty, force)
+function Bullet.fireTo(props, scene, x, y, tx, ty, enemyForce)
 	local self = Bullet.new(props)
+	self.update = Bullet.noop
 	scene:addUnit(Scene.UNIT_BULLET, self)
 	self:setWorldLoc(x, y)
+	self._enemyForce = enemyForce
 	self._thread = MOAIThread.new()
 	self._thread:run(function()
 		local dist = distance(x, y, tx, ty)

@@ -58,9 +58,11 @@ local function Sprite_setImage(self, name)
 	self:setIndex(index)
 end
 
-local function Sprite_defaultCallback(self)
+local function Sprite_destroy(self)
 	self:stopAnim()
-	self:remove()
+	if self._olderSpriteDestroy then
+		self._olderSpriteDestroy(self)
+	end
 end
 
 local function Sprite_stopAnim(self)
@@ -85,7 +87,7 @@ local function Sprite_playAnim(self, animName, callback, looping)
 		self._animProp = nil
 	end
 	if looping == true or callback == nil then
-		callback = Sprite_defaultCallback
+		callback = Sprite_destroy
 	end
 	if not animName or not self._deck or not self._deck._animCurves then
 		return nil
@@ -158,20 +160,13 @@ local function Sprite_playAnim(self, animName, callback, looping)
 	return anim:start()
 end
 
-local function Sprite_destroy(self)
-	self:stopAnim()
-	if self._olderSpriteDestroy then
-		self._olderSpriteDestroy(self)
-	end
-end
-
 local function Sprite_setDeck(self, deck)
 	self._deck = deck
 	self._olderSpriteSetDeck(self, deck)
 end
 
-function Sprite.new(source)
-	assert(source, "need 'userdata' or url")
+function Sprite.new(data)
+	assert(data, "need 'userdata' or url")
 	
 	local o = Prim.new(MOAIProp2D.new())
 	o._olderSpriteSetDeck = o.setDeck
@@ -184,19 +179,19 @@ function Sprite.new(source)
 	o.playAnim = Sprite_playAnim
 	o.stopAnim = Sprite_stopAnim
 	
-	if type(source) == "userdata" then
+	if type(data) == "userdata" then
 		local deck = MOAIGfxQuad2D.new()
 		do
-			local tex = source
+			local tex = data
 			deck:setTexture(tex)
 			local w, h = tex:getSize()
 			deck:setRect(-w / 2, -h / 2, w / 2, h / 2)
 			o:setDeck(deck)
 		end
-		o._sourceName = tostring(source)
+		o._sourceName = tostring(data)
 	else
-		Sprite_parse(o, source)
-		o._sourceName = source
+		Sprite_parse(o, data)
+		o._sourceName = data
 	end
 	return o
 end
