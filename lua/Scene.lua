@@ -15,7 +15,9 @@ function Scene.new(w, h, spaceLayer, skyLayer, seed)
 		
 		_units = {},
 		_projectiles = {},
-		_myY = -h / 2,
+		_playerX = w / 2,
+		_playerY = -h / 2,
+		_enemyX = w / 2,
 		_enemyY = h / 2,
 		_spaceLayer = spaceLayer,
 		_skyLayer = skyLayer,
@@ -52,7 +54,24 @@ function Scene:spawnUnit(e)
 	self:addUnit(e)
 	local n = (self.WIDTH / 2) / GRID_SIZE
 	local x = math.random(-n, n) * GRID_SIZE
-	e:setWorldLoc(x, self._myY - e.bodySize)
+	e:setWorldLoc(x, self._playerY - e.bodySize)
+end
+
+function Scene:loadPlayer()
+end
+
+function Scene:loadAI()
+end
+
+function Scene:loadPlayerAI()
+end
+
+function Scene:getPlayerLoc()
+	return self._playerX, self._playerY
+end
+
+function Scene:getEnemyLoc()
+	return self._enemyX, self_enemyY
 end
 
 function Scene:getUnits()
@@ -61,13 +80,13 @@ end
 
 function Scene:update(ticks)
 	local tb = {}
-	for _, v in pairs(self._units) do
+	for k, v in pairs(self._units) do
 		tb[v] = v
 	end
-	for _, v in pairs(self._projectiles) do
+	for k, v in pairs(self._projectiles) do
 		tb[v] = v
 	end
-	for _, v in pairs(tb) do
+	for k, v in pairs(tb) do
 		v:update(ticks)
 	end
 end

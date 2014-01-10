@@ -9,7 +9,7 @@ local distance = math2d.distance
 local distanceSq = math2d.distanceSq
 
 local Entity = {
-	FORCE_ME = 1,
+	FORCE_PLAYER = 1,
 	FORCE_ENEMY = 2,
 	FORCE_ALL = 3,
 }
@@ -85,6 +85,8 @@ function Entity.new(props, force)
 end
 
 function Entity:destroy()
+	self._scene:remove(self)
+	
 	if self._body then
 		self._body:destroy()
 		self._body = nil
@@ -183,7 +185,7 @@ end
 function Entity:update(ticks)
 	self:_checkStop()
 	
-	if self._target and self._target:isDead() then
+	if self._target and (self._target:isDead() or not self:isInRange(self._target, self.guardRange)) then
 		self._target = nil
 	end
 	
@@ -213,6 +215,15 @@ function Entity:chase(target)
 	x = math.random(mx - self.bodySize, mx + self.bodySize)
 	self:moveTo(x, y)
 	self._stopRange = math.random(self.bodySize * 2)
+end
+
+function Entity:moveOn()
+	local x, y
+	if self._force == Entity.FORCE_PLAYER then
+		x, y = self._scene:getPlayerLoc()
+	else
+		x, y = self._scene:getEnemyLoc()
+	end
 end
 
 function Entity:attack(target)
@@ -295,10 +306,10 @@ function Entity:searchNearestTarget(range, exclusion)
 end
 
 function Entity:getEnemy()
-	if self._force == Entity.FORCE_ME then
+	if self._force == Entity.FORCE_PLAYER then
 		return Entity.FORCE_ENEMY
 	end
-	return Entity.FORCE_ME
+	return Entity.FORCE_PLAYER
 end
 
 function Entity:isForce(nb)
