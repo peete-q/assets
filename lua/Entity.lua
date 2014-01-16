@@ -18,11 +18,11 @@ local _defaultProps = {
 	hp = 100,
 	maxHp = 100,
 	bodySize = 10,
-	moveSpeed = 10,
+	moveSpeed = 0.1,
 	attackPower = 1,
 	attackSpeed = 10,
 	attackRange = 100,
-	guardRange = 160,
+	guardRange = 150,
 	shots = 1,
 	kind = "normal",
 	movable = true,
@@ -37,6 +37,8 @@ local _defaultProps = {
 	explodeSfx = nil,
 	bullet = Bullet._defaultProps,
 }
+
+local _lockDistance = 10
 
 Entity._defaultProps = _defaultProps
 
@@ -64,7 +66,7 @@ function Entity.new(props, force)
 		_props = props or {},
 		_lastAttackTicks = 0,
 		_attackPriorities = {},
-		_stopRange = 0,
+		_fireRange = 0,
 		_lastTargets = {},
 		_scene = nil,
 		_motionDriver = nil,
@@ -127,9 +129,12 @@ function Entity:moveTo(x, y)
 	if not self.movable then
 		return
 	end
-	self:_cancelRigid()
+	self:_eraseRigid()
 	self:stop()
-	self._motionDriver = self._body:seekLoc(x, y, self.moveSpeed, MOAIEaseType.LINEAR)
+	local sx, sy = self:getWorldLoc()
+	local dist = distance(sx, sy, x, y)
+	self._motionDriver = self._body:seekLoc(x, y, self.moveSpeed * dist, MOAIEaseType.LINEAR)
+	print("Entity:moveTo", x, y)
 end
 
 function Entity:isMoving()
@@ -141,32 +146,30 @@ function Entity:stop()
 		self._motionDriver:stop()
 		self._motionDriver = nil
 	end
+	-- self:_insertRigid()
 end
 
-function Entity:_doRigid()
-	assert(not self._rigid)
+function Entity:_insertRigid()
+	self:_eraseRigid()
 	self._rigid = world:addBody(MOAIBox2DBody.DYNAMIC)
 	local x, y = self:getWorldLoc()
 	self._rigid:addCircle(x, y, self.bodySize)
 	self._body:setParent(self._rigid)
 end
 
-function Entity:_cancelRigid()
+function Entity:_eraseRigid()
 	if self._rigid then
 		self._rigid:destroy()
 		self._rigid = nil
 	end
 end
 
-function Entity:_checkStop()
+function Entity:_checkAttack()
 	if self._target and self:isMoving() then
-		if self:isInRange(self._target, self.attackRange - self._stopRange) then
+		if self:isInRange(self._target, self._fireRange) then
 			self:stop()
+			return true
 		end
-	end
-	
-	if not self._rigid and not self:isMoving() then
-		-- self:_doRigid()
 	end
 end
 
@@ -183,59 +186,115 @@ function Entity:isInvincible()
 end
 
 function Entity:update(ticks)
-	self:_checkStop()
-	
+	if self._state then
+		self._state(self, ticks)
+	end
+end
+
+function Entity:_checkTarget()
 	if self._target and (self._target:isDead() or not self:isInRange(self._target, self.guardRange)) then
 		self._target = nil
 	end
 	
+	return self._target
+end
+
+function Entity:stateMove(ticks)
 	if not self._target then
 		self._target = self:searchTarget()
 		if self._target then
-			self:chase(self._target)
+			if self:isInRange(self._target, self.attackRange) then
+				self:attack(self._target)
+			else
+				self:chase(self._target)
+			end
 		end
+	end
+end
+
+function Entity:stateChase(ticks)
+	if not self:_checkTarget() then
+		self:move()
+		return
 	end
 	
-	if self._target and self._lastAttackTicks + self.attackSpeed < ticks then
+	if self:_checkAttack() then
+		self:attack(self._target)
+		return
+	end
+	
+	local x, y = self._target:getWorldLoc()
+	if distance(self._tx, self._ty, x, y) > _lockDistance then
+		self:chase(self._target)
+	end
+end
+
+function Entity:stateAttack(ticks)
+	if not self:_checkTarget() then
+		self:move()
+		return
+	end
+	
+	if self._lastAttackTicks + self.attackSpeed < ticks then
 		if self:isInRange(self._target) then
-			self:attack(self._target)
+			self:fire(self._target)
 			self._lastAttackTicks = ticks
+		elseif self:isInRange(self,_target, self.guardRange) then
+			self:chase(self._target)
+		else
+			self._target = nil
+			self:move()
 		end
 	end
+end
+
+function Entity:move()
+	print("Entity:move")
+	local x, y = self:getWorldLoc()
+	if self._force == Entity.FORCE_PLAYER then
+		y = self._scene:getPlayerLoc()
+	else
+		y = self._scene:getEnemyLoc()
+	end
+	self:moveTo(x, y)
+	self._state = self.stateMove
 end
 
 function Entity:chase(target)
 	print("Entity:chase", self, target)
-	if self:isInRange(target, self.attackRange - self._stopRange) then
+	if self:isInRange(target, self._fireRange) then
 		return
 	end
-	local x, y = target:getWorldLoc()
+	
 	local sx, sy = self:getWorldLoc()
+	local x, y = target:getWorldLoc()
 	local mx = sx * self.attackRange * 2 / self._scene.WIDTH
+	self._tx = x
+	self._ty = y
 	x = math.random(mx - self.bodySize, mx + self.bodySize)
 	self:moveTo(x, y)
-	self._stopRange = math.random(self.bodySize * 2)
-end
-
-function Entity:moveOn()
-	local x, y
-	if self._force == Entity.FORCE_PLAYER then
-		x, y = self._scene:getPlayerLoc()
-	else
-		x, y = self._scene:getEnemyLoc()
-	end
+	self._fireRange = self.attackRange - math.random(self.bodySize * 2)
+	self._state = self.stateChase
 end
 
 function Entity:attack(target)
+	print("Entity:attack")
+	if target then
+		self._target = target
+	end
+	self._state = self.stateAttack
+end
+
+function Entity:fire(target)
 	local targets = self:getAttackTargets()
 	local x, y = self:getWorldLoc()
 	local n = 0
 	for k, v in pairs(targets) do
 		if self.lockTarget then
-			Bullet.fire(self.bullet, x, y, v, self:getEnemy())
+			-- Bullet.fireLocked(self.bullet, x, y, v, self:getEnemy())
 		else
 			local tx, ty = v:getWorldLoc()
-			Bullet.fireTo(self.bullet, self._scene, x, y, tx, ty, self:getEnemy())
+			Bullet.fireToward(self.bullet, self._scene, x, y, tx, ty, self:getEnemy())
 		end
 		n = n + 1
 		if n >= self.shots then

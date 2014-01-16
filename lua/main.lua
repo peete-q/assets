@@ -65,9 +65,9 @@ function clickCallbackR(down)
 		for i = 1, 1 do
 			local e = Entity.new({bodyGfx="bg.png"})
 			-- scene:spawnUnit(e)
-			-- e:moveTo(x, H / 2)
 			scene:addUnit(e)
 			e:setWorldLoc(X, Y)
+			e:move()
 		end
 	end
 end

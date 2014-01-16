@@ -20,7 +20,7 @@ local _defaultProps = {
 	impactGfx = nil,
 }
 
-local _lockDistance = 3
+local _lockDistance = 5
 
 local Bullet = {}
 
@@ -118,7 +118,7 @@ function Bullet.new(props)
 	return self
 end
 
-function Bullet.fire(props, x, y, target, enemyForce)
+function Bullet.fireLocked(props, x, y, target, enemyForce)
 	local self = Bullet.new(props)
 	target._scene:addProjectile(self)
 	self:setWorldLoc(x, y)
@@ -128,7 +128,7 @@ function Bullet.fire(props, x, y, target, enemyForce)
 	return self
 end
 
-function Bullet.fireTo(props, scene, x, y, tx, ty, enemyForce)
+function Bullet.fireToward(props, scene, x, y, tx, ty, enemyForce)
 	local self = Bullet.new(props)
 	self.update = Bullet.noop
 	scene:addProjectile(self)
