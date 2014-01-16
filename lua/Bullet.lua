@@ -44,7 +44,7 @@ function Bullet.bomb(self, target)
 		bomb.update = Bullet.noop
 		self._scene:addProjectile(bomb)
 	end
-	local force = self._props.force or self._enemyForce
+	local force = self._props.enemy or self._emitter:getEnemy()
 	local units = self._scene:getUnitsInRound(force, x, y, self._props.bombRange)
 	for k, v in pairs(units) do
 		if v ~= target then
@@ -107,7 +107,6 @@ end
 function Bullet.new(props)
 	local self = {
 		_props = props,
-		_force = force,
 	}
 	self._body = Sprite.new(props.bodyGfx)
 	if props.propellerGfx then
@@ -118,22 +117,22 @@ function Bullet.new(props)
 	return self
 end
 
-function Bullet.fireLocked(props, x, y, target, enemyForce)
+function Bullet.fireLocked(props, emitter, x, y, target)
 	local self = Bullet.new(props)
-	target._scene:addProjectile(self)
+	emitter._scene:addProjectile(self)
 	self:setWorldLoc(x, y)
 	self._target = target
-	self._enemyForce = enemyForce
+	self._emitter = emitter
 	self:update()
 	return self
 end
 
-function Bullet.fireToward(props, scene, x, y, tx, ty, enemyForce)
+function Bullet.fireToward(props, emitter, x, y, tx, ty)
 	local self = Bullet.new(props)
 	self.update = Bullet.noop
-	scene:addProjectile(self)
+	emitter._scene:addProjectile(self)
 	self:setWorldLoc(x, y)
-	self._enemyForce = enemyForce
+	self._emitter = emitter
 	self._thread = MOAIThread.new()
 	self._thread:run(function()
 		local dist = distance(x, y, tx, ty)

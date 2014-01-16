@@ -79,7 +79,9 @@ function Entity.new(props, force)
 		_recoverHpFactor = 1,
 		_lastRecoverTicks = 0,
 	}
+	setmetatable(self, Entity)
 	
+	self._force.enemy = self:getEnemy()
 	self._body = Sprite.new(props.bodyGfx)
 	if props.propellerGfx then
 		self._propeller = Sprite.new(props.propellerGfx)
@@ -88,7 +90,6 @@ function Entity.new(props, force)
 	if props.muzzleGfx then
 		self._muzzle = Sprite.new(props.muzzleGfx)
 	end
-	setmetatable(self, Entity)
 	return self
 end
 
@@ -323,10 +324,10 @@ function Entity:fire(target)
 	local n = 0
 	for k, v in pairs(targets) do
 		if self.lockTarget then
-			-- Bullet.fireLocked(self.bullet, x, y, v, self:getEnemy())
+			-- Bullet.fireLocked(self.bullet, self, x, y, v)
 		else
 			local tx, ty = v:getWorldLoc()
-			Bullet.fireToward(self.bullet, self._scene, x, y, tx, ty, self:getEnemy())
+			Bullet.fireToward(self.bullet, self, x, y, tx, ty)
 		end
 		n = n + 1
 		if n >= self.shots then
