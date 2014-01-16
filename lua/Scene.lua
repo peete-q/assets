@@ -78,6 +78,9 @@ function Scene:getUnits()
 	return self._units
 end
 
+function Scene:playerClick(slot)
+end
+
 function Scene:update(ticks)
 	local tb = {}
 	for k, v in pairs(self._units) do

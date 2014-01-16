@@ -17,6 +17,7 @@ local Entity = {
 local _defaultProps = {
 	hp = 100,
 	maxHp = 100,
+	recoverHp = 1,
 	bodySize = 10,
 	moveSpeed = 0.1,
 	attackPower = 1,
@@ -39,6 +40,7 @@ local _defaultProps = {
 }
 
 local _lockDistance = 10
+local _recoverTicks = 10
 
 Entity._defaultProps = _defaultProps
 
@@ -72,6 +74,10 @@ function Entity.new(props, force)
 		_motionDriver = nil,
 		_target = nil,
 		_rigid = nil,
+		_attackSpeedFactor = 1,
+		_moveSpeedFactor = 1,
+		_recoverHpFactor = 1,
+		_lastRecoverTicks = 0,
 	}
 	
 	self._body = Sprite.new(props.bodyGfx)
@@ -105,6 +111,26 @@ function Entity:destroy()
 	end
 end
 
+function Entity:setAttackSpeedFactor(value)
+	self._attackSpeedFactor = value
+end
+
+function Entity:setMoveSpeedFactor(value)
+	self._moveSpeedFactor = value
+end
+
+function Entity:getAttackSpeed()
+	return self.attackSpeed * (self._attackSpeedFactor + (self._force.attackSpeedFactor or 0))
+end
+
+function Entity:getMoveSpeed()
+	return self.moveSpeed * (self._moveSpeedFactor + (self._force.moveSpeedFactor or 0))
+end
+
+function Entity:getRecoverHp()
+	return self.recoverHp * (self._recoverHpFactor + (self._force.recoverHpFactor or 0))
+end
+
 function Entity:setLayer(layer)
 	self._body:setLayer(layer)
 end
@@ -133,7 +159,7 @@ function Entity:moveTo(x, y)
 	self:stop()
 	local sx, sy = self:getWorldLoc()
 	local dist = distance(sx, sy, x, y)
-	self._motionDriver = self._body:seekLoc(x, y, self.moveSpeed * dist, MOAIEaseType.LINEAR)
+	self._motionDriver = self._body:seekLoc(x, y, self:getMoveSpeed() * dist, MOAIEaseType.LINEAR)
 	print("Entity:moveTo", x, y)
 end
 
@@ -186,6 +212,12 @@ function Entity:isInvincible()
 end
 
 function Entity:update(ticks)
+	if self._lastRecoverTicks + _recoverTicks < ticks then
+		self._lastRecoverTicks = ticks
+		if self.hp < self.maxHp then
+			self.hp = math.min(self.hp + self:getRecoverHp(), self.maxHp)
+		end
+	end
 	if self._state then
 		self._state(self, ticks)
 	end
@@ -235,7 +267,7 @@ function Entity:stateAttack(ticks)
 		return
 	end
 	
-	if self._lastAttackTicks + self.attackSpeed < ticks then
+	if self._lastAttackTicks + self:getAttackSpeed() < ticks then
 		if self:isInRange(self._target) then
 			self:fire(self._target)
 			self._lastAttackTicks = ticks
@@ -251,7 +283,7 @@ end
 function Entity:move()
 	print("Entity:move")
 	local x, y = self:getWorldLoc()
-	if self._force == Entity.FORCE_PLAYER then
+	if self._force.id == Entity.FORCE_PLAYER then
 		y = self._scene:getPlayerLoc()
 	else
 		y = self._scene:getEnemyLoc()
@@ -365,14 +397,14 @@ function Entity:searchNearestTarget(range, exclusion)
 end
 
 function Entity:getEnemy()
-	if self._force == Entity.FORCE_PLAYER then
+	if self._force.id == Entity.FORCE_PLAYER then
 		return Entity.FORCE_ENEMY
 	end
 	return Entity.FORCE_PLAYER
 end
 
-function Entity:isForce(nb)
-	return nb == Entity.FORCE_ALL or nb == self._force
+function Entity:isForce(id)
+	return id == Entity.FORCE_ALL or id == self._force.id
 end
 
 function Entity:isInRange(target, range)

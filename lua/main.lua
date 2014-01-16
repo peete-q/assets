@@ -2,7 +2,7 @@ package.path = "../?.lua;?.lua"
 require "init"
 require "constants"
 
-local function printf ( ... )
+function printf ( ... )
 	return io.stdout:write ( string.format ( ... ))
 end 
 
@@ -44,7 +44,7 @@ local e
 function clickCallbackL(down)
 	if down then
 		if not e then
-			e = Entity.new({movable=false, bodyGfx="bg.png", attackRange = 10}, 1)
+			e = Entity.new({movable=false, bodyGfx="bg.png", attackRange = 10}, {id=1})
 			scene:addUnit(e)
 			
 			local thread = MOAIThread.new()
@@ -63,7 +63,7 @@ end
 function clickCallbackR(down)
 	if down then
 		for i = 1, 1 do
-			local e = Entity.new({bodyGfx="bg.png"})
+			local e = Entity.new({bodyGfx="bg.png"}, {id=2})
 			-- scene:spawnUnit(e)
 			scene:addUnit(e)
 			e:setWorldLoc(X, Y)
