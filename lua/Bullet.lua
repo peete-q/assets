@@ -28,7 +28,7 @@ Bullet._defaultProps = _defaultProps
 Bullet.__index = Bullet
 
 function Bullet.impact(self, target)
-	target:applyDamage(self._props.damage)
+	target:applyDamage(self._props.damage * self._emitter:getAttackPower())
 end
 
 function Bullet.bomb(self, target)

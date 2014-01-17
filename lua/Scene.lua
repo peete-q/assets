@@ -41,6 +41,7 @@ function Scene:addForce(id)
 		attackSpeedFactor = Factor.new(1),
 		moveSpeedFactor = Factor.new(1),
 		recoverHpFactor = Factor.new(1),
+		attackPowerFactor = Factor.new(1),
 	}
 	self._forces[id] = force
 	return force
@@ -98,7 +99,7 @@ function Scene:getUnits()
 	return self._units
 end
 
-function Scene:playerClick(slot)
+function Scene:runCommand(slot, x, y)
 end
 
 function Scene:update()
@@ -107,6 +108,7 @@ function Scene:update()
 		v.attackSpeedFactor:update(self.ticks)
 		v.moveSpeedFactor:update(self.ticks)
 		v.recoverHpFactor:update(self.ticks)
+		v.attackPowerFactor:update(self.ticks)
 	end
 	
 	local tb = {}

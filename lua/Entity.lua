@@ -20,7 +20,7 @@ local _defaultProps = {
 	maxHp = 100,
 	recoverHp = 1,
 	bodySize = 10,
-	moveSpeed = 0.1,
+	moveSpeed = 0.05,
 	attackPower = 1,
 	attackSpeed = 10,
 	attackRange = 100,
@@ -78,6 +78,7 @@ function Entity.new(props, force)
 		_attackSpeedFactor = Factor.new(1),
 		_moveSpeedFactor = Factor.new(1),
 		_recoverHpFactor = Factor.new(1),
+		_attackPowerFactor = Factor.new(1),
 		_lastRecoverTicks = 0,
 		_moveSpeed = 0,
 	}
@@ -126,6 +127,10 @@ function Entity:addRecoverHpFactor(value, duration)
 	self._recoverHpFactor:add(value, self._scene.ticks + duration)
 end
 
+function Entity:addAttackPowerFactor(value, duration)
+	self._attackPowerFactor:add(value, self._scene.ticks + duration)
+end
+
 function Entity:getAttackSpeed()
 	return self.attackSpeed * (self._attackSpeedFactor:calc() + self._force.attackSpeedFactor:calc())
 end
@@ -136,6 +141,10 @@ end
 
 function Entity:getRecoverHp()
 	return self.recoverHp * (self._recoverHpFactor:calc() + self._force.recoverHpFactor:calc())
+end
+
+function Entity:getAttackPower()
+	return self.attackPower + self._attackPowerFactor:calc() + self._force.attackPowerFactor:calc()
 end
 
 function Entity:setLayer(layer)
