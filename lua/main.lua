@@ -30,10 +30,10 @@ local timer = require "timer"
 
 scene = Scene.new(W, H, layer)
 
-local ticks = 0
+playerForce = scene:addForce(1)
+enemyForce = scene:addForce(2)
 timer.new(0.1, function()
-	scene:update(ticks)
-	ticks = ticks + 1
+	scene:update()
 end)
 
 function pointerCallback(x, y)
@@ -44,7 +44,7 @@ local e
 function clickCallbackL(down)
 	if down then
 		if not e then
-			e = Entity.new({movable=false, bodyGfx="bg.png", attackRange = 10}, {id=1})
+			e = Entity.new({movable=false, bodyGfx="bg.png", attackRange = 10}, playerForce)
 			scene:addUnit(e)
 			
 			local thread = MOAIThread.new()
@@ -63,7 +63,7 @@ end
 function clickCallbackR(down)
 	if down then
 		for i = 1, 1 do
-			local e = Entity.new({bodyGfx="bg.png"}, {id=2})
+			local e = Entity.new({bodyGfx="bg.png"}, enemyForce)
 			-- scene:spawnUnit(e)
 			scene:addUnit(e)
 			e:setWorldLoc(X, Y)

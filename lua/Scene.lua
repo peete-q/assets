@@ -1,4 +1,6 @@
 
+local Factor = require "Factor"
+
 local Scene = {
 	SPACE = 1,
 	SKY = 2,
@@ -21,6 +23,9 @@ function Scene.new(w, h, spaceLayer, skyLayer, seed)
 		_enemyY = h / 2,
 		_spaceLayer = spaceLayer,
 		_skyLayer = skyLayer,
+		_forces = {},
+		
+		ticks = 0,
 	}
 	
 	setmetatable(self, Scene)
@@ -28,6 +33,21 @@ function Scene.new(w, h, spaceLayer, skyLayer, seed)
 end
 
 function Scene:destroy()
+end
+
+function Scene:addForce(id)
+	local force = {
+		id = id,
+		attackSpeedFactor = Factor.new(1),
+		moveSpeedFactor = Factor.new(1),
+		recoverHpFactor = Factor.new(1),
+	}
+	self._forces[id] = force
+	return force
+end
+
+function Scene:getForce(id)
+	return self._forces[id]
 end
 
 function Scene:addUnit(e)
@@ -81,7 +101,14 @@ end
 function Scene:playerClick(slot)
 end
 
-function Scene:update(ticks)
+function Scene:update()
+	self.ticks = self.ticks + 1
+	for k, v in pairs(self._forces) do
+		v.attackSpeedFactor:update(self.ticks)
+		v.moveSpeedFactor:update(self.ticks)
+		v.recoverHpFactor:update(self.ticks)
+	end
+	
 	local tb = {}
 	for k, v in pairs(self._units) do
 		tb[v] = v
@@ -90,7 +117,7 @@ function Scene:update(ticks)
 		tb[v] = v
 	end
 	for k, v in pairs(tb) do
-		v:update(ticks)
+		v:update(self.ticks)
 	end
 end
 

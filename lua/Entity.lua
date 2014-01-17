@@ -4,6 +4,7 @@ local resource = require "resource"
 local Scene = require "Scene"
 local Sprite = require "Sprite"
 local Bullet = require "Bullet"
+local Factor = require "Factor"
 
 local distance = math2d.distance
 local distanceSq = math2d.distanceSq
@@ -74,10 +75,11 @@ function Entity.new(props, force)
 		_motionDriver = nil,
 		_target = nil,
 		_rigid = nil,
-		_attackSpeedFactor = 1,
-		_moveSpeedFactor = 1,
-		_recoverHpFactor = 1,
+		_attackSpeedFactor = Factor.new(1),
+		_moveSpeedFactor = Factor.new(1),
+		_recoverHpFactor = Factor.new(1),
 		_lastRecoverTicks = 0,
+		_moveSpeed = 0,
 	}
 	setmetatable(self, Entity)
 	
@@ -112,24 +114,28 @@ function Entity:destroy()
 	end
 end
 
-function Entity:setAttackSpeedFactor(value)
-	self._attackSpeedFactor = value
+function Entity:addAttackSpeedFactor(value, duration)
+	self._attackSpeedFactor:add(value, self._scene.ticks + duration)
 end
 
-function Entity:setMoveSpeedFactor(value)
-	self._moveSpeedFactor = value
+function Entity:addMoveSpeedFactor(value, duration)
+	self._moveSpeedFactor:add(value, self._scene.ticks + duration)
+end
+
+function Entity:addRecoverHpFactor(value, duration)
+	self._recoverHpFactor:add(value, self._scene.ticks + duration)
 end
 
 function Entity:getAttackSpeed()
-	return self.attackSpeed * (self._attackSpeedFactor + (self._force.attackSpeedFactor or 0))
+	return self.attackSpeed * (self._attackSpeedFactor:calc() + self._force.attackSpeedFactor:calc())
 end
 
 function Entity:getMoveSpeed()
-	return self.moveSpeed * (self._moveSpeedFactor + (self._force.moveSpeedFactor or 0))
+	return self.moveSpeed * (self._moveSpeedFactor:calc() + self._force.moveSpeedFactor:calc())
 end
 
 function Entity:getRecoverHp()
-	return self.recoverHp * (self._recoverHpFactor + (self._force.recoverHpFactor or 0))
+	return self.recoverHp * (self._recoverHpFactor:calc() + self._force.recoverHpFactor:calc())
 end
 
 function Entity:setLayer(layer)
@@ -152,16 +158,26 @@ function Entity:getWorldLoc()
 	return self._body:getLoc()
 end
 
-function Entity:moveTo(x, y)
+function Entity:moveTo(x, y, speed)
 	if not self.movable then
 		return
 	end
-	self:_eraseRigid()
 	self:stop()
 	local sx, sy = self:getWorldLoc()
 	local dist = distance(sx, sy, x, y)
-	self._motionDriver = self._body:seekLoc(x, y, self:getMoveSpeed() * dist, MOAIEaseType.LINEAR)
+	self._moveSpeed = speed or self:getMoveSpeed()
+	self._motionDriver = self._body:seekLoc(x, y, self._moveSpeed * dist, MOAIEaseType.LINEAR)
+	self._dx = x
+	self._dy = y
+	self:_eraseRigid()
 	print("Entity:moveTo", x, y)
+end
+
+function Entity:correctMoveSpeed()
+	local speed = self:getMoveSpeed()
+	if math.abs(speed - self._moveSpeed) > 0.01 then
+		self:moveTo(self._dx, self._dy, speed)
+	end
 end
 
 function Entity:isMoving()
@@ -213,6 +229,12 @@ function Entity:isInvincible()
 end
 
 function Entity:update(ticks)
+	self._attackSpeedFactor:update(ticks)
+	self._moveSpeedFactor:update(ticks)
+	self._recoverHpFactor:update(ticks)
+	
+	self:correctMoveSpeed()
+	
 	if self._lastRecoverTicks + _recoverTicks < ticks then
 		self._lastRecoverTicks = ticks
 		if self.hp < self.maxHp then
