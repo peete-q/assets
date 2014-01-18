@@ -60,6 +60,11 @@ end
 
 local function Sprite_destroy(self)
 	self:stopAnim()
+	
+	if self.onDestroy then
+		self:onDestroy()
+	end
+	
 	if self._olderSpriteDestroy then
 		self._olderSpriteDestroy(self)
 	end

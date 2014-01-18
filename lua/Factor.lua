@@ -3,9 +3,8 @@ local Factor = {}
 
 Factor.__index = Factor
 
-function Factor.new(value)
+function Factor.new()
 	local self = {
-		_init = value,
 		_values = {}
 	}
 	setmetatable(self, Factor)
@@ -18,7 +17,7 @@ function Factor:add(value, duration)
 end
 
 function Factor:calc()
-	local n = self._init
+	local n = 0
 	for k, v in pairs(self._values) do
 		n = n + v[1]
 	end

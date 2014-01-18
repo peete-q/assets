@@ -38,10 +38,10 @@ end
 function Scene:addForce(id)
 	local force = {
 		id = id,
-		attackSpeedFactor = Factor.new(1),
-		moveSpeedFactor = Factor.new(1),
-		recoverHpFactor = Factor.new(1),
-		attackPowerFactor = Factor.new(1),
+		attackSpeedFactor = Factor.new(),
+		moveSpeedFactor = Factor.new(),
+		recoverHpFactor = Factor.new(),
+		attackPowerFactor = Factor.new(),
 	}
 	self._forces[id] = force
 	return force
@@ -100,6 +100,38 @@ function Scene:getUnits()
 end
 
 function Scene:runCommand(slot, x, y)
+end
+
+function Scene:emitAttackSpeedAura(x, y, r, force, value, duration)
+	for k, v in pairs(self._units) do
+		if v:isAlive() and v:isForce(force) and v:isPtInRange(x, y, r) then
+			v:addAttackSpeedFactor(value, duration)
+		end
+	end
+end
+
+function Scene:emitMoveSpeedAura(x, y, r, force, value, duration)
+	for k, v in pairs(self._units) do
+		if v:isAlive() and v:isForce(force) and v:isPtInRange(x, y, r) then
+			v:addMoveSpeedFactor(value, duration)
+		end
+	end
+end
+
+function Scene:emitRecoverHpAura(x, y, r, force, value, duration)
+	for k, v in pairs(self._units) do
+		if v:isAlive() and v:isForce(force) and v:isPtInRange(x, y, r) then
+			v:addRecoverHpFactor(value, duration)
+		end
+	end
+end
+
+function Scene:emitAttackPowerAura(x, y, r, force, value, duration)
+	for k, v in pairs(self._units) do
+		if v:isAlive() and v:isForce(force) and v:isPtInRange(x, y, r) then
+			v:addAttackPowerFactor(value, duration)
+		end
+	end
 end
 
 function Scene:update()

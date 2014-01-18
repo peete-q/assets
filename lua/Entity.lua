@@ -20,7 +20,7 @@ local _defaultProps = {
 	maxHp = 100,
 	recoverHp = 1,
 	bodySize = 10,
-	moveSpeed = 0.05,
+	moveSpeed = 0.1,
 	attackPower = 1,
 	attackSpeed = 10,
 	attackRange = 100,
@@ -75,10 +75,10 @@ function Entity.new(props, force)
 		_motionDriver = nil,
 		_target = nil,
 		_rigid = nil,
-		_attackSpeedFactor = Factor.new(1),
-		_moveSpeedFactor = Factor.new(1),
-		_recoverHpFactor = Factor.new(1),
-		_attackPowerFactor = Factor.new(1),
+		_attackSpeedFactor = Factor.new(),
+		_moveSpeedFactor = Factor.new(),
+		_recoverHpFactor = Factor.new(),
+		_attackPowerFactor = Factor.new(),
 		_lastRecoverTicks = 0,
 		_moveSpeed = 0,
 	}
@@ -132,15 +132,15 @@ function Entity:addAttackPowerFactor(value, duration)
 end
 
 function Entity:getAttackSpeed()
-	return self.attackSpeed * (self._attackSpeedFactor:calc() + self._force.attackSpeedFactor:calc())
+	return self.attackSpeed / (1 + self._attackSpeedFactor:calc() + self._force.attackSpeedFactor:calc())
 end
 
 function Entity:getMoveSpeed()
-	return self.moveSpeed * (self._moveSpeedFactor:calc() + self._force.moveSpeedFactor:calc())
+	return self.moveSpeed / (1 + self._moveSpeedFactor:calc() + self._force.moveSpeedFactor:calc())
 end
 
 function Entity:getRecoverHp()
-	return self.recoverHp * (self._recoverHpFactor:calc() + self._force.recoverHpFactor:calc())
+	return self.recoverHp * (1 + self._recoverHpFactor:calc() + self._force.recoverHpFactor:calc())
 end
 
 function Entity:getAttackPower()
@@ -183,6 +183,10 @@ function Entity:moveTo(x, y, speed)
 end
 
 function Entity:correctMoveSpeed()
+	if not self:isMoving() then
+		return
+	end
+	
 	local speed = self:getMoveSpeed()
 	if math.abs(speed - self._moveSpeed) > 0.01 then
 		self:moveTo(self._dx, self._dy, speed)
@@ -231,10 +235,6 @@ end
 
 function Entity:isDead()
 	return self.hp <= 0
-end
-
-function Entity:isInvincible()
-	return self._invincible
 end
 
 function Entity:update(ticks)
@@ -355,10 +355,10 @@ function Entity:fire(target)
 	local n = 0
 	for k, v in pairs(targets) do
 		if self.lockTarget then
-			-- Bullet.fireLocked(self.bullet, self, x, y, v)
+			Bullet.fireLocked(self.bullet, self._scene, self:getAttackPower(), self:getEnemy(), x, y, v)
 		else
 			local tx, ty = v:getWorldLoc()
-			Bullet.fireToward(self.bullet, self, x, y, tx, ty)
+			Bullet.fireToward(self.bullet, self._scene, self:getAttackPower(), self:getEnemy(), x, y, tx, ty)
 		end
 		n = n + 1
 		if n >= self.shots then
@@ -471,6 +471,15 @@ end
 
 function Entity:applyDamage(amount, source)
 	print("Entity:applyDamage")
+	if self.hp > 0 then
+		self.hp = self.hp - amount
+		if self.hp <= 0 then
+			self:onExplode()
+		end
+	end
+end
+
+function Entity:onExplode()
 end
 
 return Entity

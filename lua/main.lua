@@ -55,8 +55,10 @@ function clickCallbackL(down)
 					MOAIThread.blockOnAction(e._body:seekScl(1, 1, n, MOAIEaseType.SOFT_SMOOTH))
 				end
 			end)
+			e:setWorldLoc(X, Y)
+		else
+			scene:emitMoveSpeedAura(X, Y, 50, 3, 1, 2)
 		end
-		e:setWorldLoc(X, Y)
 	end
 end
 

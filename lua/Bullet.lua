@@ -28,27 +28,30 @@ Bullet._defaultProps = _defaultProps
 Bullet.__index = Bullet
 
 function Bullet.impact(self, target)
-	target:applyDamage(self._props.damage * self._emitter:getAttackPower())
+	target:applyDamage(self._props.damage * self._power)
 end
 
 function Bullet.bomb(self, target)
 	if target then
 		self:impact(target)
 	end
-	if self._props.bombRange <= 0 then
-		return
-	end
-	local x, y = self:getWorldLoc()
-	if self._props.bombGfx then
-		local bomb = Sprite.new(self._props.bombGfx)
-		bomb.update = Bullet.noop
-		self._scene:addProjectile(bomb)
-	end
-	local force = self._props.enemy or self._emitter:getEnemy()
-	local units = self._scene:getUnitsInRound(force, x, y, self._props.bombRange)
-	for k, v in pairs(units) do
-		if v ~= target then
-			self:impact(v)
+	
+	if self._props.bombRange > 0 then
+		local x, y = self:getWorldLoc()
+		if self._props.bombGfx then
+			local bomb = Sprite.new(self._props.bombGfx)
+			bomb.update = Bullet.noop
+			bomb.onDestroy = function(self)
+				self._scene:remove(self)
+			end
+			self._scene:addProjectile(bomb)
+		end
+		local force = self._props.enemy or self._enemy
+		local units = self._scene:getUnitsInRound(force, x, y, self._props.bombRange)
+		for k, v in pairs(units) do
+			if v ~= target then
+				self:impact(v)
+			end
 		end
 	end
 	self:destroy()
@@ -117,28 +120,41 @@ function Bullet.new(props)
 	return self
 end
 
-function Bullet.fireLocked(props, emitter, x, y, target)
+function Bullet.fireLocked(props, scene, power, enemy, x, y, target)
 	local self = Bullet.new(props)
-	emitter._scene:addProjectile(self)
+	scene:addProjectile(self)
 	self:setWorldLoc(x, y)
+	self._power = power
+	self._enemy = enemy
 	self._target = target
-	self._emitter = emitter
 	self:update()
 	return self
 end
 
-function Bullet.fireToward(props, emitter, x, y, tx, ty)
+function Bullet.fireToward(props, scene, power, enemy, x, y, tx, ty)
 	local self = Bullet.new(props)
 	self.update = Bullet.noop
-	emitter._scene:addProjectile(self)
+	scene:addProjectile(self)
 	self:setWorldLoc(x, y)
-	self._emitter = emitter
+	self._power = power
+	self._enemy = enemy
 	self._thread = MOAIThread.new()
 	self._thread:run(function()
 		local dist = distance(x, y, tx, ty)
 		MOAIThread.blockOnAction(self._body:seekLoc(tx, ty, props.moveSpeed * dist, MOAIEaseType.LINEAR))
 		self:bomb()
 	end)
+	return self
+end
+
+function Bullet.bombAt(props, scene, power, enemy, x, y, target)
+	local self = Bullet.new(props)
+	self.update = Bullet.noop
+	scene:addProjectile(self)
+	self:setWorldLoc(x, y)
+	self._power = power
+	self._enemy = enemy
+	self:bomb(target)
 	return self
 end
 
