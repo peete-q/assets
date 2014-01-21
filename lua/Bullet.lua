@@ -1,7 +1,6 @@
 
 local math2d = require "math2d"
 local resource = require "resource"
-local Scene = require "Scene"
 local Sprite = require "Sprite"
 
 local distance = math2d.distance
@@ -12,23 +11,40 @@ local _defaultProps = {
 	damage = 1,
 	bombRange = 10,
 	force = nil,
+	bombRun = nil,
+	bombCmd = nil,
 	
-	bodyGfx = "bg.png?scl=0.5",
+	bodyGfx = "bg.png?scl=0.1",
 	propellerGfx = nil,
 	bombGfx = nil,
 	bombSfx = nil,
-	impactGfx = nil,
 }
 
 local _lockDistance = 5
 
 local Bullet = {}
 
-Bullet._defaultProps = _defaultProps
-Bullet.__index = Bullet
+Bullet.__index = function(self, key)
+	if self._props[key] ~= nil then
+		return self._props[key]
+	end
+	if _defaultProps[key] ~= nil then
+		return _defaultProps[key]
+	end
+	return Bullet[key]
+end
+
+Bullet.bombEvent = {
+	chain = function(scene, x, y, power, enemy, props, range, count)
+		local u = scene:getNearestUnit(enemy, x, y, range)
+		if u then
+			Bullet.fireLocked(props, scene, power, enemy, x, y, u)
+		end
+	end,
+}
 
 function Bullet.impact(self, target)
-	target:applyDamage(self._props.damage * self._power)
+	target:applyDamage(self.damage * self._power)
 end
 
 function Bullet.bomb(self, target)
@@ -36,25 +52,34 @@ function Bullet.bomb(self, target)
 		self:impact(target)
 	end
 	
-	if self._props.bombRange > 0 then
-		local x, y = self:getWorldLoc()
-		if self._props.bombGfx then
-			local bomb = Sprite.new(self._props.bombGfx)
-			bomb.update = Bullet.noop
-			bomb.onDestroy = function(self)
-				self._scene:remove(self)
-			end
-			self._scene:addProjectile(bomb)
-		end
-		local force = self._props.enemy or self._enemy
-		local units = self._scene:getUnitsInRound(force, x, y, self._props.bombRange)
+	local x, y = self:getWorldLoc()
+	if self.bombRange > 0 then
+		local force = self.enemy or self._enemy
+		local units = self._scene:getUnitsInRound(force, x, y, self.bombRange)
 		for k, v in pairs(units) do
 			if v ~= target then
 				self:impact(v)
 			end
 		end
 	end
-	self:destroy()
+	
+	if self.bombRun then
+		self.bombRun(self._scene, x, y, self._power, self._enemy, unpack(self.bombCmd))
+	end
+	
+	if self.bombGfx then
+		local bomb = Sprite.new(self.bombGfx)
+		bomb.update = Bullet.noop
+		bomb.onDestroy = function()
+			self:destroy()
+			bomb._scene:remove(bomb)
+		end
+		bomb:setLoc(x, y)
+		bomb:setPriority(self._body:getPriority())
+		self._scene:addProjectile(bomb)
+	else
+		self:destroy()
+	end
 end
 
 function Bullet.getWorldLoc(self)
@@ -67,6 +92,10 @@ end
 
 function Bullet.update(self)
 	if self._bombed then
+		return
+	end
+	if self._target:isDead() then
+		self:destroy()
 		return
 	end
 	local x, y = self:getWorldLoc()
@@ -84,7 +113,7 @@ function Bullet.update(self)
 	if self._easeDriver then
 		self._easeDriver:stop()
 	end
-	self._easeDriver = self._body:seekLoc(tx, ty, self._props.moveSpeed * dist, MOAIEaseType.LINEAR)
+	self._easeDriver = self._body:seekLoc(tx, ty, self.moveSpeed * dist, MOAIEaseType.LINEAR)
 end
 
 function Bullet.noop(self)
@@ -97,9 +126,9 @@ function Bullet.destroy(self)
 		self._body:destroy()
 		self._body = nil
 	end
-	if self._thread then
-		self._thread:stop()
-		self._thread = nil
+	if self._moving then
+		self._moving:stop()
+		self._moving = nil
 	end
 end
 
@@ -107,16 +136,21 @@ function Bullet.setLayer(self, layer)
 	self._body:setLayer(layer)
 end
 
+function Bullet:setPriority(value)
+	self._body:setPriority(value)
+end
+
 function Bullet.new(props)
 	local self = {
 		_props = props,
 	}
-	self._body = Sprite.new(props.bodyGfx)
+	setmetatable(self, Bullet)
+	
+	self._body = Sprite.new(self.bodyGfx)
 	if props.propellerGfx then
-		local o = Sprite.new(props.propellerGfx)
+		local o = Sprite.new(self.propellerGfx)
 		self._body:add(o)
 	end
-	setmetatable(self, Bullet)
 	return self
 end
 
@@ -138,8 +172,8 @@ function Bullet.fireToward(props, scene, power, enemy, x, y, tx, ty)
 	self:setWorldLoc(x, y)
 	self._power = power
 	self._enemy = enemy
-	self._thread = MOAIThread.new()
-	self._thread:run(function()
+	self._moving = MOAIThread.new()
+	self._moving:run(function()
 		local dist = distance(x, y, tx, ty)
 		MOAIThread.blockOnAction(self._body:seekLoc(tx, ty, props.moveSpeed * dist, MOAIEaseType.LINEAR))
 		self:bomb()

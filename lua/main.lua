@@ -30,8 +30,28 @@ local timer = require "timer"
 
 scene = Scene.new(W, H, layer)
 
-playerForce = scene:addForce(1)
-enemyForce = scene:addForce(2)
+local aiProps = {
+	bodyGfx="bg.png",
+	attackRange = 10,
+}
+
+local playerProps = {
+	bodyGfx="bg.png",
+	movable = false,
+	attackPower = 50,
+	shots = 3,
+}
+
+local aiInfo = {
+	loopBegin = 30,
+	[1] = {props = aiProps, nb = 2},
+	[30] = {props = aiProps, nb = 3},
+	[60] = {props = aiProps, nb = 5},
+}
+-- scene:loadAI(aiInfo)
+
+player = scene:newForce(Entity.FORCE_PLAYER)
+enemy = scene:newForce(Entity.FORCE_ENEMY)
 timer.new(0.1, function()
 	scene:update()
 end)
@@ -43,33 +63,16 @@ end
 local e
 function clickCallbackL(down)
 	if down then
-		if not e then
-			e = Entity.new({movable=false, bodyGfx="bg.png", attackRange = 10}, playerForce)
-			scene:addUnit(e)
-			
-			local thread = MOAIThread.new()
-			thread:run(function()
-				while true do
-					local n = math.random(80, 100) / 100
-					MOAIThread.blockOnAction(e._body:seekScl(n, n, n, MOAIEaseType.SOFT_SMOOTH))
-					MOAIThread.blockOnAction(e._body:seekScl(1, 1, n, MOAIEaseType.SOFT_SMOOTH))
-				end
-			end)
-			e:setWorldLoc(X, Y)
-		else
-			scene:emitMoveSpeedAura(X, Y, 50, 3, 1, 2)
-		end
+		local e = scene:newUnit(playerProps, Entity.FORCE_PLAYER, X, Y)
 	end
 end
 
 function clickCallbackR(down)
 	if down then
 		for i = 1, 1 do
-			local e = Entity.new({bodyGfx="bg.png"}, enemyForce)
-			-- scene:spawnUnit(e)
-			scene:addUnit(e)
+			local e = scene:newUnit(aiProps, Entity.FORCE_ENEMY, X, Y)
 			e:setWorldLoc(X, Y)
-			e:move()
+			-- e:move()
 		end
 	end
 end
