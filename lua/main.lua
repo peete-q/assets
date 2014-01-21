@@ -26,6 +26,7 @@ layer:setBox2DWorld ( world )
 
 local Scene = require "Scene"
 local Entity = require "Entity"
+local Bullet = require "Bullet"
 local timer = require "timer"
 
 scene = Scene.new(W, H, layer)
@@ -40,6 +41,7 @@ local playerProps = {
 	movable = false,
 	attackPower = 50,
 	shots = 3,
+	bullet = {bombRun = Bullet.bombEvent.chain, bombCmd = {{}, 200, 2}},
 }
 
 local aiInfo = {

@@ -35,10 +35,28 @@ Bullet.__index = function(self, key)
 end
 
 Bullet.bombEvent = {
-	chain = function(scene, x, y, power, enemy, props, range, count)
-		local u = scene:getNearestUnit(enemy, x, y, range)
+	chain = function(scene, x, y, power, enemy, target, props, range, count)
+		local exclusion = {[target] = target}
+		local u = scene:getRandomUnit(enemy, x, y, range, exclusion)
 		if u then
-			Bullet.fireLocked(props, scene, power, enemy, x, y, u)
+			local b = Bullet.fireLocked(props, scene, power, enemy, x, y, u)
+			if count > 0 then
+				b.bombCmd = {props, range, count - 1}
+			else
+				b.bombRun = false
+			end
+		end
+	end,
+	multishot = function(scene, x, y, power, enemy, target, props, range, count)
+		local exclusion = {[target] = target}
+		for i = 1, count do
+			local u = scene:getRandomUnit(enemy, x, y, range, exclusion)
+			if not u then
+				break
+			end
+			exclodes[u] = u
+			local b = Bullet.fireLocked(props, scene, power, enemy, x, y, u)
+			b.bombRun = false
 		end
 	end,
 }
@@ -64,7 +82,7 @@ function Bullet.bomb(self, target)
 	end
 	
 	if self.bombRun then
-		self.bombRun(self._scene, x, y, self._power, self._enemy, unpack(self.bombCmd))
+		self.bombRun(self._scene, x, y, self._power, self._enemy, target, unpack(self.bombCmd))
 	end
 	
 	if self.bombGfx then

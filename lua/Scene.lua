@@ -234,4 +234,11 @@ function Scene:getNearestUnit(force, x, y, r, exclusion)
 	return unit
 end
 
+function Scene:getRandomUnit(force, x, y, r, exclusion)
+	local units = self:getUnitsInRound(force, x, y, r, exclusion)
+	if #units > 0 then
+		return units[math.random(#units)]
+	end
+end
+
 return Scene
