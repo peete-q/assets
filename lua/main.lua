@@ -34,14 +34,15 @@ scene = Scene.new(W, H, layer)
 local aiProps = {
 	bodyGfx="bg.png",
 	attackRange = 10,
+	movable = false,
 }
 
 local playerProps = {
 	bodyGfx="bg.png",
 	movable = false,
 	attackPower = 50,
-	shots = 3,
-	bullet = {bombRun = Bullet.bombEvent.chain, bombCmd = {{}, 200, 2}},
+	shots = 1,
+	bullet = {bombRun = Bullet.bombEvent.diffuse, bombCmd = {{}, 300, 3}},
 }
 
 local aiInfo = {

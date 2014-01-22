@@ -42,21 +42,22 @@ Bullet.bombEvent = {
 			local b = Bullet.fireLocked(props, scene, power, enemy, x, y, u)
 			if count > 0 then
 				b.bombCmd = {props, range, count - 1}
-			else
-				b.bombRun = false
+				b.bombRun = Bullet.bombEvent.chain
 			end
 		end
 	end,
-	multishot = function(scene, x, y, power, enemy, target, props, range, count)
+	
+	diffuse = function(scene, x, y, power, enemy, target, props, range, count)
 		local exclusion = {[target] = target}
-		for i = 1, count do
-			local u = scene:getRandomUnit(enemy, x, y, range, exclusion)
-			if not u then
-				break
+		local units = scene:getUnitsInRound(enemy, x, y, range, execlusion)
+		for i = #units, 1, -1 do
+			if math.random(i) <= count then
+				Bullet.fireLocked(props, scene, power, enemy, x, y, units[i])
+				count = count - 1
+				if count <= 0 then
+					break
+				end
 			end
-			exclodes[u] = u
-			local b = Bullet.fireLocked(props, scene, power, enemy, x, y, u)
-			b.bombRun = false
 		end
 	end,
 }
@@ -112,7 +113,7 @@ function Bullet.update(self)
 	if self._bombed then
 		return
 	end
-	if self._target:isDead() then
+	if not self._target or self._target:isDead() then
 		self:destroy()
 		return
 	end
