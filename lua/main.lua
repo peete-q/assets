@@ -40,7 +40,7 @@ local aiProps = {
 local playerProps = {
 	bodyGfx="bg.png",
 	movable = false,
-	attackPower = 50,
+	attackPower = 1,
 	shots = 1,
 	bullet = {bombRun = Bullet.bombEvent.diffuse, bombCmd = {{}, 300, 3}},
 }
@@ -63,10 +63,11 @@ function pointerCallback(x, y)
     X, Y = layer:wndToWorld(x, y)
 end
 
-local e
+local p
 function clickCallbackL(down)
 	if down then
-		local e = scene:newUnit(playerProps, Entity.FORCE_PLAYER, X, Y)
+		p = scene:newUnit(playerProps, Entity.FORCE_PLAYER, X, Y)
+		p._logging = true
 	end
 end
 
@@ -75,6 +76,7 @@ function clickCallbackR(down)
 		for i = 1, 1 do
 			local e = scene:newUnit(aiProps, Entity.FORCE_ENEMY, X, Y)
 			e:setWorldLoc(X, Y)
+			p._ticks = scene.ticks - 20
 			-- e:move()
 		end
 	end

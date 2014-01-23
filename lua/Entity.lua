@@ -8,6 +8,14 @@ local Factor = require "Factor"
 local distance = math2d.distance
 local distanceSq = math2d.distanceSq
 
+local function concat(...)
+	local s = ""
+	for k, v in ipairs{...} do
+		s = s..tostring(v)
+	end
+	return s
+end
+
 local Entity = {
 	FORCE_PLAYER = 1,
 	FORCE_ENEMY = 2,
@@ -20,7 +28,7 @@ local _defaultProps = {
 	recoverHp = 1,
 	bodySize = 10,
 	moveSpeed = 0.1,
-	attackPower = 50,
+	attackPower = 1,
 	attackSpeed = 10,
 	attackRange = 100,
 	guardRange = 150,
@@ -39,8 +47,9 @@ local _defaultProps = {
 	bullet = {},
 }
 
-local _lockDistance = 10
-local _recoverTicks = 10
+local _LOCK_DIST = 10
+local _RECOVER_TICKS = 10
+local _ACCELERATION_MAX = 5
 
 Entity._defaultProps = _defaultProps
 
@@ -69,7 +78,6 @@ function Entity.new(props, force)
 	local self = {
 		_force = force,
 		_props = props or {},
-		_lastAttackTicks = 0,
 		_attackPriorities = {},
 		_lastTargets = {},
 		_scene = nil,
@@ -83,10 +91,11 @@ function Entity.new(props, force)
 		_lastRecoverTicks = 0,
 		_moveSpeed = 0,
 		_db = {},
+		_logging = false,
 	}
 	setmetatable(self, Entity)
 	
-	self._state = self.stateIdle
+	self._runState = self.stateIdle
 	self._fireRange = self.attackRange
 	self._force.enemy = self:getEnemy()
 	self._body = Sprite.new(props.bodyGfx)
@@ -132,6 +141,18 @@ function Entity:destroy()
 	end
 end
 
+function Entity:log(...)
+	if self._logging then
+		print(concat("[", self, "]"), ...)
+	end
+end
+
+function Entity:logIf(cond, ...)
+	if self._logging and cond then
+		print(concat("[", self, "]"), ...)
+	end
+end
+
 function Entity:loadDB(db)
 	self._db = db
 end
@@ -157,11 +178,14 @@ function Entity:addAttackPowerFactor(value, duration)
 end
 
 function Entity:getAttackSpeed()
-	return self.attackSpeed / (1 + self._attackSpeedFactor:calc() + self._force.attackSpeedFactor:calc())
+	local speed = self.attackSpeed / (1 + self._attackSpeedFactor:calc() + self._force.attackSpeedFactor:calc())
+	return math.floor(speed)
 end
 
 function Entity:getMoveSpeed()
-	return self.moveSpeed / (1 + self._moveSpeedFactor:calc() + self._force.moveSpeedFactor:calc())
+	local acc = self:getAcceleration()
+	local speed = self.moveSpeed / (1 + self._moveSpeedFactor:calc() + self._force.moveSpeedFactor:calc())
+	return speed / acc
 end
 
 function Entity:getRecoverHp()
@@ -258,37 +282,49 @@ function Entity:isDead()
 	return self.hp <= 0
 end
 
-function Entity:update(ticks)
+function Entity:getAcceleration()
+	return self._accel
+end
+
+function Entity:update()
 	if self:isDead() then
 		return
 	end
 	
-	self._attackSpeedFactor:update(ticks)
-	self._moveSpeedFactor:update(ticks)
-	self._recoverHpFactor:update(ticks)
+	self._accel = math.min(self._scene.ticks - self._ticks, _ACCELERATION_MAX)
+	self._ticks = self._ticks + self._accel
+	
+	self._attackSpeedFactor:update(self._ticks)
+	self._moveSpeedFactor:update(self._ticks)
+	self._recoverHpFactor:update(self._ticks)
 	
 	self:correctMoveSpeed()
-	if self._lastRecoverTicks + _recoverTicks < ticks then
-		self._lastRecoverTicks = ticks
+	if self._lastRecoverTicks + _RECOVER_TICKS < self._ticks then
+		self._lastRecoverTicks = self._ticks
 		if self.hp < self.maxHp then
 			self.hp = math.min(self.hp + self:getRecoverHp(), self.maxHp)
 		end
 	end
 	
-	if self._state then
-		self._state(self, ticks)
+	if self._runState then
+		self._runState(self, self._ticks)
 	end
 end
 
 function Entity:_checkTarget(range)
 	if self._target then
-		if self._target:isDead() or not self:isInRange(self._target, range) then
+		if self._target:isDead() then
+			self:log("Entity:_checkTarget target", self._target, "is dead")
+			self._target = nil
+		elseif not self:isInRange(self._target, range) then
+			self:log("Entity:_checkTarget target", self._target, "out of range")
 			self._target = nil
 		end
 	end
 	
 	if not self._target then
 		self._target = self:searchTarget(range)
+		self:logIf(self._target, "Entity:_checkTarget found target", self._target)
 	end
 	return self._target
 end
@@ -323,7 +359,7 @@ function Entity:stateChase(ticks)
 	end
 	
 	local x, y = self._target:getWorldLoc()
-	if distance(self._tx, self._ty, x, y) > _lockDistance then
+	if distance(self._tx, self._ty, x, y) > _LOCK_DIST then
 		self:chase(self._target)
 	end
 end
@@ -334,10 +370,10 @@ function Entity:stateAttack(ticks)
 		return
 	end
 	
-	if self._lastAttackTicks + self:getAttackSpeed() < ticks then
+	if ticks >= self._attackTicks then
 		if self:isInRange(self._target, self.attackRange) then
 			self:fire(self._target)
-			self._lastAttackTicks = ticks
+			self._attackTicks = self._attackTicks + self:getAttackSpeed()
 		elseif self:isInRange(self,_target, self.guardRange) then
 			self:chase(self._target)
 		else
@@ -348,16 +384,16 @@ function Entity:stateAttack(ticks)
 end
 
 function Entity:idle()
-	print("Entity:idle", self)
+	self:log("Entity:idle", self)
 	if self.movable then
 		self:move()
 	else
-		self._state = self.stateIdle
+		self._runState = self.stateIdle
 	end
 end
 
 function Entity:move()
-	print("Entity:move", self)
+	self:log("Entity:move", self)
 	if not self.movable then
 		return
 	end
@@ -369,11 +405,11 @@ function Entity:move()
 		y = self._scene:getPlayerLoc()
 	end
 	self:moveTo(x, y)
-	self._state = self.stateMove
+	self._runState = self.stateMove
 end
 
 function Entity:chase(target)
-	print("Entity:chase", self)
+	self:log("Entity:chase", self)
 	if not self.movable then
 		self:attack(target)
 		return
@@ -391,15 +427,16 @@ function Entity:chase(target)
 	x = math.random(mx - self.bodySize, mx + self.bodySize)
 	self:moveTo(x, y)
 	self._fireRange = self.attackRange - math.random(self.bodySize * 2)
-	self._state = self.stateChase
+	self._runState = self.stateChase
 end
 
 function Entity:attack(target)
-	print("Entity:attack", self)
+	self:log("Entity:attack", self)
 	if target then
 		self._target = target
 	end
-	self._state = self.stateAttack
+	self._attackTicks = self._ticks
+	self._runState = self.stateAttack
 end
 
 function Entity:fire(target)

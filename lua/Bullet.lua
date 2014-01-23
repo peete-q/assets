@@ -20,7 +20,7 @@ local _defaultProps = {
 	bombSfx = nil,
 }
 
-local _lockDistance = 5
+local _LOCK_DIST = 5
 
 local Bullet = {}
 
@@ -95,7 +95,7 @@ function Bullet.bomb(self, target)
 		end
 		bomb:setLoc(x, y)
 		bomb:setPriority(self._body:getPriority())
-		self._scene:addProjectile(bomb)
+		self._scene:addFX(bomb)
 	else
 		self:destroy()
 	end
@@ -124,7 +124,7 @@ function Bullet.update(self)
 		self:bomb(self._target)
 		return
 	end
-	if self._tx and self._ty and distance(self._tx, self._ty, tx, ty) < _lockDistance then
+	if self._tx and self._ty and distance(self._tx, self._ty, tx, ty) < _LOCK_DIST then
 		return
 	end
 	self._tx = tx
@@ -175,7 +175,7 @@ end
 
 function Bullet.fireLocked(props, scene, power, enemy, x, y, target)
 	local self = Bullet.new(props)
-	scene:addProjectile(self)
+	scene:addFX(self)
 	self:setWorldLoc(x, y)
 	self._power = power
 	self._enemy = enemy
@@ -187,7 +187,7 @@ end
 function Bullet.fireToward(props, scene, power, enemy, x, y, tx, ty)
 	local self = Bullet.new(props)
 	self.update = Bullet.noop
-	scene:addProjectile(self)
+	scene:addFX(self)
 	self:setWorldLoc(x, y)
 	self._power = power
 	self._enemy = enemy
@@ -203,7 +203,7 @@ end
 function Bullet.bombAt(props, scene, power, enemy, x, y, target)
 	local self = Bullet.new(props)
 	self.update = Bullet.noop
-	scene:addProjectile(self)
+	scene:addFX(self)
 	self:setWorldLoc(x, y)
 	self._power = power
 	self._enemy = enemy

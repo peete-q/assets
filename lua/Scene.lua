@@ -17,7 +17,7 @@ function Scene.new(w, h, spaceLayer, skyLayer, seed)
 		HEIGHT = h,
 		
 		_units = {},
-		_projectiles = {},
+		_FXs = {},
 		_playerX = w / 2,
 		_playerY = h / 2,
 		_enemyX = w / 2,
@@ -56,23 +56,24 @@ end
 function Scene:newUnit(props, force, x, y)
 	local e = Entity.new(props, self._forces[force])
 	e._scene = self
+	e._ticks = self.ticks
 	e:setLayer(self._spaceLayer)
 	e:setWorldLoc(x, y)
 	self._units[e] = e
 	return e
 end
 
-function Scene:addProjectile(e)
+function Scene:addFX(e)
 	e._scene = self
 	e:setLayer(self._spaceLayer)
-	self._projectiles[e] = e
+	self._FXs[e] = e
 	return e
 end
 
 function Scene:remove(e)
 	e:setLayer(nil)
 	self._units[e] = nil
-	self._projectiles[e] = nil
+	self._FXs[e] = nil
 end
 
 function Scene:spawnUnit(props, force, y)
@@ -102,18 +103,18 @@ local aiInfo = {
 }
 
 function Scene:loadAI(aiInfo)
-	self._ai = aiInfo
+	self._AI = aiInfo
 end
 
 function Scene:loadPlayerAI()
 end
 
-function Scene:updateAI(ticks)
+function Scene:simulateAI(ticks)
 	local index = ticks
-	if index > self._ai.loopBegin then
-		index = math.fmod(index, self._ai.loopBegin) + self._ai.loopBegin
+	if index > self._AI.loopBegin then
+		index = math.fmod(index, self._AI.loopBegin) + self._AI.loopBegin
 	end
-	local ai = self._ai[index]
+	local ai = self._AI[index]
 	if ai then
 		for i = 1, ai.nb do
 			self:spawnUnit(ai.props, Entity.FORCE_ENEMY, self._enemyY)
@@ -175,6 +176,7 @@ end
 
 function Scene:update()
 	self.ticks = self.ticks + 1
+	
 	for k, v in pairs(self._forces) do
 		v.attackSpeedFactor:update(self.ticks)
 		v.moveSpeedFactor:update(self.ticks)
@@ -182,10 +184,10 @@ function Scene:update()
 		v.attackPowerFactor:update(self.ticks)
 	end
 	
-	if self._ai then
-		self:updateAI(self.ticks)
+	if self._AI then
+		self:simulateAI(self.ticks)
 	elseif self._playerAI then
-		self:updatePlayerAI(self.ticks)
+		self:simulatePlayerAI(self.ticks)
 	end
 	
 	for k, v in pairs(self._player) do
@@ -199,11 +201,11 @@ function Scene:update()
 	for k, v in pairs(self._units) do
 		tb[v] = v
 	end
-	for k, v in pairs(self._projectiles) do
+	for k, v in pairs(self._FXs) do
 		tb[v] = v
 	end
 	for k, v in pairs(tb) do
-		v:update(self.ticks)
+		v:update()
 	end
 end
 
