@@ -22,6 +22,12 @@ local Entity = {
 	FORCE_ALL = 3,
 }
 
+undefined = false
+
+local _LOCK_DIST = 10
+local _RECOVER_TICKS = 10
+local _ACCELERATION_MAX = 5
+
 local _defaultProps = {
 	hp = 100,
 	maxHp = 100,
@@ -36,22 +42,20 @@ local _defaultProps = {
 	kind = "normal",
 	movable = true,
 	lockTarget = true,
-	specialPower = nil,
 	
-	bodyGfx = nil,
-	propellerGfx = nil,
-	muzzleGfx = nil,
-	fireSfx = nil,
-	explodeGfx = nil,
-	explodeSfx = nil,
+	specialPower = undefined,
+	bodyGfx = undefined,
+	propellerGfx = undefined,
+	muzzleGfx = undefined,
+	fireSfx = undefined,
+	explodeGfx = undefined,
+	explodeSfx = undefined,
+	
 	bullet = {},
+	
+	_ticks = undefined,
+	_attackPriorities = {},
 }
-
-local _LOCK_DIST = 10
-local _RECOVER_TICKS = 10
-local _ACCELERATION_MAX = 5
-
-Entity._defaultProps = _defaultProps
 
 Entity.__index = function(self, key)
 	if self._db[key] ~= nil then
@@ -67,31 +71,30 @@ Entity.__index = function(self, key)
 end
 
 Entity.__newindex = function(self, key, value)
-	if self._props[key] ~= nil or _defaultProps[key] ~= nil then
+	if _defaultProps[key] ~= nil then
 		self._db[key] = value
-		return
+	else
+		rawset(self, key, value)
 	end
-	rawset(self, key, value)
 end
 
 function Entity.new(props, force)
 	local self = {
 		_force = force,
 		_props = props or {},
-		_attackPriorities = {},
+		_db = {},
 		_lastTargets = {},
-		_scene = nil,
-		_motionDriver = nil,
-		_target = nil,
-		_rigid = nil,
 		_attackSpeedFactor = Factor.new(),
 		_moveSpeedFactor = Factor.new(),
 		_recoverHpFactor = Factor.new(),
 		_attackPowerFactor = Factor.new(),
 		_lastRecoverTicks = 0,
 		_moveSpeed = 0,
-		_db = {},
 		_logging = false,
+		_scene = nil,
+		_motionDriver = nil,
+		_target = nil,
+		_rigid = nil,
 	}
 	setmetatable(self, Entity)
 	
@@ -479,7 +482,7 @@ function Entity:getAttackTargets()
 	return targets
 end
 
-function Entity:attackPriority(target)
+function Entity:getAttackPriority(target)
 	return self._attackPriorities[target.kind] or 0
 end
 
@@ -492,7 +495,7 @@ function Entity:searchTarget(range, exclusion)
 	for k, v in pairs(units) do
 		if v ~= self and v:isAlive() and v:isForce(enemy) and (not exclusion or not exclusion[v]) then
 			local d = self:distanceSq(v)
-			local p = self:attackPriority(v)
+			local p = self:getAttackPriority(v)
 			if p > priority or (p == priority and d < dist) then
 				priority = p
 				dist = d
