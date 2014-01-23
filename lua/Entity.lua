@@ -52,9 +52,9 @@ local _defaultProps = {
 	explodeSfx = undefined,
 	
 	bullet = {},
+	attackPriorities = {},
 	
 	_ticks = undefined,
-	_attackPriorities = {},
 }
 
 Entity.__index = function(self, key)
@@ -483,7 +483,7 @@ function Entity:getAttackTargets()
 end
 
 function Entity:getAttackPriority(target)
-	return self._attackPriorities[target.kind] or 0
+	return self.attackPriorities[target.kind] or 0
 end
 
 function Entity:searchTarget(range, exclusion)
