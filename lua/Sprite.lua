@@ -1,6 +1,6 @@
 local url = require "url"
 local util = require "util"
-local Prim = require "Prim"
+local Node = require "Node"
 local breakstr = util.breakstr
 
 local Sprite = {}
@@ -106,7 +106,7 @@ local function Sprite_playAnim(self, animName, callback, looping)
 		do
 			local consts = self._deck._animConsts[animName]
 			local curLink = 1
-			self._animProp = Prim.new(MOAIProp2D.new())
+			self._animProp = Node.new(MOAIProp2D.new())
 			self._animProp:setDeck(self._deck)
 			self:add(self._animProp)
 			anim:reserveLinks(self._deck._numCurves[animName])
@@ -173,7 +173,7 @@ end
 function Sprite.new(data)
 	assert(data, "need 'userdata' or url")
 	
-	local o = Prim.new(MOAIProp2D.new())
+	local o = Node.new(MOAIProp2D.new())
 	o._olderSpriteSetDeck = o.setDeck
 	o.setDeck = Sprite_setDeck
 	o._olderSpriteDestroy = o.destroy

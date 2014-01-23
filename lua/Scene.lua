@@ -1,5 +1,5 @@
 
-local Entity = require "Entity"
+local Unit = require "Unit"
 local Factor = require "Factor"
 
 local Scene = {
@@ -54,7 +54,7 @@ function Scene:getForce(id)
 end
 
 function Scene:newUnit(props, force, x, y)
-	local e = Entity.new(props, self._forces[force])
+	local e = Unit.new(props, self._forces[force])
 	e._scene = self
 	e._ticks = self.ticks
 	e:setLayer(self._spaceLayer)
@@ -117,7 +117,7 @@ function Scene:simulateAI(ticks)
 	local ai = self._AI[index]
 	if ai then
 		for i = 1, ai.nb do
-			self:spawnUnit(ai.props, Entity.FORCE_ENEMY, self._enemyY)
+			self:spawnUnit(ai.props, Unit.FORCE_ENEMY, self._enemyY)
 		end
 	end
 end

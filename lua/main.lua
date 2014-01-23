@@ -25,7 +25,7 @@ world:start ()
 layer:setBox2DWorld ( world )
 
 local Scene = require "Scene"
-local Entity = require "Entity"
+local Unit = require "Unit"
 local Bullet = require "Bullet"
 local timer = require "timer"
 
@@ -53,8 +53,8 @@ local aiInfo = {
 }
 -- scene:loadAI(aiInfo)
 
-player = scene:newForce(Entity.FORCE_PLAYER)
-enemy = scene:newForce(Entity.FORCE_ENEMY)
+player = scene:newForce(Unit.FORCE_PLAYER)
+enemy = scene:newForce(Unit.FORCE_ENEMY)
 timer.new(0.1, function()
 	scene:update()
 end)
@@ -66,7 +66,7 @@ end
 local p
 function clickCallbackL(down)
 	if down then
-		p = scene:newUnit(playerProps, Entity.FORCE_PLAYER, X, Y)
+		p = scene:newUnit(playerProps, Unit.FORCE_PLAYER, X, Y)
 		p._logging = true
 	end
 end
@@ -74,7 +74,7 @@ end
 function clickCallbackR(down)
 	if down then
 		for i = 1, 1 do
-			local e = scene:newUnit(aiProps, Entity.FORCE_ENEMY, X, Y)
+			local e = scene:newUnit(aiProps, Unit.FORCE_ENEMY, X, Y)
 			e:setWorldLoc(X, Y)
 			p._ticks = scene.ticks - 20
 			-- e:move()

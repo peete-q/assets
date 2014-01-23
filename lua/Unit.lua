@@ -16,7 +16,7 @@ local function concat(...)
 	return s
 end
 
-local Entity = {
+local Unit = {
 	FORCE_PLAYER = 1,
 	FORCE_ENEMY = 2,
 	FORCE_ALL = 3,
@@ -57,7 +57,7 @@ local _defaultProps = {
 	_ticks = undefined,
 }
 
-Entity.__index = function(self, key)
+Unit.__index = function(self, key)
 	if self._db[key] ~= nil then
 		return self._db[key]
 	end
@@ -67,10 +67,10 @@ Entity.__index = function(self, key)
 	if _defaultProps[key] ~= nil then
 		return _defaultProps[key]
 	end
-	return Entity[key]
+	return Unit[key]
 end
 
-Entity.__newindex = function(self, key, value)
+Unit.__newindex = function(self, key, value)
 	if _defaultProps[key] ~= nil then
 		self._db[key] = value
 	else
@@ -78,7 +78,7 @@ Entity.__newindex = function(self, key, value)
 	end
 end
 
-function Entity.new(props, force)
+function Unit.new(props, force)
 	local self = {
 		_force = force,
 		_props = props or {},
@@ -96,7 +96,7 @@ function Entity.new(props, force)
 		_target = nil,
 		_rigid = nil,
 	}
-	setmetatable(self, Entity)
+	setmetatable(self, Unit)
 	
 	self._runState = self.stateIdle
 	self._fireRange = self.attackRange
@@ -120,7 +120,7 @@ function Entity.new(props, force)
 	return self
 end
 
-function Entity:destroy()
+function Unit:destroy()
 	self._scene:remove(self)
 	
 	if self._body then
@@ -144,82 +144,82 @@ function Entity:destroy()
 	end
 end
 
-function Entity:log(...)
+function Unit:log(...)
 	if self._logging then
 		print(concat("[", self, "]"), ...)
 	end
 end
 
-function Entity:logIf(cond, ...)
+function Unit:logIf(cond, ...)
 	if self._logging and cond then
 		print(concat("[", self, "]"), ...)
 	end
 end
 
-function Entity:loadDB(db)
+function Unit:loadDB(db)
 	self._db = db
 end
 
-function Entity:setPriority(value)
+function Unit:setPriority(value)
 	self._body:setPriority(value)
 end
 
-function Entity:addAttackSpeedFactor(value, duration)
+function Unit:addAttackSpeedFactor(value, duration)
 	self._attackSpeedFactor:add(value, self._scene.ticks + duration)
 end
 
-function Entity:addMoveSpeedFactor(value, duration)
+function Unit:addMoveSpeedFactor(value, duration)
 	self._moveSpeedFactor:add(value, self._scene.ticks + duration)
 end
 
-function Entity:addRecoverHpFactor(value, duration)
+function Unit:addRecoverHpFactor(value, duration)
 	self._recoverHpFactor:add(value, self._scene.ticks + duration)
 end
 
-function Entity:addAttackPowerFactor(value, duration)
+function Unit:addAttackPowerFactor(value, duration)
 	self._attackPowerFactor:add(value, self._scene.ticks + duration)
 end
 
-function Entity:getAttackSpeed()
+function Unit:getAttackSpeed()
 	local speed = self.attackSpeed / (1 + self._attackSpeedFactor:calc() + self._force.attackSpeedFactor:calc())
 	return math.floor(speed)
 end
 
-function Entity:getMoveSpeed()
+function Unit:getMoveSpeed()
 	local acc = self:getAcceleration()
 	local speed = self.moveSpeed / (1 + self._moveSpeedFactor:calc() + self._force.moveSpeedFactor:calc())
 	return speed / acc
 end
 
-function Entity:getRecoverHp()
+function Unit:getRecoverHp()
 	return self.recoverHp * (1 + self._recoverHpFactor:calc() + self._force.recoverHpFactor:calc())
 end
 
-function Entity:getAttackPower()
+function Unit:getAttackPower()
 	return self.attackPower + self._attackPowerFactor:calc() + self._force.attackPowerFactor:calc()
 end
 
-function Entity:setLayer(layer)
+function Unit:setLayer(layer)
 	self._body:setLayer(layer)
 end
 
-function Entity:add(fx)
+function Unit:add(fx)
 	self._body:add(fx)
 end
 
-function Entity:remove(fx)
+function Unit:remove(fx)
 	self._body:remove(fx)
 end
 
-function Entity:setWorldLoc(x, y)
+function Unit:setWorldLoc(x, y)
 	self._body:setLoc(x, y)
 end
 
-function Entity:getWorldLoc()
+function Unit:getWorldLoc()
 	return self._body:getLoc()
 end
 
-function Entity:moveTo(x, y, speed)
+function Unit:moveTo(x, y, speed)
 	self:stop()
 	local sx, sy = self:getWorldLoc()
 	local dist = distance(sx, sy, x, y)
@@ -230,7 +230,7 @@ function Entity:moveTo(x, y, speed)
 	self:_eraseRigid()
 end
 
-function Entity:correctMoveSpeed()
+function Unit:correctMoveSpeed()
 	if not self:isMoving() then
 		return
 	end
@@ -241,11 +241,11 @@ function Entity:correctMoveSpeed()
 	end
 end
 
-function Entity:isMoving()
+function Unit:isMoving()
 	return self._motionDriver and self._motionDriver:isBusy()
 end
 
-function Entity:stop()
+function Unit:stop()
 	if self:isMoving() then
 		self._motionDriver:stop()
 		self._motionDriver = nil
@@ -253,7 +253,7 @@ function Entity:stop()
 	-- self:_insertRigid()
 end
 
-function Entity:_insertRigid()
+function Unit:_insertRigid()
 	self:_eraseRigid()
 	self._rigid = world:addBody(MOAIBox2DBody.DYNAMIC)
 	local x, y = self:getWorldLoc()
@@ -261,14 +261,14 @@ function Entity:_insertRigid()
 	self._body:setParent(self._rigid)
 end
 
-function Entity:_eraseRigid()
+function Unit:_eraseRigid()
 	if self._rigid then
 		self._rigid:destroy()
 		self._rigid = nil
 	end
 end
 
-function Entity:_checkAttackable()
+function Unit:_checkAttackable()
 	if self._target and self:isMoving() then
 		if self:isInRange(self._target, self._fireRange) then
 			self:stop()
@@ -277,19 +277,19 @@ function Entity:_checkAttackable()
 	end
 end
 
-function Entity:isAlive()
+function Unit:isAlive()
 	return self.hp > 0
 end
 
-function Entity:isDead()
+function Unit:isDead()
 	return self.hp <= 0
 end
 
-function Entity:getAcceleration()
+function Unit:getAcceleration()
 	return self._accel
 end
 
-function Entity:update()
+function Unit:update()
 	if self:isDead() then
 		return
 	end
@@ -314,25 +314,25 @@ function Entity:update()
 	end
 end
 
-function Entity:_checkTarget(range)
+function Unit:_checkTarget(range)
 	if self._target then
 		if self._target:isDead() then
-			self:log("Entity:_checkTarget target", self._target, "is dead")
+			self:log("Unit:_checkTarget target", self._target, "is dead")
 			self._target = nil
 		elseif not self:isInRange(self._target, range) then
-			self:log("Entity:_checkTarget target", self._target, "out of range")
+			self:log("Unit:_checkTarget target", self._target, "out of range")
 			self._target = nil
 		end
 	end
 	
 	if not self._target then
 		self._target = self:searchTarget(range)
-		self:logIf(self._target, "Entity:_checkTarget found target", self._target)
+		self:logIf(self._target, "Unit:_checkTarget found target", self._target)
 	end
 	return self._target
 end
 
-function Entity:keepAlert()
+function Unit:keepAlert()
 	if self:_checkTarget(self.guardRange) then
 		if self:isInRange(self._target, self.attackRange) then
 			self:attack(self._target)
@@ -342,15 +342,15 @@ function Entity:keepAlert()
 	end
 end
 
-function Entity:stateIdle(ticks)
+function Unit:stateIdle(ticks)
 	self:keepAlert()
 end
 
-function Entity:stateMove(ticks)
+function Unit:stateMove(ticks)
 	self:keepAlert()
 end
 
-function Entity:stateChase(ticks)
+function Unit:stateChase(ticks)
 	if not self:_checkTarget(self.guardRange) then
 		self:idle()
 		return
@@ -367,7 +367,7 @@ function Entity:stateChase(ticks)
 	end
 end
 
-function Entity:stateAttack(ticks)
+function Unit:stateAttack(ticks)
 	if not self:_checkTarget(self.attackRange) then
 		self:idle()
 		return
@@ -386,8 +386,8 @@ function Entity:stateAttack(ticks)
 	end
 end
 
-function Entity:idle()
-	self:log("Entity:idle", self)
+function Unit:idle()
+	self:log("Unit:idle", self)
 	if self.movable then
 		self:move()
 	else
@@ -395,14 +395,14 @@ function Entity:idle()
 	end
 end
 
-function Entity:move()
-	self:log("Entity:move", self)
+function Unit:move()
+	self:log("Unit:move", self)
 	if not self.movable then
 		return
 	end
 
 	local x, y = self:getWorldLoc()
-	if self._force.id == Entity.FORCE_PLAYER then
+	if self._force.id == Unit.FORCE_PLAYER then
 		y = self._scene:getEnemyLoc()
 	else
 		y = self._scene:getPlayerLoc()
@@ -411,8 +411,8 @@ function Entity:move()
 	self._runState = self.stateMove
 end
 
-function Entity:chase(target)
-	self:log("Entity:chase", self)
+function Unit:chase(target)
+	self:log("Unit:chase", self)
 	if not self.movable then
 		self:attack(target)
 		return
@@ -433,8 +433,8 @@ function Entity:chase(target)
 	self._runState = self.stateChase
 end
 
-function Entity:attack(target)
-	self:log("Entity:attack", self)
+function Unit:attack(target)
+	self:log("Unit:attack", self)
 	if target then
 		self._target = target
 	end
@@ -442,7 +442,7 @@ function Entity:attack(target)
 	self._runState = self.stateAttack
 end
 
-function Entity:fire(target)
+function Unit:fire(target)
 	self:stop()
 	local targets = self:getAttackTargets()
 	local x, y = self:getWorldLoc()
@@ -461,7 +461,7 @@ function Entity:fire(target)
 	end
 end
 
-function Entity:getAttackTargets()
+function Unit:getAttackTargets()
 	self._lastTargets[self._target] = self._target
 	local n = 0
 	local targets = {}
@@ -482,11 +482,11 @@ function Entity:getAttackTargets()
 	return targets
 end
 
-function Entity:getAttackPriority(target)
+function Unit:getAttackPriority(target)
 	return self.attackPriorities[target.kind] or 0
 end
 
-function Entity:searchTarget(range, exclusion)
+function Unit:searchTarget(range, exclusion)
 	local units = self._scene:getUnits()
 	local enemy = self:getEnemy()
 	local dist = range ^ 2
@@ -506,7 +506,7 @@ function Entity:searchTarget(range, exclusion)
 	return target
 end
 
-function Entity:searchNearestTarget(range, exclusion)
+function Unit:searchNearestTarget(range, exclusion)
 	local units = self._scene:getUnits()
 	local enemy = self:getEnemy()
 	local dist = range ^ 2
@@ -523,18 +523,18 @@ function Entity:searchNearestTarget(range, exclusion)
 	return target
 end
 
-function Entity:getEnemy()
-	if self._force.id == Entity.FORCE_PLAYER then
-		return Entity.FORCE_ENEMY
+function Unit:getEnemy()
+	if self._force.id == Unit.FORCE_PLAYER then
+		return Unit.FORCE_ENEMY
 	end
-	return Entity.FORCE_PLAYER
+	return Unit.FORCE_PLAYER
 end
 
-function Entity:isForce(id)
-	return id == Entity.FORCE_ALL or id == self._force.id
+function Unit:isForce(id)
+	return id == Unit.FORCE_ALL or id == self._force.id
 end
 
-function Entity:isInRange(target, range)
+function Unit:isInRange(target, range)
 	if not target then
 		return false
 	end
@@ -545,34 +545,34 @@ function Entity:isInRange(target, range)
 	return self:isPtInRange(x, y, range)
 end
 
-function Entity:isPtInRange(x, y, range)
+function Unit:isPtInRange(x, y, range)
 	local sx, sy = self:getWorldLoc()
 	return distanceSq(x, y, sx, sy) < (range ^ 2)
 end
 
-function Entity:distance(other)
+function Unit:distance(other)
 	local x, y = self:getWorldLoc()
 	local tx, ty = other:getWorldLoc()
 	return distance(x, y, tx, ty)
 end
 
-function Entity:distanceSq(other)
+function Unit:distanceSq(other)
 	local x, y = self:getWorldLoc()
 	local tx, ty = other:getWorldLoc()
 	return distanceSq(x, y, tx, ty)
 end
 
-function Entity:distanceTo(tx, ty)
+function Unit:distanceTo(tx, ty)
 	local x, y = self:getWorldLoc()
 	return distance(x, y, tx, ty)
 end
 
-function Entity:distanceSqTo(tx, ty)
+function Unit:distanceSqTo(tx, ty)
 	local x, y = self:getWorldLoc()
 	return distanceSq(x, y, tx, ty)
 end
 
-function Entity:applyDamage(value, source)
+function Unit:applyDamage(value, source)
 	if self.hp > 0 then
 		self.hp = self.hp - value
 		if self.hp <= 0 then
@@ -581,7 +581,7 @@ function Entity:applyDamage(value, source)
 	end
 end
 
-function Entity:onExplode()
+function Unit:onExplode()
 	if self.explodeGfx then
 		local explode = Sprite.new(self.explodeGfx)
 		self._body:add(explode)
@@ -593,4 +593,4 @@ function Entity:onExplode()
 	end
 end
 
-return Entity
+return Unit
