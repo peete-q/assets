@@ -97,14 +97,22 @@ end
 
 local aiInfo = {
 	loopBegin = 30,
-	[1] = {props = aiProps, nb = 2},
-	[30] = {props = aiProps, nb = 3},
-	[60] = {props = aiProps, nb = 5},
+	[1] = {props, 1, 3},
+	[30] = {props, 2, 3},
+	[60] = {props, 3, 5},
 }
 
 function Scene:loadAI(aiInfo)
 	self._AI = aiInfo
 end
+
+local playerAI = {
+	{
+		time = 30,
+		crystal = 30,
+		units = {},
+	},
+}
 
 function Scene:loadPlayerAI()
 end
@@ -116,8 +124,8 @@ function Scene:simulateAI(ticks)
 	end
 	local ai = self._AI[index]
 	if ai then
-		for i = 1, ai.nb do
-			self:spawnUnit(ai.props, Unit.FORCE_ENEMY, self._enemyY)
+		for i = 1, math.random(ai[2], ai[3]) do
+			self:spawnUnit(ai[1], Unit.FORCE_ENEMY, self._enemyY)
 		end
 	end
 end
@@ -241,6 +249,24 @@ function Scene:getRandomUnit(force, x, y, r, exclusion)
 	if #units > 0 then
 		return units[math.random(#units)]
 	end
+end
+
+function Scene:getBestTarget(force, r)
+	local n = 0
+	local u
+	for k, v in pairs(self._units) do
+		local i = 0
+		for k, v2 in pairs(self._units) do
+			if v:distance(v2) < r then
+				i = i + 1
+			end
+		end
+		if i > n then
+			n = i
+			u = v
+		end
+	end
+	return u
 end
 
 return Scene

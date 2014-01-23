@@ -42,14 +42,14 @@ local playerProps = {
 	movable = false,
 	attackPower = 1,
 	shots = 1,
-	bullet = {bombRun = Bullet.bombEvent.diffuse, bombCmd = {{}, 300, 3}},
+	bullet = {bombRun = Bullet.bombEvent.spread, bombCmd = {{}, 300, 3}},
 }
 
 local aiInfo = {
 	loopBegin = 30,
-	[1] = {props = aiProps, nb = 2},
-	[30] = {props = aiProps, nb = 3},
-	[60] = {props = aiProps, nb = 5},
+	[1] = {aiProps, 1, 3},
+	[30] = {aiProps, 2, 3},
+	[60] = {aiProps, 3, 5},
 }
 -- scene:loadAI(aiInfo)
 

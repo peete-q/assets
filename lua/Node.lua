@@ -94,7 +94,7 @@ local function Node_destroy(self)
 end
 
 function Node.new(o)
-	assert(type(o) == "userdata" and getmetatable(o) ~= nil, "Improper use of Node_new")
+	assert(type(o) == "userdata" and getmetatable(o) ~= nil, "Improper use of Node.new")
 	o._olderPrimDestroy = o.destroy
 	o.destroy = Node_destroy
 	o.add = Node_add

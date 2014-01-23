@@ -47,7 +47,7 @@ Bullet.bombEvent = {
 		end
 	end,
 	
-	diffuse = function(scene, x, y, power, enemy, target, props, range, count)
+	spread = function(scene, x, y, power, enemy, target, props, range, count)
 		local exclusion = {[target] = target}
 		local units = scene:getUnitsInRound(enemy, x, y, range, execlusion)
 		for i = #units, 1, -1 do
