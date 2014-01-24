@@ -6,9 +6,8 @@ function printf ( ... )
 	return io.stdout:write ( string.format ( ... ))
 end 
 
-MOAISim.openWindow ( "test", 320, 240 )
-
-W, H = 320, 240
+W, H = 600, 400
+MOAISim.openWindow ( "test", W, H)
 viewport = MOAIViewport.new ()
 viewport:setSize ( W, H )
 viewport:setScale ( W, H )
@@ -32,17 +31,18 @@ local timer = require "timer"
 scene = Scene.new(W, H, layer)
 
 local aiProps = {
-	bodyGfx="bg.png",
+	bodyGfx="icon-earth.png",
 	attackRange = 10,
 	movable = false,
 }
 
 local playerProps = {
-	bodyGfx="bg.png",
+	bodyGfx="icon-earth.png",
 	movable = false,
-	attackPower = 1,
+	attackPower = 100,
 	shots = 1,
-	bullet = {bombRun = Bullet.bombEvent.spread, bombCmd = {{}, 300, 3}},
+	attackRange = 200,
+	bullet = {bombRun = Bullet.bombEvent.spread, bombCmd = {{}, W, 3}},
 }
 
 local aiInfo = {
@@ -76,7 +76,7 @@ function clickCallbackR(down)
 		for i = 1, 1 do
 			local e = scene:newUnit(aiProps, Unit.FORCE_ENEMY, X, Y)
 			e:setWorldLoc(X, Y)
-			p._ticks = scene.ticks - 20
+			-- p._ticks = scene.ticks - 20
 			-- e:move()
 		end
 	end

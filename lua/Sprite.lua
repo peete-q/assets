@@ -91,7 +91,7 @@ local function Sprite_playAnim(self, animName, callback, looping)
 		self:remove(self._animProp)
 		self._animProp = nil
 	end
-	if looping == true or callback == nil then
+	if not looping and not callback then
 		callback = Sprite_destroy
 	end
 	if not animName or not self._deck or not self._deck._animCurves then
@@ -157,7 +157,7 @@ local function Sprite_playAnim(self, animName, callback, looping)
 	if looping == true then
 		anim:setMode(MOAITimer.LOOP)
 	else
-		anim:setListener(MOAITimer.EVENT_TIMER_LOOP, function()
+		anim:setListener(MOAITimer.EVENT_STOP, function()
 			callback(self)
 		end)
 	end

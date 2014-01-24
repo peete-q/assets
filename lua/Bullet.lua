@@ -14,9 +14,9 @@ local _defaultProps = {
 	bombRun = nil,
 	bombCmd = nil,
 	
-	bodyGfx = "bg.png?scl=0.1",
+	bodyGfx = "alienAntiCapital01WeaponBasic.atlas.png?play=projectile",
 	propellerGfx = nil,
-	bombGfx = nil,
+	bombGfx = "alienSpitterWeaponBasic.atlas.png?playOnce=projectile",
 	bombSfx = nil,
 }
 
@@ -36,7 +36,7 @@ end
 
 Bullet.bombEvent = {
 	chain = function(scene, x, y, power, enemy, target, props, range, count)
-		local exclusion = {[target] = target}
+		local exclusion = {[target] = true}
 		local u = scene:getRandomUnit(enemy, x, y, range, exclusion)
 		if u then
 			local b = Bullet.fireLocked(props, scene, power, enemy, x, y, u)
@@ -48,8 +48,8 @@ Bullet.bombEvent = {
 	end,
 	
 	spread = function(scene, x, y, power, enemy, target, props, range, count)
-		local exclusion = {[target] = target}
-		local units = scene:getUnitsInRound(enemy, x, y, range, execlusion)
+		local exclusion = {[target] = true}
+		local units = scene:getUnitsInRound(enemy, x, y, range, exclusion)
 		for i = #units, 1, -1 do
 			if math.random(i) <= count then
 				Bullet.fireLocked(props, scene, power, enemy, x, y, units[i])
@@ -122,6 +122,7 @@ function Bullet.update(self)
 	local dist = distance(x, y, tx, ty)
 	if dist < self._target.bodySize then
 		self:bomb(self._target)
+		self._bombed = true
 		return
 	end
 	if self._tx and self._ty and distance(self._tx, self._ty, tx, ty) < _LOCK_DIST then
