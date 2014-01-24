@@ -219,6 +219,14 @@ function Unit:getWorldLoc()
 	return self._body:getLoc()
 end
 
+function Unit.setDir(self, rot)
+	self._body:setRot(rot)
+end
+
+function Unit.getDir(self)
+	return self._body:getRot()
+end
+
 function Unit:moveTo(x, y, speed)
 	self:stop()
 	local sx, sy = self:getWorldLoc()

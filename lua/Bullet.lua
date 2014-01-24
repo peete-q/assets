@@ -5,6 +5,7 @@ local Sprite = require "Sprite"
 
 local distance = math2d.distance
 local distanceSq = math2d.distanceSq
+local normalize = math2d.normalize
 
 local _defaultProps = {
 	moveSpeed = 0.01,
@@ -14,7 +15,7 @@ local _defaultProps = {
 	bombRun = nil,
 	bombCmd = nil,
 	
-	bodyGfx = "alienAntiCapital01WeaponBasic.atlas.png?play=projectile",
+	bodyGfx = "alienAntiCapital01WeaponBasic.atlas.png?play=projectile&rot=90",
 	propellerGfx = nil,
 	bombGfx = "alienSpitterWeaponBasic.atlas.png?playOnce=projectile",
 	bombSfx = nil,
@@ -109,6 +110,14 @@ function Bullet.setWorldLoc(self, x, y)
 	return self._body:setLoc(x, y)
 end
 
+function Bullet.setDir(self, rot)
+	self._body:setRot(rot)
+end
+
+function Bullet.getDir(self)
+	return self._body:getRot()
+end
+
 function Bullet.update(self)
 	if self._bombed then
 		return
@@ -128,6 +137,8 @@ function Bullet.update(self)
 	if self._tx and self._ty and distance(self._tx, self._ty, tx, ty) < _LOCK_DIST then
 		return
 	end
+	local x, y = self:getWorldLoc()
+	self:setDir(math2d.dir(x - tx, y - ty))
 	self._tx = tx
 	self._ty = ty
 	if self._easeDriver then
