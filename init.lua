@@ -13,13 +13,13 @@ end
 function MOAIEnvironment.getOSBrand()
 	return MOAIEnvironment.osBrand
 end
-	
+
 function MOAISim.getDeviceSize()
-	return 1280, 720
+	return 960, 640
 end
 
 function MOAIEnvironment.getAppID()
-	return MOAIEnvironment.appID or "appIP"
+	return "myGame"
 end
 
 function MOAIEnvironment.getDocumentDirectory()
@@ -60,24 +60,26 @@ function MOAIFont.new()
 	return vb
 end
 
-function xprint(tb, name)
-	name = name or ""
-	print ("--------------"..name.."--------------")
-	if type(tb) ~= "table" then
-		print(tb)
-		return
-	end
-	for k, v in pairs(tb) do
-		print(k, v)
-	end
-end
-
 function print(...)
-	local arg = {...}
-	local s = tostring(arg[1])
-	for i = 2, #arg do
-		s = s.." "..tostring(arg[i])
+	local s = ""
+	for k, v in ipairs{...} do
+		s = s..tostring(v).." "
 	end
 	MOAILogMgr.log(s.."\n")
 end
 
+function printx(o)
+	if type(o) ~= "table" then
+		print(o)
+		return
+	end
+	for k, v in pairs(o) do
+		print(k, v)
+	end
+end
+
+function printf(...)
+	print(string.format ( ... ))
+end
+
+undefined = false

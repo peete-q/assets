@@ -1,6 +1,7 @@
 
 local math2d = require "math2d"
 local resource = require "resource"
+local Node = require "Node"
 local Sprite = require "Sprite"
 local Bullet = require "Bullet"
 local Factor = require "Factor"
@@ -21,8 +22,6 @@ local Unit = {
 	FORCE_ENEMY = 2,
 	FORCE_ALL = 3,
 }
-
-undefined = false
 
 local _LOCK_DIST = 10
 local _RECOVER_TICKS = 10
@@ -101,10 +100,13 @@ function Unit.new(props, force)
 	self._runState = self.stateIdle
 	self._fireRange = self.attackRange
 	self._force.enemy = self:getEnemy()
-	self._body = Sprite.new(props.bodyGfx)
+	
+	local body = Sprite.new(self.bodyGfx)
+	self._root = Node.new(MOAIProp2D.new())
+	self._root:add(body)
 	if props.propellerGfx then
 		self._propeller = Sprite.new(props.propellerGfx)
-		self._body:add(self._propeller)
+		self._root:add(self._propeller)
 	end
 	if props.muzzleGfx then
 		self._muzzle = Sprite.new(props.muzzleGfx)
@@ -113,8 +115,8 @@ function Unit.new(props, force)
 	self._drifting:run(function()
 		while true do
 			local n = math.random(90, 100) / 100
-			MOAIThread.blockOnAction(self._body:seekScl(n, n, n, MOAIEaseType.SOFT_SMOOTH))
-			MOAIThread.blockOnAction(self._body:seekScl(1, 1, n, MOAIEaseType.SOFT_SMOOTH))
+			MOAIThread.blockOnAction(self._root:seekScl(n, n, n, MOAIEaseType.SOFT_SMOOTH))
+			MOAIThread.blockOnAction(self._root:seekScl(1, 1, n, MOAIEaseType.SOFT_SMOOTH))
 		end
 	end)
 	return self
@@ -123,9 +125,9 @@ end
 function Unit:destroy()
 	self._scene:remove(self)
 	
-	if self._body then
-		self._body:destroy()
-		self._body = nil
+	if self._root then
+		self._root:destroy()
+		self._root = nil
 	end
 	
 	if self._motionDriver then
@@ -161,7 +163,7 @@ function Unit:loadDB(db)
 end
 
 function Unit:setPriority(value)
-	self._body:setPriority(value)
+	self._root:setPriority(value)
 end
 
 function Unit:addAttackSpeedFactor(value, duration)
@@ -200,31 +202,31 @@ function Unit:getAttackPower()
 end
 
 function Unit:setLayer(layer)
-	self._body:setLayer(layer)
+	self._root:setLayer(layer)
 end
 
 function Unit:add(fx)
-	self._body:add(fx)
+	self._root:add(fx)
 end
 
 function Unit:remove(fx)
-	self._body:remove(fx)
+	self._root:remove(fx)
 end
 
 function Unit:setWorldLoc(x, y)
-	self._body:setLoc(x, y)
+	self._root:setLoc(x, y)
 end
 
 function Unit:getWorldLoc()
-	return self._body:getLoc()
+	return self._root:getLoc()
 end
 
 function Unit.setDir(self, rot)
-	self._body:setRot(rot)
+	self._root:setRot(rot)
 end
 
 function Unit.getDir(self)
-	return self._body:getRot()
+	return self._root:getRot()
 end
 
 function Unit:moveTo(x, y, speed)
@@ -232,7 +234,7 @@ function Unit:moveTo(x, y, speed)
 	local sx, sy = self:getWorldLoc()
 	local dist = distance(sx, sy, x, y)
 	self._moveSpeed = speed or self:getMoveSpeed()
-	self._motionDriver = self._body:seekLoc(x, y, self._moveSpeed * dist, MOAIEaseType.LINEAR)
+	self._motionDriver = self._root:seekLoc(x, y, self._moveSpeed * dist, MOAIEaseType.LINEAR)
 	self._dx = x
 	self._dy = y
 	self:_eraseRigid()
@@ -266,7 +268,7 @@ function Unit:_insertRigid()
 	self._rigid = world:addBody(MOAIBox2DBody.DYNAMIC)
 	local x, y = self:getWorldLoc()
 	self._rigid:addCircle(x, y, self.bodySize)
-	self._body:setParent(self._rigid)
+	self._root:setParent(self._rigid)
 end
 
 function Unit:_eraseRigid()
@@ -451,6 +453,8 @@ function Unit:attack(target)
 end
 
 function Unit:fire(target)
+	self:log("Unit:fire", self, target)
+	target._attacker = self
 	self:stop()
 	local targets = self:getAttackTargets()
 	local x, y = self:getWorldLoc()
@@ -592,8 +596,8 @@ end
 function Unit:onExplode()
 	if self.explodeGfx then
 		local explode = Sprite.new(self.explodeGfx)
-		self._body:add(explode)
-		self._body.onDestroy = function()
+		self._root:add(explode)
+		self._root.onDestroy = function()
 			self:destroy()
 		end
 	else

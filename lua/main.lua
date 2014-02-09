@@ -1,27 +1,67 @@
-package.path = "../?.lua;?.lua"
-require "init"
 require "constants"
+local device = require "device"
+local util = require "util"
+local ui = require "ui.base"
+local actionset = require "actionset"
+local resource = require "resource"
+local memory = require "memory"
+local timerutil = require "timerutil"
+local appcache = require "appcache"
+local keys = require "keys"
+local bucket = resource.bucket
+local update = require "update"
+local environment = require "environment"
+local qlog = require "qlog"
+local randutil = require "randutil"
+randutil.randomseed()
+if os.getenv("NO_SOUND") then
+  MOAIUntzSystem = nil
+end
+local gettext = require("gettext.gettext")
+if os.getenv("I18N_TEST") then
+  gettext.setlang("*")
+else
+  gettext.setlang(PREFERRED_LANGUAGES, "mo/?.mo")
+end
+MOAISim.openWindow(_("SBC"), device.width, device.height)
+ui.init()
+camera = MOAICamera2D.new()
+camera:setLoc(0, 0)
+camera:setScl(WORLD_SCL, WORLD_SCL)
+stageWidth = device.width
+stageHeight = device.height
+qlog.logger().debug(string.format("Stage: %d x %d", stageWidth, stageHeight))
+viewport = MOAIViewport.new()
+viewport:setScale(stageWidth, stageHeight)
+viewport:setSize(0, 0, device.width, device.height)
+mainLayer = ui.Layer.new(viewport)
+mainLayer:setCamera(camera)
+mainLayer._uiname = "mainLayer"
 
-function printf ( ... )
-	return io.stdout:write ( string.format ( ... ))
-end 
+local mainBg = ui.Image.new("starfield-neptune.jpg")
+local mainBtn = ui.Button.new("tile.png")
+local mainBar = ui.Image.new("large.png")
+mainBtn.onClick = function() mainBtn:moveRot(360 * 3, 1) end
 
-W, H = 600, 400
-MOAISim.openWindow ( "test", W, H)
-viewport = MOAIViewport.new ()
-viewport:setSize ( W, H )
-viewport:setScale ( W, H )
+mainLayer:add(mainBg)
+mainLayer:add(mainBtn)
+mainLayer:add(mainBar)
 
-layer = MOAILayer2D.new ()
-layer:setViewport ( viewport )
-MOAISim.pushRenderPass ( layer )
+local avatarBar = ui.Image.new("avatar-bar.png")
+mainLayer:add(avatarBar)
+local w, h = avatarBar:getSize()
+avatarBar:setAnchor("TL", w / 2, -h / 2)
 
--- set up the world and start its simulation
-world = MOAIBox2DWorld.new ()
--- world:setGravity ( 0, -10 )
-world:setUnitsToMeters ( 1 )
-world:start ()
-layer:setBox2DWorld ( world )
+local avatar = ui.Image.new("avatar.png")
+mainLayer:add(avatar)
+local w, h = avatar:getSize()
+avatar:setAnchor("TL", w / 2, -h / 2)
+
+mainBtn:setAnchor("BR", -40, 40)
+mainBar:setAnchor("BR", -400, 40)
+
+W, H = device.width, device.height
+layer = mainLayer
 
 local Scene = require "Scene"
 local Unit = require "Unit"
@@ -76,7 +116,7 @@ function clickCallbackR(down)
 		for i = 1, 1 do
 			local e = scene:newUnit(aiProps, Unit.FORCE_ENEMY, X, Y)
 			e:setWorldLoc(X, Y)
-			-- p._ticks = scene.ticks - 20
+			print(X, Y)
 			-- e:move()
 		end
 	end
@@ -84,9 +124,9 @@ end
 
 if MOAIInputMgr.device.pointer then
 	-- mouse input
-	MOAIInputMgr.device.pointer:setCallback(pointerCallback)
-	MOAIInputMgr.device.mouseLeft:setCallback(clickCallbackL)
-	MOAIInputMgr.device.mouseRight:setCallback(clickCallbackR)
+	-- MOAIInputMgr.device.pointer:setCallback(pointerCallback)
+	-- MOAIInputMgr.device.mouseLeft:setCallback(clickCallbackL)
+	-- MOAIInputMgr.device.mouseRight:setCallback(clickCallbackR)
 else
 	-- touch input
 	MOAIInputMgr.device.touch:setCallback (function(eventType, idx, x, y, tapCount)

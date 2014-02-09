@@ -1,7 +1,7 @@
 package.path = "?.lua;../hbs-tools/lua-modules/lib/?.lua;../lua-modules/lib/?.lua;../modules/lib/?.lua"
 local device = require("device")
-ACU_BUNDLE_ID = "com.6waves.strikefleetomega"
-ANDROID_PRODUCT_ID = "com.sixwaves.strikefleetomega"
+ACU_BUNDLE_ID = "com.myGame.bundleId"
+ANDROID_PRODUCT_ID = "com.myGame.productId"
 GOOGLE_STORE_PREFIX = "gp"
 AMAZON_STORE_PREFIX = "as"
 VERSION = MOAIEnvironment.getAppVersion()

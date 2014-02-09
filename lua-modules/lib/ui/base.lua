@@ -5,7 +5,6 @@ local device = require("device")
 local memory = require("memory")
 local color = require("color")
 local url = require("url")
-local MOAITransform = MOAITransform
 local MOAITextBox = MOAITextBox
 local MOAIFont = MOAIFont
 local MOAIProp2D = MOAIProp2D
@@ -47,7 +46,7 @@ local tonumber = tonumber
 local tostring = tostring
 local print = print
 local string = string
-local printfln = util.printfln
+local printf = printf
 local getfenv = getfenv
 local resource = resource
 local device = device
@@ -61,7 +60,6 @@ local math_floor = math.floor
 local memory = memory
 local pcall = pcall
 local debug_ui = os.getenv("DEBUG_UI") or false
-local ui_scale = device.ui_scale
 module(...)
 local layers = {}
 local captureElement, focusElement, touchFilterCallback, defaultTouchCallback, defaultKeyCallback
@@ -70,8 +68,7 @@ local ui_TOUCH_MOVE = MOAITouchSensor.TOUCH_MOVE
 local ui_TOUCH_UP = MOAITouchSensor.TOUCH_UP
 local ui_TOUCH_CANCEL = MOAITouchSensor.TOUCH_CANCEL
 local ui_TOUCH_ONE = 0
-local ui_REF_WIDTH = 1024
-local ui_REF_HEIGHT = 614
+
 local ui_getLayoutSize = function(self)
 	local uiparent = self
 	while uiparent ~= nil do
@@ -81,12 +78,14 @@ local ui_getLayoutSize = function(self)
 		uiparent = uiparent._uiparent
 	end
 end
+
 local ui_fireEvent = function(self, eventName, ...)
 	local fn = self[eventName]
 	if fn ~= nil then
 		fn(self, ...)
 	end
 end
+
 local function ui_setLayer(self, layer)
 	if self._uilayer == layer then
 		return
@@ -118,11 +117,13 @@ local function ui_setLayer(self, layer)
 		ui_fireEvent(self, "onLayerChanged", nil)
 	end
 end
+
 local function ui_unparentChild(child)
 	ui_setLayer(child, nil)
 	child._uiparent = nil
 	child:setParent(nil)
 end
+
 local function ui_add(self, child)
 	assert(child ~= nil, "Child must not be null")
 	assert(child._uilayer == nil or child._uilayer ~= child, "Nested viewports not supported")
@@ -149,6 +150,7 @@ local function ui_add(self, child)
 	end
 	return child
 end
+
 local function ui_removeAll(self, fullClear)
 	if self.elements ~= nil then
 		for k, v in pairs(self.elements) do
@@ -171,6 +173,7 @@ local function ui_removeAll(self, fullClear)
 		self._pagemap = nil
 	end
 end
+
 local function ui_remove(self, child, fullClear)
 	if child == nil then
 		if self._uiparent ~= nil then
@@ -198,48 +201,52 @@ local function ui_remove(self, child, fullClear)
 	end
 	return false
 end
-local ui_setAnchor = function(self, dir)
+
+local function ui_setAnchor(self, dir, x, y)
 	self._uianchor = dir
-	if dir == nil then
-		self:setLoc(0, 0)
+	local uilayoutsize = self._uilayer:getLayoutSize()
+	local diffX = math_floor(uilayoutsize.width / 2)
+	local diffY = math_floor(uilayoutsize.height / 2)
+	if dir:find("T") then
+		y = y + diffY
+	elseif dir:find("B") then
+		y = y - diffY
 	end
+	if dir:find("L") then
+		x = x - diffX
+	elseif dir:find("R") then
+		x = x + diffX
+	end
+	self:setLoc(x, y)
 end
+
 local function ui_setLayoutSize(self, w, h)
-	if w == nil or h == nil then
-		error("Bad layout size")
-	end
-	local uilayoutsize = self._uilayoutsize
-	if uilayoutsize ~= nil and (uilayoutsize.width ~= w or uilayoutsize.height ~= h) then
+	assert(not w or not nil, "Bad layout size")
+	local uilayoutsize = self._uilayoutsize or {width = 0, height = 0}
+	if self.elements and (uilayoutsize.width ~= w or uilayoutsize.height ~= h) then
 		local diffX = math_floor((w - uilayoutsize.width) / 2)
 		local diffY = math_floor((h - uilayoutsize.height) / 2)
-		for i, e in pairs(self.e) do
+		for i, e in pairs(self.elements) do
 			local uianchor = e._uianchor
 			if uianchor ~= nil then
 				local x, y = e:getLoc()
-				if uianchor == "n" then
-					e:setLoc(x, y + diffY)
-				elseif uianchor == "e" then
-					e:setLoc(x + diffX, y)
-				elseif uianchor == "s" then
-					e:setLoc(x, y - diffY)
-				elseif uianchor == "w" then
-					e:setLoc(x - diffX, y)
-				elseif uianchor == "nw" then
-					e:setLoc(x - diffX, y + diffY)
-				elseif uianchor == "ne" then
-					e:setLoc(x + diffX, y + diffY)
-				elseif uianchor == "sw" then
-					e:setLoc(x - diffX, y - diffY)
-				elseif uianchor == "se" then
-					e:setLoc(x + diffX, y - diffY)
-				else
-					error("Incompatible anchor")
+				if uianchor:find("T") then
+					y = y + diffY
+				elseif uianchor:find("B") then
+					y = y - diffY
 				end
+				if uianchor:find("L") then
+					x = x - diffX
+				elseif uianchor:find("R") then
+					x = x + diffX
+				end
+				e:setLoc(x, y)
 			end
 		end
 	end
 	self._uilayoutsize = {width = w, height = h}
 end
+
 local function ui_new(o)
 	assert(type(o) == "userdata" and getmetatable(o) ~= nil, "Improper use of ui_new")
 	o.add = ui_add
@@ -249,6 +256,7 @@ local function ui_new(o)
 	o.setAnchor = ui_setAnchor
 	return o
 end
+
 local function ui_parseShader(colorstr)
 	if colorstr ~= nil and type(colorstr) == "string" then
 		return resource.shader(colorstr)
@@ -257,6 +265,7 @@ local function ui_parseShader(colorstr)
 	end
 	return nil
 end
+
 local function ui_tostring(o)
 	local t = {}
 	table_insert(t, tostring(o))
@@ -282,6 +291,8 @@ local function ui_tostring(o)
 	end
 	return table_concat(t, "")
 end
+
+
 local touchEventName = {
 	[ui_TOUCH_DOWN] = "TOUCH_DOWN",
 	[ui_TOUCH_MOVE] = "TOUCH_MOVE",
@@ -309,30 +320,32 @@ local function _dispatchTouch(fn, elem, eventType, touchIdx, x, y, tapCount)
 		error("invalid touch handler: " .. tostring(fn))
 	end
 end
+
+
 local filterFence = false
 local touchLastX, touchLastY
 local function onTouch(eventType, touchIdx, x, y, tapCount)
 	local wx, wy
 	if debug_ui then
-		printfln("%s[%s]: %s,%s", tostring(touchEventName[eventType] or tostring(eventType)), tostring(touchIdx), tostring(x), tostring(y))
+		printf("%s[%s]: %s,%s", tostring(touchEventName[eventType] or tostring(eventType)), tostring(touchIdx), tostring(x), tostring(y))
 	end
 	local handled = false
 	if touchFilterCallback ~= nil then
 		if filterFence then
 			if debug_ui then
-				printfln("\tskipping recursive filter")
+				printf("\tskipping recursive filter")
 			end
 		else
 			filterFence = true
 			if debug_ui then
-				printfln("\tcalling filter: " .. tostring(touchFilterCallback))
+				printf("\tcalling filter: " .. tostring(touchFilterCallback))
 			end
 			local success, result = pcall(touchFilterCallback, eventType, touchIdx, x, y, tapCount)
 			filterFence = false
 			if success then
 				if result then
 					if debug_ui then
-						printfln("\thandled: " .. tostring(result))
+						printf("\thandled: " .. tostring(result))
 					end
 					return
 				end
@@ -375,105 +388,102 @@ local function onTouch(eventType, touchIdx, x, y, tapCount)
 				if debug_ui then
 					print("\tcapture elem: " .. ui_tostring(elem))
 				end
-				--repeat
-					while elem ~= nil do
-						local fn = elem.handleTouch
-						if fn ~= nil then
-							local mx, my = x, y
-							if x ~= nil and y ~= nil then
-								local wx, wy = elem._uilayer:wndToWorld(x, y)
-								mx, my = elem:worldToModel(wx, wy)
-							end
-							local success, result = pcall(_dispatchTouch, fn, elem, eventType, touchIdx, mx, my, tapCount)
-							if success then
-								if result then
-									if debug_ui then
-										print("\t\thandled = true")
-									end
-									handled = true
-								else--[[
-									else
-										print("ERROR: " .. tostring(result))
-										return nil, result
-									end
-									elem = elem._uiparent
-									print("\t\tparent: " .. ui_tostring(elem))
-									else
-										print("warning: Clearing captured element because it is offscreen: " .. ui_tostring(elem))
-										captureElement = nil
-									end
-									else
-										for i = #layers, 1, -1 do
-											local layer = layers[i]
-											if x ~= nil and y ~= nil then
-												wx, wy = layer:wndToWorld(x, y)
-											end
-											if debug_ui then
-												print("\tlayer " .. ui_tostring(layer))
-											end
-											local partition = layer:getPartition()
-											if partition then
-												local elemList = partition:propListForPoint(wx, wy)
-												if elemList ~= nil then
-													if debug_ui then
-														print("\telemlist[" .. tostring(partition) .. "] = " .. util.tostr(elemList))
-													end
-													while not handled and #elemList > 0 do
-														local lastPriority, fn, fnElemIdx, fnElem
-														for i = #elemList, 1, -1 do
-															local elem = elemList[i]
-															local priority = elem:getPriority()
-															if lastPriority == nil or lastPriority <= priority then
-																if debug_ui then
-																	print("\t\telem " .. ui_tostring(elem))
-																end
-																while elem ~= nil do
-																	local touch = elem.handleTouch
-																	if touch ~= nil then
-																		lastPriority = priority
-																		fn = touch
-																		fnElemIdx = i
-																		fnElem = elem
-																		break
-																	end
-																	elem = elem._uiparent
-																	if debug_ui then
-																		print("\t\t\tparent " .. ui_tostring(elem))
-																	end
-																end
-															end
-														end
-														if fn == nil then
-															break
-														end
-														local mx, my = fnElem:worldToModel(wx, wy)
-														local success, result = pcall(_dispatchTouch, fn, fnElem, eventType, touchIdx, mx, my, tapCount)
-														if success then
-															if result then
-																handled = true
-																if debug_ui then
-																	print("\t\t\thandled: " .. tostring(handled))
-																end
-															else
-																table_remove(elemList, fnElemIdx)
-															end
-														else
-															print("ERROR: " .. tostring(result))
-															return nil, result
-														end
-													end
-												end
-											end
-											if handled then
-												break
-											end
-										end
-									end]]
+				while elem ~= nil do
+					local fn = elem.handleTouch
+					if fn ~= nil then
+						local mx, my = x, y
+						if x ~= nil and y ~= nil then
+							local wx, wy = elem._uilayer:wndToWorld(x, y)
+							mx, my = elem:worldToModel(wx, wy)
+						end
+						local success, result = pcall(_dispatchTouch, fn, elem, eventType, touchIdx, mx, my, tapCount)
+						if success then
+							if result then
+								if debug_ui then
+									print("\t\thandled = true")
 								end
-				end
+								handled = true
+								break
+							end
+						else
+							print("ERROR: " .. tostring(result))
+							return nil, result
 						end
 					end
-				--until debug_ui
+					
+					elem = elem._uiparent
+					if debug_ui then
+						print("\t\tparent: " .. ui_tostring(elem))
+					end
+						-- print("warning: Clearing captured element because it is offscreen: " .. ui_tostring(elem))
+						-- captureElement = nil
+				end
+			end
+		else
+			for i = #layers, 1, -1 do
+				local layer = layers[i]
+				if x ~= nil and y ~= nil then
+					wx, wy = layer:wndToWorld(x, y)
+				end
+				if debug_ui then
+					print("\tlayer " .. ui_tostring(layer))
+				end
+				local partition = layer:getPartition()
+				if partition then
+					local elemList = partition:propListForPoint(wx, wy)
+					if elemList ~= nil then
+						if debug_ui then
+							print("\telemlist[" .. tostring(partition) .. "] = " .. util.tostr(elemList))
+						end
+						while not handled and #elemList > 0 do
+							local lastPriority, fn, fnElemIdx, fnElem
+							for i = #elemList, 1, -1 do
+								local elem = elemList[i]
+								local priority = elem:getPriority()
+								if lastPriority == nil or lastPriority <= priority then
+									if debug_ui then
+										print("\t\telem " .. ui_tostring(elem))
+									end
+									while elem ~= nil do
+										local touch = elem.handleTouch
+										if touch ~= nil then
+											lastPriority = priority
+											fn = touch
+											fnElemIdx = i
+											fnElem = elem
+											break
+										end
+										elem = elem._uiparent
+										if debug_ui then
+											print("\t\t\tparent " .. ui_tostring(elem))
+										end
+									end
+								end
+							end
+							if fn == nil then
+								break
+							end
+							local mx, my = fnElem:worldToModel(wx, wy)
+							local success, result = pcall(_dispatchTouch, fn, fnElem, eventType, touchIdx, mx, my, tapCount)
+							if success then
+								if result then
+									handled = true
+									if debug_ui then
+										print("\t\t\thandled: " .. tostring(handled))
+									end
+								else
+									table_remove(elemList, fnElemIdx)
+								end
+							else
+								print("ERROR: " .. tostring(result))
+								return nil, result
+							end
+						end
+					end
+				end
+				if handled then
+					break
+				end
 			end
 		end
 		if not handled and defaultTouchCallback ~= nil then
@@ -482,6 +492,7 @@ local function onTouch(eventType, touchIdx, x, y, tapCount)
 	end
 	return handled
 end
+
 local mouseX = 0
 local mouseY = 0
 local mouseIsDown = false
@@ -494,6 +505,7 @@ local function onMouseUpdate(x, y)
 		onTouch(ui_TOUCH_MOVE, ui_TOUCH_ONE, mouseX, mouseY, 1)
 	end
 end
+
 local function onMouseLeft(down)
 	mouseIsDown = down
 	if down then
@@ -512,6 +524,7 @@ local function onMouseLeft(down)
 		onTouch(ui_TOUCH_UP, ui_TOUCH_ONE, mouseX, mouseY, mouseTapCount)
 	end
 end
+
 KEY_BACKSPACE = 8
 KEY_RETURN = 13
 local function onKeyboard(key, down)
@@ -527,6 +540,7 @@ local function onKeyboard(key, down)
 	end
 	return handled
 end
+
 function init(defaultInputHandler, defaultKeyHandler)
 	defaultTouchCallback = defaultInputHandler
 	defaultKeyCallback = defaultKeyHandler
@@ -545,6 +559,7 @@ function init(defaultInputHandler, defaultKeyHandler)
 	layers = {}
 	captureElement = nil
 end
+
 function inputShutdown()
 	defaultTouchCallback = nil
 	defaultKeyCallback = nil
@@ -561,6 +576,7 @@ function inputShutdown()
 		MOAIInputMgr.device.keyboard:setCallback(nil)
 	end
 end
+
 function shutdown()
 	inputShutdown()
 	for i = 1, #layers do
@@ -568,18 +584,23 @@ function shutdown()
 	end
 	layers = {}
 end
+
 function injectTouch(eventType, touchIdx, x, y, tapCount)
 	return onTouch(eventType, touchIdx, x, y, tapCount)
 end
+
 function setTouchFilter(touchFilter)
 	touchFilterCallback = touchFilter
 end
+
 function setDefaultTouchCallback(defaultInputHandler)
 	defaultTouchCallback = defaultInputHandler
 end
+
 function setDefaultKeyCallback(defaultKeyHandler)
 	defaultKeyCallback = defaultKeyHandler
 end
+
 function hierarchystring(elem)
 	local t = {}
 	local e = elem
@@ -591,23 +612,28 @@ function hierarchystring(elem)
 
 	]])
 end
+
 function dispatchTouch(e, eventType, touchIdx, x, y, tapCount)
 	local handler = e[TOUCH_HANDLER_MAPPING[eventType]]
 	if handler ~= nil then
 		return handler(e, touchIdx, x, y, tapCount)
 	end
 end
+
 function capture(e, ifEqualToE)
 	if captureElement == ifEqualToE or ifEqualToE == nil then
 		captureElement = e
 	end
 end
+
 function getCaptureElement()
 	return captureElement
 end
+
 function focus(e)
 	focusElement = e
 end
+
 function treeCheck(x, y, elem)
 	local layer = elem._uilayer
 	if layer == nil then
@@ -628,6 +654,7 @@ function treeCheck(x, y, elem)
 	end
 	return false
 end
+
 new = ui_new
 TOUCH_DOWN = ui_TOUCH_DOWN
 TOUCH_MOVE = ui_TOUCH_MOVE
@@ -638,24 +665,29 @@ DRAG_THRESHOLD = 8
 local function ui_get_moai_mt(o)
 	return getmetatable(getmetatable(o))
 end
+
 Layer = {}
 local function ui_Layer_clear(self)
 	ui_removeAll(self, true)
 	local mt = ui_get_moai_mt(self)
 	mt.clear(self)
 end
+
 local function ui_Layer_setViewport(self, vp)
 	self._uidata.viewport = vp
 	local mt = ui_get_moai_mt(self)
 	mt.setViewport(self, vp)
 end
+
 local ui_Layer_getViewport = function(self)
 	return self._uidata.viewport
 end
+
 local function ui_Layer_wndToWorld(self, x, y)
 	local wx, wy = self:wndToWorld(x, y)
-	return wx * ui_scale, wy * ui_scale
+	return wx, wy
 end
+
 function Layer.new(viewport, scale)
 	if viewport == nil or type(viewport) == "table" then
 		do
@@ -680,7 +712,7 @@ function Layer.new(viewport, scale)
 			viewport = MOAIViewport.new()
 			viewport:setSize(left, top, right, bottom)
 			if scale then
-				viewport:setScale((right - left) * device.ui_scale, (bottom - top) * device.ui_scale)
+				viewport:setScale(right - left, bottom - top)
 			else
 				viewport:setScale(0, 0)
 			end
@@ -698,17 +730,22 @@ function Layer.new(viewport, scale)
 	o.setViewport = ui_Layer_setViewport
 	o.getViewport = ui_Layer_getViewport
 	o.getWindowCoords = ui_Layer_wndToWorld
-	ui_setLayoutSize(o, ui_REF_WIDTH, math_floor(device.height / (device.width / ui_REF_WIDTH) + 0.5))
+	o.getLayoutSize = ui_getLayoutSize
+	o.setLayoutSize = ui_setLayoutSize
+	o:setLayoutSize(device.width, device.height)
 	table_insert(layers, o)
 	MOAISim.pushRenderPass(o)
 	return o
 end
+
 Group = {}
 function Group.new()
-	local o = ui_new(MOAITransform.new())
+	local o = ui_new(MOAILayer2D.new())
+	o.getLayoutSize = ui_getLayoutSize
 	o.setLayoutSize = ui_setLayoutSize
 	return o
 end
+
 TextBox = {}
 TextBox.LEFT = "left"
 TextBox.CENTER = "center"
@@ -718,6 +755,7 @@ local function TextBox_setColorVerPreMOAI1(self, color)
 		self._textbox:setShader(ui_parseShader(color))
 	end
 end
+
 local TextBox_seekColor = function(self, r, g, b, a, t, easetype)
 	local action, shadowAction
 	action = self._textbox:seekColor(r, g, b, a, t, easetype)
@@ -727,21 +765,25 @@ local TextBox_seekColor = function(self, r, g, b, a, t, easetype)
 	end
 	return action
 end
+
 local TextBox_setColor = function(self, r, g, b, a)
 	if self._shadow ~= nil then
 		self._shadow:setColor(0, 0, 0, 0.5 * (a or 1))
 	end
 	self._textbox:setColor(r, g, b, a)
 end
+
 local TextBox_getSize = function(self)
 	if not self or not self._width or not self._height then
 		return nil
 	end
 	return self._width, self._height
 end
+
 local TextBox_setShadowOffset = function(self, xOffset, yOffset)
 	self._shadow:setLoc(xOffset, yOffset)
 end
+
 local function TextBox_setString(self, str, recalcBounds)
 	self._textbox:setString(str)
 	if self._shadow ~= nil then
@@ -762,9 +804,11 @@ local function TextBox_setString(self, str, recalcBounds)
 		self._height = height
 	end
 end
+
 local TextBox_getStringBounds = function(self, index, size)
 	return self._textbox:getStringBounds(index, size)
 end
+
 function TextBox.new(str, font, color, justify, width, height, shadow)
 	local o = ui_new(MOAIProp2D.new())
 	local face, size
@@ -877,6 +921,7 @@ function TextBox.new(str, font, color, justify, width, height, shadow)
 	o.setShadowOffset = TextBox_setShadowOffset
 	return o
 end
+
 Image = {}
 local Image_getSize = function(self)
 	if not self or not self._deck or not self._deck.getSize then
@@ -884,6 +929,7 @@ local Image_getSize = function(self)
 	end
 	return self._deck:getSize(self.deckLayer)
 end
+
 local function Image_setImage(self, imageName)
 	local queryStr
 	imageName, queryStr = breakstr(imageName, "?")
@@ -919,6 +965,7 @@ local function Image_setImage(self, imageName)
 	end
 	self._deck = deck
 end
+
 function Image.new(imageName)
 	local o = ui_new(MOAIProp2D.new())
 	local deck
@@ -970,6 +1017,7 @@ function Image.new(imageName)
 	o.setImage = Image_setImage
 	return o
 end
+
 Anim = {}
 local Anim_defaultCallback = function(self)
 	if self._uiparent then
@@ -984,6 +1032,7 @@ local Anim_defaultCallback = function(self)
 		end
 	end
 end
+
 local function Anim_play(self, animName, callback, looping)
 	if self._anim ~= nil then
 		self._anim:stop()
@@ -1067,9 +1116,11 @@ local function Anim_play(self, animName, callback, looping)
 	self._anim = anim
 	return anim:start()
 end
+
 local function Anim_loop(self, animName)
 	return Anim_play(self, animName, nil, true)
 end
+
 local Anim_stop = function(self)
 	if self._anim ~= nil then
 		self._anim:stop()
@@ -1080,6 +1131,7 @@ local Anim_stop = function(self)
 		self._animProp = nil
 	end
 end
+
 function Anim.new(imageName)
 	local o = Image.new(imageName)
 	o.play = Anim_play
@@ -1087,6 +1139,7 @@ function Anim.new(imageName)
 	o.stop = Anim_stop
 	return o
 end
+
 PageView = {}
 local function PageView_showPage(self, page)
 	if self.currentPageName == page then
@@ -1103,6 +1156,7 @@ local function PageView_showPage(self, page)
 		end
 	end
 end
+
 local function PageView_setPage(self, page, child)
 	assert(page ~= nil, "PageView:setPage(page, child, page), page must not be nil")
 	if self.currentPageName == page then
@@ -1113,8 +1167,9 @@ local function PageView_setPage(self, page, child)
 		self:showPage(page)
 	end
 end
+
 function PageView.new(pages)
-	local o = ui_new(MOAITransform.new())
+	local o = ui_new(MOAILayer2D.new())
 	assert(pages == nil or type(pages) == "table", "pages must be a table or nil")
 	o._pagemap = {}
 	o.currentPageName = nil
@@ -1127,11 +1182,13 @@ function PageView.new(pages)
 	end
 	return o
 end
+
 Button = {}
 local function Button_handleTouch(self, eventType, touchIdx, x, y, tapCount)
 	if eventType == ui_TOUCH_UP then
 		capture(nil)
 		self._isdown = nil
+		self:onClick()
 	elseif eventType == ui_TOUCH_DOWN then
 		self:showPage("down")
 		self._isdown = true
@@ -1146,9 +1203,11 @@ local function Button_handleTouch(self, eventType, touchIdx, x, y, tapCount)
 	end
 	return true
 end
+
 local function defaultClickCallback(self, tapCount)
-	printfln("CLICK! x%d", tapCount)
+	printf("CLICK! x%d", tapCount)
 end
+
 local function _MakePage(imageOrPage)
 	if type(imageOrPage) == "string" then
 		return Image.new(imageOrPage)
@@ -1158,6 +1217,7 @@ local function _MakePage(imageOrPage)
 		error("Invalid page type: " .. type(imageOrPage))
 	end
 end
+
 function Button.new(up, down, label)
 	if label ~= nil then
 		error("Default button labels not supported yet")
@@ -1171,12 +1231,14 @@ function Button.new(up, down, label)
 	o.onClick = defaultClickCallback
 	return o
 end
+
 PickBox = {}
 local function PickBox_setColor(self, color)
 	if color ~= nil then
 		self:setShader(ui_parseShader(color))
 	end
 end
+
 local function PickBox_handleTouch(self, eventType, touchIdx, x, y, tapCount)
 	if eventType == ui_TOUCH_UP then
 		capture(nil)
@@ -1194,6 +1256,7 @@ local function PickBox_handleTouch(self, eventType, touchIdx, x, y, tapCount)
 	end
 	return true
 end
+
 function PickBox.new(width, height, colorstr)
 	local o = ui_new(MOAIProp2D.new())
 	if colorstr == nil then
@@ -1233,6 +1296,7 @@ function PickBox.new(width, height, colorstr)
 	o.onClick = defaultClickCallback
 	return o
 end
+
 ParticleSystem = {}
 function ParticleSystem.new(particleName)
 	local o
@@ -1291,6 +1355,7 @@ function ParticleSystem.new(particleName)
 	o.handleTouch = false
 	return o
 end
+
 function ParticleSystem:startSystem(noEmitters)
 	self:start()
 	if not noEmitters then
@@ -1299,26 +1364,31 @@ function ParticleSystem:startSystem(noEmitters)
 		end
 	end
 end
+
 function ParticleSystem:stopEmitters()
 	for k, v in pairs(self.emitters) do
 		v:stop()
 	end
 end
+
 function ParticleSystem:stopSystem()
 	self:stop()
 	self:stopEmitters()
 end
+
 function ParticleSystem:surgeSystem(val)
 	for k, v in pairs(self.emitters) do
 		v:surge(val)
 	end
 end
+
 function ParticleSystem:updateSystem()
 	self:forceUpdate()
 	for k, v in pairs(self.emitters) do
 		v:forceUpdate()
 	end
 end
+
 RadialImage = {}
 function RadialImage.new(imageName)
 	local self = ui_new(MOAIProp2D.new())
@@ -1350,6 +1420,7 @@ function RadialImage.new(imageName)
 	self:setArc(0, math.pi * 2)
 	return self
 end
+
 local cos = math.cos
 local sin = math.sin
 function RadialImage:setArc(startAngle, endAngle)
@@ -1384,12 +1455,14 @@ function RadialImage:setArc(startAngle, endAngle)
 	vbo:bless()
 	self:forceUpdate()
 end
+
 FillBar = {}
 local function FillBar_setColor(self, color)
 	if color ~= nil then
 		self:setShader(ui_parseShader(color))
 	end
 end
+
 function FillBar.new(image, colorstr)
 	local self = ui_new(MOAIProp2D.new())
 	local fmt = MOAIVertexFormat.new()
@@ -1432,6 +1505,7 @@ function FillBar.new(image, colorstr)
 	self:setFill(0, 1)
 	return self
 end
+
 local cos = math.cos
 local sin = math.sin
 function FillBar:setFill(startVal, endVal)
@@ -1459,6 +1533,7 @@ function FillBar:setFill(startVal, endVal)
 	vbo:bless()
 	self:forceUpdate()
 end
+
 NinePatch = {}
 local NinePatch_setSize = function(self, w, h)
 	local halfW = w / 2
@@ -1509,6 +1584,7 @@ local NinePatch_setSize = function(self, w, h)
 	vbo:bless()
 	self:forceUpdate()
 end
+
 function NinePatch.new(opts, w, h)
 	if type(opts) == "string" then
 		local f = resource.path.resolvepath(opts)
@@ -1561,3 +1637,4 @@ function NinePatch.new(opts, w, h)
 	end
 	return self
 end
+

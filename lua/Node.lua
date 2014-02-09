@@ -88,14 +88,14 @@ local function Node_destroy(self)
 		end
 		self._children = nil
 	end
-	if self._oldrePrimDestroy then
-		self._olderPrimDestroy(self)
+	if self._oldreNodeDestroy then
+		self._olderNodeDestroy(self)
 	end
 end
 
 function Node.new(o)
 	assert(type(o) == "userdata" and getmetatable(o) ~= nil, "Improper use of Node.new")
-	o._olderPrimDestroy = o.destroy
+	o._olderNodeDestroy = o.destroy
 	o.destroy = Node_destroy
 	o.add = Node_add
 	o.setLayer = Node_setLayer

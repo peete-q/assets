@@ -27,8 +27,7 @@ local function Sprite_parse(self, path)
 			self:setScl(scl, scl)
 		end
 		if q.rot then
-			local rot = self:getRot()
-			self._rot = tonumber(q.rot)
+			local rot = tonumber(q.rot)
 			self:setRot(rot)
 		end
 		if q.pri then
@@ -171,23 +170,10 @@ local function Sprite_setDeck(self, deck)
 	self._olderSpriteSetDeck(self, deck)
 end
 
-local function Sprite_setRot(self, rot)
-	self._olderSetRot(self, rot + self._rot)
-end
-
-local function Sprite_getRot(self)
-	return self._olderGetRot(self) - self._rot
-end
-
 function Sprite.new(data)
 	assert(data, "need 'userdata' or url")
 	
 	local o = Node.new(MOAIProp2D.new())
-	o._rot = 0
-	o._olderSetRot = o.setRot
-	o.setRot = Sprite_setRot
-	o._olderGetRot = o.getRot
-	o.getRot = Sprite_getRot
 	o._olderSpriteSetDeck = o.setDeck
 	o.setDeck = Sprite_setDeck
 	o._olderSpriteDestroy = o.destroy

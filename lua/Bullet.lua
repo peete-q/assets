@@ -2,6 +2,7 @@
 local math2d = require "math2d"
 local resource = require "resource"
 local Sprite = require "Sprite"
+local Node = require "Node"
 
 local distance = math2d.distance
 local distanceSq = math2d.distanceSq
@@ -11,14 +12,14 @@ local _defaultProps = {
 	moveSpeed = 0.01,
 	damage = 1,
 	bombRange = 10,
-	force = nil,
-	bombRun = nil,
-	bombCmd = nil,
+	force = undefined,
+	bombRun = undefined,
+	bombCmd = undefined,
 	
 	bodyGfx = "alienAntiCapital01WeaponBasic.atlas.png?play=projectile&rot=90",
-	propellerGfx = nil,
-	bombGfx = "alienSpitterWeaponBasic.atlas.png?playOnce=projectile",
-	bombSfx = nil,
+	propellerGfx = undefined,
+	bombGfx = "alienBomberWeaponBasic.atlas.png?playOnce=impact&scl=5",
+	bombSfx = undefined,
 }
 
 local _LOCK_DIST = 5
@@ -95,7 +96,7 @@ function Bullet.bomb(self, target)
 			bomb._scene:remove(bomb)
 		end
 		bomb:setLoc(x, y)
-		bomb:setPriority(self._body:getPriority())
+		bomb:setPriority(self._root:getPriority())
 		self._scene:addFX(bomb)
 	else
 		self:destroy()
@@ -103,19 +104,19 @@ function Bullet.bomb(self, target)
 end
 
 function Bullet.getWorldLoc(self)
-	return self._body:getLoc()
+	return self._root:getLoc()
 end
 
 function Bullet.setWorldLoc(self, x, y)
-	return self._body:setLoc(x, y)
+	return self._root:setLoc(x, y)
 end
 
 function Bullet.setDir(self, rot)
-	self._body:setRot(rot)
+	self._root:setRot(rot)
 end
 
 function Bullet.getDir(self)
-	return self._body:getRot()
+	return self._root:getRot()
 end
 
 function Bullet.update(self)
@@ -144,7 +145,7 @@ function Bullet.update(self)
 	if self._easeDriver then
 		self._easeDriver:stop()
 	end
-	self._easeDriver = self._body:seekLoc(tx, ty, self.moveSpeed * dist, MOAIEaseType.LINEAR)
+	self._easeDriver = self._root:seekLoc(tx, ty, self.moveSpeed * dist, MOAIEaseType.LINEAR)
 end
 
 function Bullet.noop(self)
@@ -153,9 +154,9 @@ end
 function Bullet.destroy(self)
 	self._scene:remove(self)
 	
-	if self._body then
-		self._body:destroy()
-		self._body = nil
+	if self._root then
+		self._root:destroy()
+		self._root = nil
 	end
 	if self._moving then
 		self._moving:stop()
@@ -164,11 +165,11 @@ function Bullet.destroy(self)
 end
 
 function Bullet.setLayer(self, layer)
-	self._body:setLayer(layer)
+	self._root:setLayer(layer)
 end
 
 function Bullet:setPriority(value)
-	self._body:setPriority(value)
+	self._root:setPriority(value)
 end
 
 function Bullet.new(props)
@@ -177,10 +178,13 @@ function Bullet.new(props)
 	}
 	setmetatable(self, Bullet)
 	
-	self._body = Sprite.new(self.bodyGfx)
-	if props.propellerGfx then
+	local body = Sprite.new(self.bodyGfx)
+	self._root = Node.new(MOAIProp2D.new())
+	self._root:add(body)
+	if self.propellerGfx then
 		local o = Sprite.new(self.propellerGfx)
-		self._body:add(o)
+		o:setLoc(0,0)
+		self._root:add(o)
 	end
 	return self
 end
@@ -206,7 +210,7 @@ function Bullet.fireToward(props, scene, power, enemy, x, y, tx, ty)
 	self._moving = MOAIThread.new()
 	self._moving:run(function()
 		local dist = distance(x, y, tx, ty)
-		MOAIThread.blockOnAction(self._body:seekLoc(tx, ty, props.moveSpeed * dist, MOAIEaseType.LINEAR))
+		MOAIThread.blockOnAction(self._root:seekLoc(tx, ty, props.moveSpeed * dist, MOAIEaseType.LINEAR))
 		self:bomb()
 	end)
 	return self
