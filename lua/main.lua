@@ -25,14 +25,9 @@ else
 end
 MOAISim.openWindow(_("SBC"), device.width, device.height)
 ui.init()
-camera = MOAICamera2D.new()
-camera:setLoc(0, 0)
-camera:setScl(WORLD_SCL, WORLD_SCL)
-stageWidth = device.width
-stageHeight = device.height
-qlog.logger().debug(string.format("Stage: %d x %d", stageWidth, stageHeight))
+
 viewport = MOAIViewport.new()
-viewport:setScale(stageWidth, stageHeight)
+viewport:setScale(device.width, device.height)
 viewport:setSize(0, 0, device.width, device.height)
 mainLayer = ui.Layer.new(viewport)
 mainLayer:setCamera(camera)

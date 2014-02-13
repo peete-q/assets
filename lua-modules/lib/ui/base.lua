@@ -1218,10 +1218,7 @@ local function _MakePage(imageOrPage)
 	end
 end
 
-function Button.new(up, down, label)
-	if label ~= nil then
-		error("Default button labels not supported yet")
-	end
+function Button.new(up, down)
 	local o = PageView.new()
 	o._up = _MakePage(up)
 	o._down = _MakePage(down or up)
@@ -1229,6 +1226,32 @@ function Button.new(up, down, label)
 	o:setPage("down", o._down)
 	o.handleTouch = Button_handleTouch
 	o.onClick = defaultClickCallback
+	return o
+end
+
+Switch = {}
+function Switch_handleClick(self)
+	o.isOn = not o.isOn
+	if o.isOn then
+		o._up:setImage(o._onUp)
+		o._down:setImage(o._onDown)
+	else
+		o._up:setImage(o._offUp)
+		o._down:setImage(o._offDown)
+	end
+	if o.onSwitch then
+		o:onSwitch()
+	end
+end
+
+function Switch.new(onUp, onDown, offUp, offDown)
+	local o = Button.new(onUp, onDown)
+	o.onClick = Switch_handleClick
+	o.isOn = true
+	o._onUp = onUp
+	o._onDown = onDown
+	o._offUp = offUp
+	o._offDown = offDown
 	return o
 end
 
