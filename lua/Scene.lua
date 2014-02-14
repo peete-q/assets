@@ -76,10 +76,17 @@ function Scene:remove(e)
 	self._FXs[e] = nil
 end
 
-function Scene:spawnUnit(props, force, y)
+function Scene:spawnPlayerUnit(props)
 	local n = (self.WIDTH / 2) / LANE_SIZE
 	local x = math.random(-n, n) * LANE_SIZE
-	local u = self:newUnit(props, force, x, y)
+	local u = self:newUnit(props, Unit.FORCE_PLAYER, x, self._playerY)
+	u:move()
+end
+
+function Scene:spawnEnemyUnit(props)
+	local n = (self.WIDTH / 2) / LANE_SIZE
+	local x = math.random(-n, n) * LANE_SIZE
+	local u = self:newUnit(props, Unit.FORCE_ENEMY, x, self._enemyY)
 	u:move()
 end
 
