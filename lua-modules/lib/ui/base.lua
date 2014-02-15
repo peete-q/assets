@@ -740,7 +740,7 @@ end
 
 Group = {}
 function Group.new()
-	local o = ui_new(MOAILayer2D.new())
+	local o = ui_new(MOAIProp2D.new())
 	o.getLayoutSize = ui_getLayoutSize
 	o.setLayoutSize = ui_setLayoutSize
 	return o
@@ -927,12 +927,18 @@ local Image_getSize = function(self)
 	if not self or not self._deck or not self._deck.getSize then
 		return nil
 	end
-	return self._deck:getSize(self.deckLayer)
+	local w, h = self._deck:getSize(self.deckLayer)
+	local x, y = self:getScl()
+	return w * x, h * y
 end
 
 local function Image_setImage(self, imageName)
-	local queryStr
-	imageName, queryStr = breakstr(imageName, "?")
+	if not imageName then
+		self:setDeck(nil)
+		self._deck = nil
+		return
+	end
+	local imageName, queryStr = breakstr(imageName, "?")
 	local deckName, layerName = breakstr(imageName, "#")
 	local deck = resource.deck(deckName)
 	self:setDeck(deck)
@@ -941,11 +947,15 @@ local function Image_setImage(self, imageName)
 		self.deckLayer = layerName
 	end
 	self.deckIndex = deck:indexOf(layerName)
+	self:setScl(1, 1)
+	self:setRot(0)
+	self:setLoc(0, 0)
+	self:setColor(1, 1, 1, 1)
 	if queryStr ~= nil then
 		local q = url.parse_query(queryStr)
 		if q.scl ~= nil then
-			local scl = tonumber(q.scl)
-			self:setScl(scl, scl)
+			local x, y = breakstr(q.scl, ",")
+			self:setScl(tonumber(x), tonumber(y))
 		end
 		if q.rot ~= nil then
 			local rot = tonumber(q.rot)
@@ -989,11 +999,15 @@ function Image.new(imageName)
 			o.deckLayer = layerName
 		end
 		o.deckIndex = deck:indexOf(layerName)
+		o:setScl(1, 1)
+		o:setRot(0)
+		o:setLoc(0, 0)
+		o:setColor(1, 1, 1, 1)
 		if queryStr ~= nil then
 			local q = url.parse_query(queryStr)
 			if q.scl ~= nil then
-				local scl = tonumber(q.scl)
-				o:setScl(scl, scl)
+				local x, y = breakstr(q.scl, ",")
+				o:setScl(tonumber(x), tonumber(y))
 			end
 			if q.rot ~= nil then
 				local rot = tonumber(q.rot)
@@ -1169,7 +1183,7 @@ local function PageView_setPage(self, page, child)
 end
 
 function PageView.new(pages)
-	local o = ui_new(MOAILayer2D.new())
+	local o = ui_new(MOAIProp2D.new())
 	assert(pages == nil or type(pages) == "table", "pages must be a table or nil")
 	o._pagemap = {}
 	o.currentPageName = nil
@@ -1187,12 +1201,18 @@ Button = {}
 local function Button_handleTouch(self, eventType, touchIdx, x, y, tapCount)
 	if eventType == ui_TOUCH_UP then
 		capture(nil)
+		self:showPage("up")
 		self._isdown = nil
 		self:onClick()
 	elseif eventType == ui_TOUCH_DOWN then
-		self:showPage("down")
-		self._isdown = true
-		capture(self)
+		if not self._isDown then
+			self:showPage("down")
+			self._isdown = true
+			capture(self)
+			if self.onPress then
+				self:onPress()
+			end
+		end
 	elseif eventType == ui_TOUCH_MOVE and touchIdx == ui_TOUCH_ONE then
 		if self._isdown and treeCheck(x, y, self) then
 			self:showPage("down")
@@ -1204,8 +1224,8 @@ local function Button_handleTouch(self, eventType, touchIdx, x, y, tapCount)
 	return true
 end
 
-local function defaultClickCallback(self, tapCount)
-	printf("CLICK! x%d", tapCount)
+local function defaultClickCallback(self)
+	printf("CLICK!")
 end
 
 local function _MakePage(imageOrPage)

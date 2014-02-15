@@ -20,6 +20,7 @@ local max = math.max
 local floor = math.floor
 local select = select
 local debug = debug
+local assert = assert
 module(...)
 function printfln(fmt, ...)
   print(fmt:format(...))
@@ -148,6 +149,7 @@ function sortedpairs(t, f)
   return iter
 end
 function breakstr(str, splitter)
+  assert(str, debug.traceback())
   local idx = str:find(splitter)
   if idx == nil then
     return str, nil
