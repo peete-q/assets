@@ -29,39 +29,24 @@ ui.init()
 viewport = MOAIViewport.new()
 viewport:setScale(device.width, device.height)
 viewport:setSize(0, 0, device.width, device.height)
-mainLayer = ui.Layer.new(viewport)
-mainLayer:setCamera(camera)
-mainLayer._uiname = "mainLayer"
+uiLayer = ui.Layer.new(viewport)
+uiLayer:setCamera(camera)
+uiLayer._uiname = "uiLayer"
 
-local mainBg = ui.Image.new("starfield-neptune.jpg")
-local mainBtn = ui.Button.new("tile.png")
-local mainBar = ui.Image.new("large.png")
-mainBtn.onClick = function() mainBtn:moveRot(360 * 3, 1) end
+local HomeStage = require "HomeStage"
 
-mainLayer:add(mainBg)
-mainLayer:add(mainBtn)
-mainLayer:add(mainBar)
-
-local avatarBar = ui.Image.new("avatar-bar.png")
-mainLayer:add(avatarBar)
-local w, h = avatarBar:getSize()
-avatarBar:setAnchor("TL", w / 2, -h / 2)
-
-local avatar = ui.Image.new("avatar.png")
-mainLayer:add(avatar)
-local w, h = avatar:getSize()
-avatar:setAnchor("TL", w / 2, -h / 2)
-
-mainBtn:setAnchor("BR", -40, 40)
-mainBar:setAnchor("BR", -400, 40)
+HomeStage:init()
+HomeStage:load()
 
 W, H = device.width, device.height
-layer = mainLayer
+layer = uiLayer
 
 local Scene = require "Scene"
 local Unit = require "Unit"
 local Bullet = require "Bullet"
 local timer = require "timer"
+
+timer.new(0.1, function() dofile "test.lua" end)
 
 scene = Scene.new(W, H, layer)
 
