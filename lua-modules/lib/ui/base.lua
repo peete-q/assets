@@ -1231,16 +1231,22 @@ end
 
 Switch = {}
 function Switch_handleClick(self)
-	o.isOn = not o.isOn
-	if o.isOn then
-		o._up:setImage(o._onUp)
-		o._down:setImage(o._onDown)
+	self.isOn = not self.isOn
+	if self.isOn then
+		self._up:setImage(self._onUp)
+		self._down:setImage(self._onDown)
+		if self.onSwitchOn then
+			self:onSwitchOn()
+		end
 	else
-		o._up:setImage(o._offUp)
-		o._down:setImage(o._offDown)
+		self._up:setImage(self._offUp)
+		self._down:setImage(self._offDown)
+		if self.onSwitchOff then
+			self:onSwitchOff()
+		end
 	end
-	if o.onSwitch then
-		o:onSwitch()
+	if self.onSwitch then
+		self:onSwitch()
 	end
 end
 

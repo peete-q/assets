@@ -1,6 +1,7 @@
 
 local ui = require "ui.base"
 local profile = {}
+local blockOn = MOAIThread.blockOnAction
 
 local HomeStage = {}
 
@@ -29,12 +30,37 @@ function HomeStage:load(onOkay)
 	self._menuRoot = self._root:add(ui.Group.new())
 	self._menuRoot:setAnchor("BR", 0, 0)
 	self._menuPanel = self._menuRoot:add(ui.Image.new("menu-panel.png"))
-	local w, h = self._menuPanel:getSize()
-	self._menuPanel:setLoc(-w / 2, h / 2)
-	-- self._menuSwitch = self._menuRoot:add(ui.Switch.new("menu-hide-up.png", "menu-hide-down.png"))
+	self._menuPanel:setLoc(0, 0)
+	self._menuSwitch = self._menuRoot:add(ui.Switch.new("menu-hide.png", nil, "menu-show.png", nil))
+	self._menuSwitch.onSwitchOn = function() self:showMenu() end
+	self._menuSwitch.onSwitchOff = function() self:hideMenu() end
 	if onOkay then
 		onOkay(HomeStage)
 	end
+end
+
+local _menuIcons = {}
+function HomeStage:showMenu()
+	if self._showing then
+		return
+	end
+	local x = 0
+	local y = 0
+	local space = 50
+	local menus = {}
+	self._showing = mainAS:run(function()
+		for k, v in ipairs(profile.menus) do
+			local bg = self._menuRoot:add(ui.Image.new("menu-bg.png"))
+			bg:setLoc(x, y)
+			local icon = bg:add(ui.Button.new(_menuIcons[v.type]))
+			icon:setColor(0, 0, 0, 0)
+			blockOn(icon:seekColor(1, 1, 1, 1, 0.5))
+		end
+		self._showing = nil
+	end)
+end
+
+function HomeStage:hideMenu()
 end
 
 function HomeStage:updateProfile()
