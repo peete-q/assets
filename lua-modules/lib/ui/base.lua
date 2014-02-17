@@ -1284,13 +1284,13 @@ function Switch.new(onUp, onDown, offUp, offDown)
 end
 
 ProgressBar = {}
-function ProgressBar.new(imageName, width)
+function ProgressBar.new(imageName)
 	local o = Image.new(imageName)
 	o._scissor = MOAIScissorRect.new()
 	local w, h = o:getSize()
-	o._width = width or w
-	o._scissor:setRect(w, h, -w, -h)
+	o._scissor:setRect(-w / 2, -h / 2, w / 2, h / 2)
 	o._scissor:setParent(o)
+	o._scissor:setLoc(-w - 1, 0)
 	o:setScissorRect(o._scissor)
 	o.setProgress = ProgressBar.setProgress
 	o.seekProgress = ProgressBar.seekProgress
@@ -1305,8 +1305,7 @@ end
 
 function ProgressBar:seekProgress(value, length, mode)
 	self._value = value
-	local x = value * self._width + 1
-	return self._scissor:seekLoc(x, 0, length, mode or MOAIEaseType.LINEAR)
+	return self._scissor:seekLoc(0, 0, length, mode or MOAIEaseType.LINEAR)
 end
 
 PickBox = {}
