@@ -45,9 +45,10 @@ mainAS = actionset.new()
 mainAS:start()
 
 local HomeStage = require "HomeStage"
+local GameStage = require "GameStage"
 
-HomeStage:init()
-HomeStage:load()
+GameStage:init()
+GameStage:load()
 
 W, H = device.width, device.height
 layer = uiLayer
