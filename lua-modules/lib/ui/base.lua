@@ -5,6 +5,8 @@ local device = require("device")
 local memory = require("memory")
 local color = require("color")
 local url = require("url")
+local MOAIScissorRect = MOAIScissorRect
+local MOAIEaseType = MOAIEaseType
 local MOAITextBox = MOAITextBox
 local MOAIFont = MOAIFont
 local MOAIProp2D = MOAIProp2D
@@ -1279,6 +1281,32 @@ function Switch.new(onUp, onDown, offUp, offDown)
 	o._offUp = offUp
 	o._offDown = offDown
 	return o
+end
+
+ProgressBar = {}
+function ProgressBar.new(imageName, width)
+	local o = Image.new(imageName)
+	o._scissor = MOAIScissorRect.new()
+	local w, h = o:getSize()
+	o._width = width or w
+	o._scissor:setRect(w, h, -w, -h)
+	o._scissor:setParent(o)
+	o:setScissorRect(o._scissor)
+	o.setProgress = ProgressBar.setProgress
+	o.seekProgress = ProgressBar.seekProgress
+	return o
+end
+
+function ProgressBar:setProgress(value, length)
+	self._value = value
+	local x = value * self._width
+	self._scissor:setLoc(x, 0)
+end
+
+function ProgressBar:seekProgress(value, length, mode)
+	self._value = value
+	local x = value * self._width + 1
+	return self._scissor:seekLoc(x, 0, length, mode or MOAIEaseType.LINEAR)
 end
 
 PickBox = {}

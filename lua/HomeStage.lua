@@ -1,13 +1,41 @@
 
 local resource = require "resource"
 local ui = require "ui.base"
+local profile = require "UserProfile"
 
-local profile = {}
 local blockOn = MOAIThread.blockOnAction
 
 local HomeStage = {}
 
 local FONT_SMALL = "arial@20"
+
+local menus = {
+	{
+		icon = "menu-settings.png",
+		cb = function()
+			HomeStage:switchSettings()
+		end,
+	},
+	{
+		icon = "menu-friends.png",
+		cb = function()
+			HomeStage:switchFriends()
+		end,
+	},
+	{
+		icon = "menu-alliances.png",
+		cb = function()
+			HomeStage:switchAlliances()
+		end,
+	},
+	{
+		icon = "menu-items.png",
+		cb = function()
+			HomeStage:switchItems()
+		end,
+	},
+}
+
 
 function HomeStage:init(spaceStage, gameStage)
 end
@@ -45,27 +73,27 @@ function HomeStage:load(onOkay)
 		uiLayer:add(self._root)
 		return
 	end
-	local bg = MOAIProp2D.new()
-	local deck = MOAITileDeck2D.new()
-	local tex = resource.texture("starfield.jpg")
-	deck:setTexture(tex)
-	local w, h = tex:getSize()
-	deck:setSize(1, 1)
-	deck:setRect (-0.5, 0.5, 0.5, -0.5)
-	local grid = MOAIGrid.new ()
-	grid:setSize(1, 1, w, h)
-	grid:setRepeat ( true )
-	grid:setRow(1, 1)
-	bg:setDeck(deck)
-	bg:setGrid(grid)
-	sceneLayer:insertProp(bg)
+	-- local bg = MOAIProp2D.new()
+	-- local deck = MOAITileDeck2D.new()
+	-- local tex = resource.texture("starfield.jpg")
+	-- deck:setTexture(tex)
+	-- local w, h = tex:getSize()
+	-- deck:setSize(1, 1)
+	-- deck:setRect (-0.5, 0.5, 0.5, -0.5)
+	-- local grid = MOAIGrid.new ()
+	-- grid:setSize(1, 1, w, h)
+	-- grid:setRepeat ( true )
+	-- grid:setRow(1, 1)
+	-- bg:setDeck(deck)
+	-- bg:setGrid(grid)
+	-- sceneLayer:insertProp(bg)
 	
-	local thread = MOAIThread.new()
-	thread:run(function()
-		while true do
-			blockOn(bg:moveLoc(-w, 0, w / 3, MOAIEaseType.LINEAR))
-		end
-	end)
+	-- self._bgAnimating = MOAIThread.new()
+	-- self._bgAnimating:run(function()
+		-- while true do
+			-- blockOn(bg:moveLoc(-w, 0, w / 3, MOAIEaseType.LINEAR))
+		-- end
+	-- end)
 	
 	self._base = 1000
 	local mainPlanet = MOAIProp2D.new()
@@ -108,7 +136,11 @@ function HomeStage:load(onOkay)
 	self._menuSwitch:setPriority(2)
 	self._menuSwitch:setLoc(-w / 2, h / 2)
 	self._menuSwitch.onPress = function()
-		self._menuPanel:moveRot(720, 1)
+		if self._menuSwitch.isOn then
+			self._menuPanel:moveRot(-720, 1)
+		else
+			self._menuPanel:moveRot(720, 1)
+		end
 	end
 	self._menuSwitch.onSwitchOn = function()
 		self:showMenu()
@@ -116,6 +148,8 @@ function HomeStage:load(onOkay)
 	self._menuSwitch.onSwitchOff = function()
 		self:hideMenu()
 	end
+	self._menuSwitch.isOn = false
+	
 	self._scan = self._menuRoot:add(ui.Button.new("scan-btn.png"))
 	self._scan:setLoc(-w / 2, h / 2 + h)
 	local scanCenter = self._scan:add(ui.new(MOAIProp2D.new()))
@@ -126,46 +160,79 @@ function HomeStage:load(onOkay)
 	scan:setPriority(2)
 	scan:setLoc(5, 20)
 	self._scanning = MOAIThread.new()
-	self._scanning:run(function()
-		while true do
-			local x = 30 - math.random(60)
-			local y = 30 - math.random(60)
-			enemy:setLoc(x, y)
-			enemy:setScl(0.3)
-			enemy:setColor(0, 0, 0, 0)
-			enemy:seekScl(1, 1, 1.5)
-			enemy:seekColor(1, 1, 1, 1, 1.5)
-			blockOn(scanCenter:moveRot(-180, 2, MOAIEaseType.LINEAR))
-		end
-	end)
+	-- self._scanning:run(function()
+		-- while true do
+			-- local x = 30 - math.random(60)
+			-- local y = 30 - math.random(60)
+			-- enemy:setLoc(x, y)
+			-- enemy:setScl(0.3)
+			-- enemy:setColor(0, 0, 0, 0)
+			-- enemy:seekScl(1, 1, 1.5)
+			-- enemy:seekColor(1, 1, 1, 1, 1.5)
+			-- blockOn(scanCenter:moveRot(-180, 2, MOAIEaseType.LINEAR))
+		-- end
+	-- end)
 	
+	local x = -50
+	local y = 11
+	local space = -25
+	self._menus = {}
+	for k, v in ipairs(menus) do
+		local m = ui.Image.new("menu-bg.png")
+		m:setLoc(x, y)
+		x = x + space
+		m._icon = m:add(ui.Button.new(v.icon))
+		m._isActive = profile.menus[k]
+		m:setColor(0, 0, 0, 0)
+		table.insert(self._menus, m)
+	end
+		
 	if onOkay then
 		onOkay(HomeStage)
 	end
 end
 
-local _menuIcons = {}
 function HomeStage:showMenu()
-	if self._showing then
+	if self._menuHiding or self._menuShowing then
 		return
 	end
-	-- local x = 0
-	-- local y = 0
-	-- local space = 50
-	-- local menus = {}
-	-- self._showing = mainAS:run(function()
-		-- for k, v in ipairs(profile.menus) do
-			-- local bg = self._menuRoot:add(ui.Image.new("menu-bg.png"))
-			-- bg:setLoc(x, y)
-			-- local icon = bg:add(ui.Button.new(_menuIcons[v.type]))
-			-- icon:setColor(0, 0, 0, 0)
-			-- blockOn(icon:seekColor(1, 1, 1, 1, 0.5))
-		-- end
-		-- self._showing = nil
-	-- end)
+	
+	self._menuShowing = MOAIThread.new()
+	self._menuShowing:run(function()
+		for k, v in ipairs(self._menus) do
+			local m = self._menuRoot:add(v)
+			local a = 0.5
+			if m._isActive then
+				a = 1
+			end
+			m:seekColor(a, a, a, a, 0.3)
+			local t = MOAITimer.new()
+			t:setSpan(0.1)
+			blockOn(t:start())
+		end
+		self._menuShowing = nil
+	end)
 end
 
 function HomeStage:hideMenu()
+	if self._menuShowing or self._menuHiding then
+		return
+	end
+	
+	self._menuHiding = MOAIThread.new()
+	self._menuHiding:run(function()
+		for i = #self._menus, 1, -1 do
+			local m = self._menus[i]
+			m:seekColor(0, 0, 0, 0, 0.3)
+			local t = MOAITimer.new()
+			t:setSpan(0.1)
+			blockOn(t:start())
+		end
+		for k, v in ipairs(self._menus) do
+			self._menuRoot:remove(v)
+		end
+		self._menuHiding = nil
+	end)
 end
 
 function HomeStage:updateProfile()
