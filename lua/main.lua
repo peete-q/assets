@@ -47,8 +47,8 @@ mainAS:start()
 local HomeStage = require "HomeStage"
 local GameStage = require "GameStage"
 
-GameStage:init()
-GameStage:load()
+HomeStage:init()
+HomeStage:load()
 
 W, H = device.width, device.height
 layer = uiLayer

@@ -40,13 +40,17 @@ local menus = {
 function HomeStage:init(spaceStage, gameStage)
 end
 
-function HomeStage:genPlanetOrbit(planet, x, y, t, s1, s2, s3, p)
+function HomeStage:genPlanetOrbit(planet, x, y, t, s1, s2, s3, p, children)
+	children = children or {}
 	planet:setScl(s2, s2)
 	local thread = MOAIThread.new()
 	thread:run(function(planet, x, y, t)
 		while true do
 			planet:setLoc(-x, -y)
 			planet:setPriority(p + self._base)
+			for i, v in ipairs(children) do
+				v:setPriority(p + self._base)
+			end
 			local e = planet:seekScl(s1, s1, t / 2, MOAIEaseType.LINEAR)
 			e:setListener(MOAIAction.EVENT_STOP, function()
 				planet:seekScl(s2, s2, t / 2, MOAIEaseType.LINEAR)
@@ -55,6 +59,9 @@ function HomeStage:genPlanetOrbit(planet, x, y, t, s1, s2, s3, p)
 			
 			planet:setLoc(x, y)
 			planet:setPriority(p)
+			for i, v in ipairs(children) do
+				v:setPriority(p)
+			end
 			local e = planet:seekScl(s3, s3, t / 2, MOAIEaseType.LINEAR)
 			e:setListener(MOAIAction.EVENT_STOP, function()
 				planet:seekScl(s2, s2, t / 2, MOAIEaseType.LINEAR)
@@ -74,27 +81,27 @@ function HomeStage:load(onOkay)
 		uiLayer:add(self._root)
 		return
 	end
-	-- local bg = MOAIProp2D.new()
-	-- local deck = MOAITileDeck2D.new()
-	-- local tex = resource.texture("starfield.jpg")
-	-- deck:setTexture(tex)
-	-- local w, h = tex:getSize()
-	-- deck:setSize(1, 1)
-	-- deck:setRect (-0.5, 0.5, 0.5, -0.5)
-	-- local grid = MOAIGrid.new ()
-	-- grid:setSize(1, 1, w, h)
-	-- grid:setRepeat ( true )
-	-- grid:setRow(1, 1)
-	-- bg:setDeck(deck)
-	-- bg:setGrid(grid)
-	-- sceneLayer:insertProp(bg)
+	local bg = MOAIProp2D.new()
+	local deck = MOAITileDeck2D.new()
+	local tex = resource.texture("starfield.jpg")
+	deck:setTexture(tex)
+	local w, h = tex:getSize()
+	deck:setSize(1, 1)
+	deck:setRect (-0.5, 0.5, 0.5, -0.5)
+	local grid = MOAIGrid.new ()
+	grid:setSize(1, 1, w, h)
+	grid:setRepeat ( true )
+	grid:setRow(1, 1)
+	bg:setDeck(deck)
+	bg:setGrid(grid)
+	sceneLayer:insertProp(bg)
 	
-	-- self._bgAnimating = MOAIThread.new()
-	-- self._bgAnimating:run(function()
-		-- while true do
-			-- blockOn(bg:moveLoc(-w, 0, w / 3, MOAIEaseType.LINEAR))
-		-- end
-	-- end)
+	self._bgAnimating = MOAIThread.new()
+	self._bgAnimating:run(function()
+		while true do
+			blockOn(bg:moveLoc(-w, 0, w / 3, MOAIEaseType.LINEAR))
+		end
+	end)
 	
 	self._base = 1000
 	local mainPlanet = MOAIProp2D.new()
@@ -108,13 +115,40 @@ function HomeStage:load(onOkay)
 	local deck = resource.deck("planet01.png")
 	planet:setDeck(deck)
 	sceneLayer:insertProp(planet)
-	self:genPlanetOrbit(planet, 300, 100, 60, 0.8, 0.5, 0.2, 1)
+	self:genPlanetOrbit(planet, 300, 100, 60, 0.6, 0.4, 0.2, 3)
 	
 	local planet = MOAIProp2D.new()
 	local deck = resource.deck("planet03.png")
 	planet:setDeck(deck)
 	sceneLayer:insertProp(planet)
-	self:genPlanetOrbit(planet, 400, -100, 30, 0.75, 0.45, 0.15, 1)
+	self:genPlanetOrbit(planet, 350, -100, 55, 0.5, 0.3, 0.1, 2)
+	
+	local portal = MOAIProp2D.new()
+	local deck = resource.deck("star-portal.png")
+	portal:setDeck(deck)
+	local children = {}
+	local portal02 = MOAIProp2D.new()
+	portal02:setParent(portal)
+	sceneLayer:insertProp(portal02)
+	local deck = resource.deck("star-portal-02.png")
+	portal02:setDeck(deck)
+	table.insert(children, portal02)
+	for i = 1, 7 do
+		local o = MOAIProp2D.new()
+		o:setParent(portal02)
+		o:setDeck(deck)
+		o:setRot(45 * i)
+		sceneLayer:insertProp(o)
+		table.insert(children, o)
+	end
+	sceneLayer:insertProp(portal)
+	self:genPlanetOrbit(portal, 150, -200, 10, 0.5, 0.3, 0.1, 1, children)
+	self._portalRotating = MOAIThread.new()
+	self._portalRotating:run(function()
+		while true do
+			blockOn(portal02:moveRot(360, 10, MOAIEaseType.LINEAR))
+		end
+	end)
 	
 	sceneLayer:setSortMode(MOAILayer2D.SORT_PRIORITY_ASCENDING)
 	
@@ -163,22 +197,29 @@ function HomeStage:load(onOkay)
 	scan:setPriority(2)
 	scan:setLoc(5, 20)
 	self._scanning = MOAIThread.new()
-	-- self._scanning:run(function()
-		-- while true do
-			-- local x = 30 - math.random(60)
-			-- local y = 30 - math.random(60)
-			-- enemy:setLoc(x, y)
-			-- enemy:setScl(0.3)
-			-- enemy:setColor(0, 0, 0, 0)
-			-- enemy:seekScl(1, 1, 1.5)
-			-- enemy:seekColor(1, 1, 1, 1, 1.5)
-			-- blockOn(scanCenter:moveRot(-180, 2, MOAIEaseType.LINEAR))
-		-- end
-	-- end)
+	self._scanning:run(function()
+		while true do
+			blockOn(scanCenter:moveRot(-180, 2, MOAIEaseType.LINEAR))
+		end
+	end)
+	self._enemy = MOAIThread.new()
+	self._enemy:run(function()
+		while true do
+			local x = 30 - math.random(60)
+			local y = 30 - math.random(60)
+			enemy:setLoc(x, y)
+			enemy:setScl(0.3)
+			enemy:setColor(0, 0, 0, 0)
+			enemy:seekScl(1, 1, 1)
+			blockOn(enemy:seekColor(1, 1, 1, 1, 1))
+			enemy:seekScl(0.3, 0.3, 1)
+			blockOn(enemy:seekColor(0, 0, 0, 0, 1))
+		end
+	end)
 	
-	local x = -50
-	local y = 11
-	local space = -25
+	local x = -158
+	local y = 50
+	local space = -110
 	self._menus = {}
 	for k, v in ipairs(menus) do
 		local m = ui.Image.new("menu-bg.png")
@@ -204,7 +245,7 @@ function HomeStage:showMenu()
 	self._menuShowing:run(function()
 		for k, v in ipairs(self._menus) do
 			local m = self._menuRoot:add(v)
-			local a = 0.5
+			local a = 0.3
 			if m._isActive then
 				a = 1
 			end
