@@ -1246,7 +1246,13 @@ function Button.new(up, down)
 	o:setPage("down", o._down)
 	o.handleTouch = Button_handleTouch
 	o.onClick = defaultClickCallback
+	o.setPriority = Button.setPriority
 	return o
+end
+
+function Button:setPriority(priority)
+	self._up:setPriority(priority)
+	self._down:setPriority(priority)
 end
 
 Switch = {}

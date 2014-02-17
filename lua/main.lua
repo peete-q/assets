@@ -39,7 +39,7 @@ MOAISim.pushRenderPass(sceneLayer)
 
 uiLayer = ui.Layer.new(viewport)
 uiLayer._uiname = "uiLayer"
-uiLayer:setSortMode(MOAILayer2D.SORT_PRIORITY_DESCENDING)
+uiLayer:setSortMode(MOAILayer2D.SORT_PRIORITY_ASCENDING)
 
 mainAS = actionset.new()
 mainAS:start()

@@ -12,12 +12,13 @@ local FONT_SMALL = "arial@20"
 function HomeStage:init(spaceStage, gameStage)
 end
 
-function HomeStage:genPlanetOrbit(planet, x, y, t, s1, s2, s3)
+function HomeStage:genPlanetOrbit(planet, x, y, t, s1, s2, s3, p)
+	planet:setScl(s2, s2)
 	local thread = MOAIThread.new()
 	thread:run(function(planet, x, y, t)
 		while true do
 			planet:setLoc(-x, -y)
-			planet:setPriority(1 + self._base)
+			planet:setPriority(p + self._base)
 			local e = planet:seekScl(s1, s1, t / 2, MOAIEaseType.LINEAR)
 			e:setListener(MOAIAction.EVENT_STOP, function()
 				planet:seekScl(s2, s2, t / 2, MOAIEaseType.LINEAR)
@@ -25,7 +26,7 @@ function HomeStage:genPlanetOrbit(planet, x, y, t, s1, s2, s3)
 			blockOn(planet:seekLoc(x, y, t, MOAIEaseType.SOFT_SMOOTH))
 			
 			planet:setLoc(x, y)
-			planet:setPriority(1)
+			planet:setPriority(p)
 			local e = planet:seekScl(s3, s3, t / 2, MOAIEaseType.LINEAR)
 			e:setListener(MOAIAction.EVENT_STOP, function()
 				planet:seekScl(s2, s2, t / 2, MOAIEaseType.LINEAR)
@@ -78,14 +79,16 @@ function HomeStage:load(onOkay)
 	local planet = MOAIProp2D.new()
 	local deck = resource.deck("planet01.png")
 	planet:setDeck(deck)
-	planet:setPriority(1)
-	planet:setScl(0.5, 0.5)
-	local w, h = 300, 100
-	planet:setLoc(-w, -h)
 	sceneLayer:insertProp(planet)
+	self:genPlanetOrbit(planet, 300, 100, 60, 0.8, 0.5, 0.2, 1)
+	
+	local planet = MOAIProp2D.new()
+	local deck = resource.deck("planet03.png")
+	planet:setDeck(deck)
+	sceneLayer:insertProp(planet)
+	self:genPlanetOrbit(planet, 400, -100, 30, 0.75, 0.45, 0.15, 1)
 	
 	sceneLayer:setSortMode(MOAILayer2D.SORT_PRIORITY_ASCENDING)
-	self:genPlanetOrbit(planet, w, h, 60, 0.8, 0.5, 0.2)
 	
 	self._root = uiLayer:add(ui.Group.new())
 	self._userPanel = self._root:add(ui.Image.new ("user-panel.png"))
@@ -108,7 +111,7 @@ function HomeStage:load(onOkay)
 	self._menuSwitch:setPriority(2)
 	self._menuSwitch:setLoc(-w / 2, h / 2)
 	self._menuSwitch.onPress = function()
-		self._menuPanel:moveRot(720, 1)
+		self._menuPanel:moveRot(720, 1, MOAIEaseType.SOFT_SMOOTH)
 	end
 	self._menuSwitch.onSwitchOn = function()
 		self:showMenu()
@@ -149,20 +152,21 @@ function HomeStage:showMenu()
 	if self._showing then
 		return
 	end
-	-- local x = 0
-	-- local y = 0
-	-- local space = 50
-	-- local menus = {}
-	-- self._showing = mainAS:run(function()
-		-- for k, v in ipairs(profile.menus) do
-			-- local bg = self._menuRoot:add(ui.Image.new("menu-bg.png"))
-			-- bg:setLoc(x, y)
-			-- local icon = bg:add(ui.Button.new(_menuIcons[v.type]))
-			-- icon:setColor(0, 0, 0, 0)
-			-- blockOn(icon:seekColor(1, 1, 1, 1, 0.5))
-		-- end
-		-- self._showing = nil
-	-- end)
+	local x = 0
+	local y = 0
+	local space = 50
+	local menus = {}
+	self._showing = MOAIThread.new()
+	self._showing:run(function()
+		for k, v in ipairs(profile.menus) do
+			local bg = self._menuRoot:add(ui.Image.new("menu-bg.png"))
+			bg:setLoc(x, y)
+			local icon = bg:add(ui.Button.new(_menuIcons[v.type]))
+			icon:setColor(0, 0, 0, 0)
+			blockOn(icon:seekColor(1, 1, 1, 1, 0.5))
+		end
+		self._showing = nil
+	end)
 end
 
 function HomeStage:hideMenu()
