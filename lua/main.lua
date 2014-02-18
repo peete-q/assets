@@ -46,19 +46,24 @@ mainAS:start()
 
 local HomeStage = require "HomeStage"
 local GameStage = require "GameStage"
-
-GameStage:init()
-GameStage:load()
-
-W, H = device.width, device.height
-layer = uiLayer
-
 local Scene = require "Scene"
 local Unit = require "Unit"
 local Bullet = require "Bullet"
 local timer = require "timer"
 
-timer.new(0.1, function() dofile "test.lua" end)
+GameStage:init()
+GameStage:load()
+
+
+timer.new(0.1, function()
+	GameStage:update()
+	-- dofile "test.lua"
+end)
+
+if true then return end
+
+W, H = device.width, device.height
+layer = uiLayer
 
 scene = Scene.new(W, H, layer)
 
@@ -70,7 +75,7 @@ local aiProps = {
 
 local playerProps = {
 	bodyGfx="icon-earth.png",
-	movable = false,
+	movable = true,
 	attackPower = 100,
 	shots = 1,
 	attackRange = 200,
@@ -85,8 +90,6 @@ local aiInfo = {
 }
 -- scene:loadAI(aiInfo)
 
-player = scene:newForce(Unit.FORCE_PLAYER)
-enemy = scene:newForce(Unit.FORCE_ENEMY)
 timer.new(0.1, function()
 	scene:update()
 end)
@@ -95,10 +98,9 @@ function pointerCallback(x, y)
     X, Y = layer:wndToWorld(x, y)
 end
 
-local p
 function clickCallbackL(down)
 	if down then
-		p = scene:newUnit(playerProps, Unit.FORCE_PLAYER, X, Y)
+		local p = scene:spawnPlayerUnit(playerProps)
 		p._logging = true
 	end
 end
@@ -106,30 +108,14 @@ end
 function clickCallbackR(down)
 	if down then
 		for i = 1, 1 do
-			local e = scene:newUnit(aiProps, Unit.FORCE_ENEMY, X, Y)
-			e:setWorldLoc(X, Y)
-			print(X, Y)
-			-- e:move()
+			scene:spawnEnemyUnit(aiProps)
 		end
 	end
 end
 
 if MOAIInputMgr.device.pointer then
 	-- mouse input
-	-- MOAIInputMgr.device.pointer:setCallback(pointerCallback)
-	-- MOAIInputMgr.device.mouseLeft:setCallback(clickCallbackL)
-	-- MOAIInputMgr.device.mouseRight:setCallback(clickCallbackR)
-else
-	-- touch input
-	MOAIInputMgr.device.touch:setCallback (function(eventType, idx, x, y, tapCount)
-		if idx ~= 0 then
-			return
-		end
-		pointerCallback(x, y)
-		if eventType == MOAITouchSensor.TOUCH_DOWN then
-			clickCallback(true)
-		elseif eventType == MOAITouchSensor.TOUCH_UP then
-			clickCallback(false)
-		end
-	end)
+	MOAIInputMgr.device.pointer:setCallback(pointerCallback)
+	MOAIInputMgr.device.mouseLeft:setCallback(clickCallbackL)
+	MOAIInputMgr.device.mouseRight:setCallback(clickCallbackR)
 end

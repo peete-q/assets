@@ -1,8 +1,9 @@
 
 local plane = {
 	cost = 0,
-	prepareTime = 3,
-	icon = "plane-icon.png",
+	prepareTime = 1,
+	icon = "attacker-icon.png",
+	bodyGfx="attacker.png",
 }
 
 local Profile = {
@@ -17,6 +18,9 @@ local Profile = {
 		{props = plane},
 	},
 	prepareMax = 5,
+	energyRecover = 5,
+	energyMax = 500,
+	energyInitial = 100,
 }
 
 return Profile

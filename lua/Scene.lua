@@ -29,15 +29,18 @@ function Scene.new(w, h, spaceLayer, skyLayer, seed)
 		
 		ticks = 0,
 	}
-	
 	setmetatable(self, Scene)
+	
+	self:addForce(Unit.FORCE_PLAYER)
+	self:addForce(Unit.FORCE_ENEMY)
+	self:addForce(Unit.FORCE_ALL)
 	return self
 end
 
 function Scene:destroy()
 end
 
-function Scene:newForce(id)
+function Scene:addForce(id)
 	local force = {
 		id = id,
 		attackSpeedFactor = Factor.new(),
@@ -53,7 +56,7 @@ function Scene:getForce(id)
 	return self._forces[id]
 end
 
-function Scene:newUnit(props, force, x, y)
+function Scene:addUnit(props, force, x, y)
 	local e = Unit.new(props, self._forces[force])
 	e._scene = self
 	e._ticks = self.ticks
@@ -79,15 +82,17 @@ end
 function Scene:spawnPlayerUnit(props)
 	local n = (self.WIDTH / 2) / LANE_SIZE
 	local x = math.random(-n, n) * LANE_SIZE
-	local u = self:newUnit(props, Unit.FORCE_PLAYER, x, self._playerY)
+	local u = self:addUnit(props, Unit.FORCE_PLAYER, x, self._playerY)
 	u:move()
+	return u
 end
 
 function Scene:spawnEnemyUnit(props)
 	local n = (self.WIDTH / 2) / LANE_SIZE
 	local x = math.random(-n, n) * LANE_SIZE
-	local u = self:newUnit(props, Unit.FORCE_ENEMY, x, self._enemyY)
+	local u = self:addUnit(props, Unit.FORCE_ENEMY, x, self._enemyY)
 	u:move()
+	return u
 end
 
 local playerInfo = {
@@ -142,7 +147,7 @@ function Scene:getPlayerLoc()
 end
 
 function Scene:getEnemyLoc()
-	return self._enemyX, self_enemyY
+	return self._enemyX, self._enemyY
 end
 
 function Scene:getUnits()
