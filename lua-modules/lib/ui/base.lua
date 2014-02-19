@@ -294,7 +294,6 @@ local function ui_tostring(o)
 	return table_concat(t, "")
 end
 
-
 local touchEventName = {
 	[ui_TOUCH_DOWN] = "TOUCH_DOWN",
 	[ui_TOUCH_MOVE] = "TOUCH_MOVE",
@@ -306,7 +305,7 @@ local TOUCH_HANDLER_MAPPING = {
 	[ui_TOUCH_MOVE] = "onTouchMove",
 	[ui_TOUCH_UP] = "onTouchUp"
 }
-local function _dispatchTouch(fn, elem, eventType, touchIdx, x, y, tapCount)
+local function processTouch(fn, elem, eventType, touchIdx, x, y, tapCount)
 	local fntype = type(fn)
 	if fntype == "boolean" or fntype == "nil" then
 		return fn
@@ -322,7 +321,6 @@ local function _dispatchTouch(fn, elem, eventType, touchIdx, x, y, tapCount)
 		error("invalid touch handler: " .. tostring(fn))
 	end
 end
-
 
 local filterFence = false
 local touchLastX, touchLastY
@@ -398,7 +396,7 @@ local function onTouch(eventType, touchIdx, x, y, tapCount)
 							local wx, wy = elem._uilayer:wndToWorld(x, y)
 							mx, my = elem:worldToModel(wx, wy)
 						end
-						local success, result = pcall(_dispatchTouch, fn, elem, eventType, touchIdx, mx, my, tapCount)
+						local success, result = pcall(processTouch, fn, elem, eventType, touchIdx, mx, my, tapCount)
 						if success then
 							if result then
 								if debug_ui then
@@ -466,7 +464,7 @@ local function onTouch(eventType, touchIdx, x, y, tapCount)
 								break
 							end
 							local mx, my = fnElem:worldToModel(wx, wy)
-							local success, result = pcall(_dispatchTouch, fn, fnElem, eventType, touchIdx, mx, my, tapCount)
+							local success, result = pcall(processTouch, fn, fnElem, eventType, touchIdx, mx, my, tapCount)
 							if success then
 								if result then
 									handled = true
@@ -483,7 +481,7 @@ local function onTouch(eventType, touchIdx, x, y, tapCount)
 						end
 					end
 				end
-				if handled then
+				if handled or layer.handled then
 					break
 				end
 			end

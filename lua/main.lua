@@ -15,13 +15,13 @@ local qlog = require "qlog"
 local randutil = require "randutil"
 randutil.randomseed()
 if os.getenv("NO_SOUND") then
-  MOAIUntzSystem = nil
+	MOAIUntzSystem = nil
 end
 local gettext = require("gettext.gettext")
 if os.getenv("I18N_TEST") then
-  gettext.setlang("*")
+	gettext.setlang("*")
 else
-  gettext.setlang(PREFERRED_LANGUAGES, "mo/?.mo")
+	gettext.setlang(PREFERRED_LANGUAGES, "mo/?.mo")
 end
 MOAISim.openWindow(_("SBC"), device.width, device.height)
 ui.init()
@@ -30,9 +30,10 @@ viewport = MOAIViewport.new()
 viewport:setScale(device.width, device.height)
 viewport:setSize(0, 0, device.width, device.height)
 
-perspectiveLayer = MOAILayer2D.new()
-perspectiveLayer:setViewport(viewport)
-MOAISim.pushRenderPass(perspectiveLayer)
+spaceLayer = MOAILayer2D.new()
+spaceLayer:setViewport(viewport)
+MOAISim.pushRenderPass(spaceLayer)
+
 sceneLayer = MOAILayer2D.new()
 sceneLayer:setViewport(viewport)
 MOAISim.pushRenderPass(sceneLayer)
@@ -40,6 +41,10 @@ MOAISim.pushRenderPass(sceneLayer)
 uiLayer = ui.Layer.new(viewport)
 uiLayer._uiname = "uiLayer"
 uiLayer:setSortMode(MOAILayer2D.SORT_PRIORITY_DESCENDING)
+
+popupLayer = ui.Layer.new(viewport)
+popupLayer._uiname = "popupLayer"
+popupLayer:setSortMode(MOAILayer2D.SORT_PRIORITY_DESCENDING)
 
 mainAS = actionset.new()
 mainAS:start()
@@ -51,11 +56,11 @@ local Unit = require "Unit"
 local Bullet = require "Bullet"
 local timer = require "timer"
 
-GameStage:init()
-GameStage:load()
+HomeStage:init()
+HomeStage:load()
 
 timer.new(0.1, function()
-	GameStage:update()
+	HomeStage:update()
 	-- dofile "test.lua"
 end)
 
