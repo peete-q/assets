@@ -115,7 +115,7 @@ function GameStage:update()
 	self._scene:update()
 	self._ticks = self._ticks + 1
 	if self._ticks >= 10 then
-		self._ticks = _ticks - 10
+		self._ticks = self._ticks - 10
 		self._energy = math.min(profile.energyMax, self._energy + profile.energyRecover)
 	end
 end

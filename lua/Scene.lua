@@ -18,10 +18,6 @@ function Scene.new(w, h, spaceLayer, skyLayer, seed)
 		
 		_units = {},
 		_FXs = {},
-		_playerX = w / 2,
-		_playerY = h / 2,
-		_enemyX = w / 2,
-		_enemyY = -h / 2,
 		_spaceLayer = spaceLayer,
 		_skyLayer = skyLayer,
 		_forces = {},
@@ -57,26 +53,46 @@ function Scene:getForce(id)
 end
 
 function Scene:addUnit(props, force, x, y)
-	local e = Unit.new(props, self._forces[force])
-	e._scene = self
-	e._ticks = self.ticks
-	e:setLayer(self._spaceLayer)
-	e:setWorldLoc(x, y)
-	self._units[e] = e
-	return e
+	local o = Unit.new(props, self._forces[force])
+	o._scene = self
+	o._ticks = self.ticks
+	o:setLayer(self._spaceLayer)
+	o:setWorldLoc(x, y)
+	self._units[o] = o
+	return o
 end
 
-function Scene:addFX(e)
-	e._scene = self
-	e:setLayer(self._spaceLayer)
-	self._FXs[e] = e
-	return e
+function Scene:addPlayerUnit(props, x, y)
+	return self:addUnit(props, Unit.FORCE_PLAYER, x, y)
 end
 
-function Scene:remove(e)
-	e:setLayer(nil)
-	self._units[e] = nil
-	self._FXs[e] = nil
+function Scene:addEnemyUnit(props, x, y)
+	return self:addUnit(props, Unit.FORCE_ENEMY, x, y)
+end
+
+function Scene:addPlayerMontherShip(props, x, y)
+	local o = self:addUnit(props, Unit.FORCE_PLAYER, x, y)
+	self._playerMotherShip = o
+	return o
+end
+
+function Scene:addEnemyMotherShip(props, x, y)
+	local o = self:addUnit(props, Unit.FORCE_ENEMY, x, y)
+	self._enemyMotherShip = o
+	return o
+end
+
+function Scene:addFX(o)
+	o._scene = self
+	o:setLayer(self._spaceLayer)
+	self._FXs[o] = o
+	return o
+end
+
+function Scene:remove(o)
+	o:setLayer(nil)
+	self._units[o] = nil
+	self._FXs[o] = nil
 end
 
 function Scene:spawnPlayerUnit(props)
@@ -143,11 +159,11 @@ function Scene:simulateAI(ticks)
 end
 
 function Scene:getPlayerLoc()
-	return self._playerX, self._playerY
+	return self._playerMotherShip:getWorldLoc()
 end
 
 function Scene:getEnemyLoc()
-	return self._enemyX, self._enemyY
+	return self._enemyMotherShip:getWorldLoc()
 end
 
 function Scene:getUnits()

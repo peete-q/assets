@@ -54,7 +54,6 @@ local timer = require "timer"
 GameStage:init()
 GameStage:load()
 
-
 timer.new(0.1, function()
 	GameStage:update()
 	-- dofile "test.lua"
