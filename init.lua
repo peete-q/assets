@@ -15,7 +15,7 @@ function MOAIEnvironment.getOSBrand()
 end
 
 function MOAISim.getDeviceSize()
-	return 400, 400
+	return 960, 640
 end
 
 function MOAIEnvironment.getAppID()
