@@ -114,17 +114,48 @@ function HomeStage:load(onOkay)
 	popupLayer.handled = true
 	local mainWindow = ui.Image.new("window.png")
 	local close = mainWindow:add(ui.Button.new("close.png"))
+	local taxRoot = ui.new(MOAIProp2D.new())
+	taxRoot:setLoc(0, 50)
 	close:setLoc(50, 0)
+	local taxes = {}
 	close.onClick = function()
 		local ease = mainWindow:seekScl(1, 0, 1)
 		ease:setListener(MOAIAction.EVENT_STOP, function()
 			popupLayer:remove(mainWindow)
 		end)
 	end
+	local collectTax = mainWindow:add(ui.Button.new("button-normal.png", "button-highlight.png"))
+	collectTax:setLoc(0, 100)
+	collectTax.onClick = function()
+		local n = #taxes
+		if n > 0 then
+			local tax = taxes[n]
+			local e = tax:seekScl(1.5, 1.5, 1)
+			tax:seekColor(0, 0, 0, 0, 1)
+			e:setListener(MOAIAction.EVENT_STOP, function()
+				tax:remove()
+			end)
+			taxes[n] = nil
+		end
+	end
+	
 	mainPlanet.onClick = function(self)
 		popupLayer:add(mainWindow)
 		mainWindow:setScl(0.5, 0.5)
-		mainWindow:seekScl(2, 2, 1)
+		mainWindow:seekScl(1, 1, 1)
+		taxRoot:remove()
+		mainWindow:add(taxRoot)
+		local x, y, w = 0, 0, 25
+		taxes = {}
+		for i = 1, profile.taxMax do
+			local frame = taxRoot:add(ui.Image.new("tex-frame.png"))
+			frame:setLoc(x, 0)
+			if i <= profile.taxCount then
+				local tax = frame:add(ui.Image.new("tax.png"))
+				taxes[i] = tax
+			end
+			x = x + w
+		end
 	end
 	
 	local planet = MOAIProp2D.new()

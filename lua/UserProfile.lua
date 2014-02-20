@@ -21,6 +21,8 @@ local Profile = {
 	energyRecover = 5,
 	energyMax = 500,
 	energyInitial = 100,
+	taxCount = 5,
+	taxMax = 5,
 }
 
 return Profile
