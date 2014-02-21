@@ -36,6 +36,37 @@ local menus = {
 	},
 }
 
+DropList = {}
+function DropList.new(w, h)
+	local self = ui.new(MOAIProp2D.new())
+	self._scissor = MOAIScissorRect.new()
+	self._scissor:setRect(-w / 2, -h / 2, w / 2, h / 2)
+	self._scissor:setParent(self)
+	self._items = {}
+	return self
+end
+
+function DropList:addItem(o)
+	self:add(o)
+	o:setScissorRect(self._scissor)
+	table.insert(self._items, o)
+	return o
+end
+
+function DropList:removeItemByIndex(n)
+	local o = self._items[n]
+	self:remove(o)
+	table.remove(n)
+end
+
+function DropList:removeItem(o)
+	for i, v in ipairs(self._items) do
+		if v == o then
+			self:removeItemByIndex(i)
+			return
+		end
+	end
+end
 
 function HomeStage:init(spaceStage, gameStage)
 end
