@@ -59,7 +59,7 @@ local timer = require "timer"
 HomeStage:init()
 HomeStage:load()
 
-timer.new(0.1, function()
+timer.run(0.1, function()
 	HomeStage:update()
 	-- dofile "test.lua"
 end)

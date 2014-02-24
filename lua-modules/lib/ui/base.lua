@@ -181,10 +181,10 @@ local function ui_remove(self, child, fullClear)
 		if self._uiparent ~= nil then
 			return ui_remove(self._uiparent, self)
 		end
-		return false
+		return nil
 	end
 	if child._uiparent ~= self then
-		return false
+		return nil
 	end
 	if self.elements ~= nil then
 		for k, v in pairs(self.elements) do
@@ -197,11 +197,11 @@ local function ui_remove(self, child, fullClear)
 				if #self.elements == 0 then
 					self.elements = nil
 				end
-				return true
+				return k
 			end
 		end
 	end
-	return false
+	return nil
 end
 
 local function ui_setAnchor(self, dir, x, y)
@@ -683,11 +683,6 @@ local ui_Layer_getViewport = function(self)
 	return self._uidata.viewport
 end
 
-local function ui_Layer_wndToWorld(self, x, y)
-	local wx, wy = self:wndToWorld(x, y)
-	return wx, wy
-end
-
 function Layer.new(viewport, scale)
 	if viewport == nil or type(viewport) == "table" then
 		do
@@ -729,7 +724,6 @@ function Layer.new(viewport, scale)
 	o.clear = ui_Layer_clear
 	o.setViewport = ui_Layer_setViewport
 	o.getViewport = ui_Layer_getViewport
-	o.getWindowCoords = ui_Layer_wndToWorld
 	o.getLayoutSize = ui_getLayoutSize
 	o.setLayoutSize = ui_setLayoutSize
 	o:setLayoutSize(device.width, device.height)
@@ -1312,6 +1306,122 @@ function ProgressBar:seekProgress(value, length, mode)
 	return self._scissor:seekLoc(0, 0, length, mode or MOAIEaseType.LINEAR)
 end
 
+DropList = {}
+DropList.VERTICAL = "vertical"
+DropList.HORIZONTAL = "horizontal"
+
+function DropList.handleTouchV(self, eventType, touchIdx, x, y, tapCount)
+	local root = self._uiparent._uiparent
+	if eventType == ui_TOUCH_UP then
+		capture(nil)
+		if not root._scrolling then
+			if self.onClick then
+				self:onClick()
+			end
+		else
+			if root._velocityY then
+				root._velocityY = root._velocityY + root._diffY
+			else
+				root._velocityY = root._diffY
+			end
+			if not root._scrollAction then
+				root._scrollAction = AS:run(function(dt)
+					local x, y = root._items:getLoc()
+					local newY = y - root._velocityY
+					root._items:setLoc(0, root:clampItemY(newY))
+					root._velocityY = root._velocityY + -root._velocityY * dt * 0.03 * 132
+					if math.abs(root._velocityY) < 1 then
+						root._scrollAction:stop()
+						root._scrollAction = nil
+					end
+				end)
+			end
+		end
+		root._scrolling = nil
+	elseif eventType == ui_TOUCH_DOWN then
+		capture(self)
+		root._lastY = y
+		root._diffY = 0
+	elseif eventType == ui_TOUCH_MOVE and touchIdx == ui_TOUCH_ONE then
+		root._scrolling = true
+		root._diffY = root._lastY - y
+		root._lastY = y
+		if not root._scrollAction then
+			local x, y = root:worldToModel(x, y)
+			root._items:setLoc(0, root:clampItemY(y))
+		end
+	end
+	return true
+end
+
+function DropList.new(w, h, direction)
+	local self = ui.new(MOAIProp2D.new())
+	self._scissor = MOAIScissorRect.new()
+	self._scissor:setRect(-w / 2, -h / 2, w / 2, h / 2)
+	self._scissor:setParent(self)
+	self._items = self:add(ui.new(MOAIProp2D.new()))
+	if direction == DropList.VERTICAL then
+		self.handleItemTouch = DropList.handleTouchV
+		self.addItem = DropList.addItemV
+		self.removeItem = DropList.removeItemV
+	else
+		self.handleItemTouch = DropList.handleTouchH
+		self.addItem = DropList.addItemH
+		self.removeItem = DropList.removeItemH
+	end
+	self.addItem = DropList.addItem
+	self.removeItem = DropList.removeItem
+	self.getItemCount = DropList.getItemCount
+	return self
+end
+
+function DropList:addItemV(o, offsetX, offsetY)
+	offsetX = offsetX or 0
+	offsetY = offsetY or 0
+	local w, h = o:getSize()
+	offsetY = offsetY - h / 2
+	self._offsetY = offsetY
+	if self:getItemCount() > 0 then
+		local prev = self.elements[self:getItemCount() - 1]
+		local w, h = prev:getSize()
+		local x, y = prev:getLoc()
+		y = y - h / 2
+		offsetY = offsetY - y
+	end
+	self._items:add(o)
+	o:setLoc(offsetX, offsetY)
+	o:setScissorRect(self._scissor)
+	o.handleTouch = self.handleItemTouch
+	return o
+end
+
+function DropList:removeItemV(o, span, mode)
+	local index = self._items:remove(o)
+	if index then
+		o:setScissorRect(nil)
+		for i = index, self:getItemCount() do
+			v:moveLoc(0, self._offsetY, span, mode)
+		end
+		return index
+	end
+end
+
+function DropList:getItemCount()
+	if not self._items.elements then
+		return 0
+	end
+	return #self._items.elements
+end
+
+function DropList:clampItemY(y)
+	if y < 0 or self:getItemCount() == 0 then
+		return 0
+	end
+	local last = self._items.elements[self:getItemCount()]
+	local lx, ly = last:getLoc()
+	return math.min(y, math.abs(ly))
+end
+
 PickBox = {}
 local function PickBox_setColor(self, color)
 	if color ~= nil then
@@ -1342,7 +1452,6 @@ function PickBox.new(width, height, colorstr)
 	if colorstr == nil then
 		do
 			local d = MOAIGfxQuad2D.new()
-			d:setTexture("")
 			d:setRect(-width / 2, -height / 2, width / 2, height / 2)
 			o:setDeck(d)
 		end
