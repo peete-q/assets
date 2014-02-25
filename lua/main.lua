@@ -46,9 +46,6 @@ popupLayer = ui.Layer.new(viewport)
 popupLayer._uiname = "popupLayer"
 popupLayer:setSortMode(MOAILayer2D.SORT_PRIORITY_DESCENDING)
 
-mainAS = actionset.new()
-mainAS:start()
-
 local HomeStage = require "HomeStage"
 local GameStage = require "GameStage"
 local Scene = require "Scene"

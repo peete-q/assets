@@ -80,6 +80,7 @@ function HomeStage:load(onOkay)
 		uiLayer:add(self._root)
 		return
 	end
+	
 	-- local bg = MOAIProp2D.new()
 	-- local deck = MOAITileDeck2D.new()
 	-- local tex = resource.texture("starfield.jpg")
@@ -157,17 +158,29 @@ function HomeStage:load(onOkay)
 		end
 	end
 	
-	local planet = MOAIProp2D.new()
+	local shipWindow = ui.Image.new("window.png")
+	local shipList = shipWindow:add(ui.DropList.new(150, 150, 30))
+	for i = 1, 5 do
+		shipList:addItem(ui.Image.new("test.png"))
+	end
+	local millitaryPlanet = MOAIProp2D.new()
 	local deck = resource.deck("planet01.png")
-	planet:setDeck(deck)
-	sceneLayer:insertProp(planet)
-	self:genPlanetOrbit(planet, 300, 100, 60, 0.6, 0.4, 0.2, 3)
+	millitaryPlanet:setDeck(deck)
+	sceneLayer:insertProp(millitaryPlanet)
+	millitaryPlanet:setLoc(0, -100)
+	millitaryPlanet.onClick = function()
+		popupLayer:add(shipWindow)
+		shipWindow:setScl(0.5, 0.5)
+		shipWindow:seekScl(1, 1, 1)
+	end
+	
+	-- self:genPlanetOrbit(millitaryPlanet, 300, 100, 60, 0.6, 0.4, 0.2, 3)
 	
 	local planet = MOAIProp2D.new()
 	local deck = resource.deck("planet03.png")
 	planet:setDeck(deck)
 	sceneLayer:insertProp(planet)
-	self:genPlanetOrbit(planet, 350, -100, 55, 0.5, 0.3, 0.1, 2)
+	-- self:genPlanetOrbit(planet, 350, -100, 55, 0.5, 0.3, 0.1, 2)
 	
 	-- local portal = MOAIProp2D.new()
 	-- local deck = resource.deck("star-portal.png")

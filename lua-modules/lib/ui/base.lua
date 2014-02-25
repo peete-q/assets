@@ -5,6 +5,7 @@ local device = require("device")
 local memory = require("memory")
 local color = require("color")
 local url = require("url")
+local actionset = require("actionset")
 local MOAIScissorRect = MOAIScissorRect
 local MOAIEaseType = MOAIEaseType
 local MOAITextBox = MOAITextBox
@@ -70,6 +71,7 @@ local ui_TOUCH_MOVE = MOAITouchSensor.TOUCH_MOVE
 local ui_TOUCH_UP = MOAITouchSensor.TOUCH_UP
 local ui_TOUCH_CANCEL = MOAITouchSensor.TOUCH_CANCEL
 local ui_TOUCH_ONE = 0
+local AS = actionset.new()
 
 local ui_getLayoutSize = function(self)
 	local uiparent = self
@@ -322,36 +324,17 @@ local function processTouch(fn, elem, eventType, touchIdx, x, y, tapCount)
 	end
 end
 
-local filterFence = false
 local touchLastX, touchLastY
 local function onTouch(eventType, touchIdx, x, y, tapCount)
-	local wx, wy
-	if debug_ui then
-		printf("%s[%s]: %s,%s", tostring(touchEventName[eventType] or tostring(eventType)), tostring(touchIdx), tostring(x), tostring(y))
-	end
 	local handled = false
 	if touchFilterCallback ~= nil then
-		if filterFence then
-			if debug_ui then
-				printf("\tskipping recursive filter")
+		local success, result = pcall(touchFilterCallback, eventType, touchIdx, x, y, tapCount)
+		if success then
+			if result then
+				return
 			end
 		else
-			filterFence = true
-			if debug_ui then
-				printf("\tcalling filter: " .. tostring(touchFilterCallback))
-			end
-			local success, result = pcall(touchFilterCallback, eventType, touchIdx, x, y, tapCount)
-			filterFence = false
-			if success then
-				if result then
-					if debug_ui then
-						printf("\thandled: " .. tostring(result))
-					end
-					return
-				end
-			else
-				print("ERROR: error in touch filter: " .. tostring(result))
-			end
+			print("ERROR: error in touch filter: " .. tostring(result))
 		end
 	end
 	if eventType == ui_TOUCH_CANCEL then
@@ -369,9 +352,6 @@ local function onTouch(eventType, touchIdx, x, y, tapCount)
 		local elem = captureElement
 		if elem ~= nil then
 			if type(elem) == "function" then
-				if debug_ui then
-					print("\tcapture fn: " .. tostring(elem))
-				end
 				handled = elem(eventType, touchIdx, x, y, tapCount)
 				if not handled and defaultTouchCallback ~= nil then
 					local success, result = pcall(defaultTouchCallback, eventType, touchIdx, x, y, tapCount)
@@ -379,29 +359,16 @@ local function onTouch(eventType, touchIdx, x, y, tapCount)
 						handled = true
 					end
 				end
-				if debug_ui then
-					print("\t\thandled: " .. tostring(handled))
-				end
 				return handled
 			end
 			if elem._uilayer ~= nil then
-				if debug_ui then
-					print("\tcapture elem: " .. ui_tostring(elem))
-				end
 				while elem ~= nil do
 					local fn = elem.handleTouch
 					if fn ~= nil then
-						local mx, my = x, y
-						if x ~= nil and y ~= nil then
-							local wx, wy = elem._uilayer:wndToWorld(x, y)
-							mx, my = elem:worldToModel(wx, wy)
-						end
-						local success, result = pcall(processTouch, fn, elem, eventType, touchIdx, mx, my, tapCount)
+						local wx, wy = elem._uilayer:wndToWorld(x, y)
+						local success, result = pcall(processTouch, fn, elem, eventType, touchIdx, wx, wy, tapCount)
 						if success then
 							if result then
-								if debug_ui then
-									print("\t\thandled = true")
-								end
 								handled = true
 								break
 							end
@@ -412,38 +379,22 @@ local function onTouch(eventType, touchIdx, x, y, tapCount)
 					end
 					
 					elem = elem._uiparent
-					if debug_ui then
-						print("\t\tparent: " .. ui_tostring(elem))
-					end
-						-- print("warning: Clearing captured element because it is offscreen: " .. ui_tostring(elem))
-						-- captureElement = nil
 				end
 			end
 		else
 			for i = #layers, 1, -1 do
 				local layer = layers[i]
-				if x ~= nil and y ~= nil then
-					wx, wy = layer:wndToWorld(x, y)
-				end
-				if debug_ui then
-					print("\tlayer " .. ui_tostring(layer))
-				end
+				local wx, wy = layer:wndToWorld(x, y)
 				local partition = layer:getPartition()
 				if partition then
 					local elemList = partition:propListForPoint(wx, wy)
 					if elemList ~= nil then
-						if debug_ui then
-							print("\telemlist[" .. tostring(partition) .. "] = " .. util.tostr(elemList))
-						end
 						while not handled and #elemList > 0 do
 							local lastPriority, fn, fnElemIdx, fnElem
 							for i = #elemList, 1, -1 do
 								local elem = elemList[i]
 								local priority = elem:getPriority()
 								if lastPriority == nil or lastPriority <= priority then
-									if debug_ui then
-										print("\t\telem " .. ui_tostring(elem))
-									end
 									while elem ~= nil do
 										local touch = elem.handleTouch
 										if touch ~= nil then
@@ -454,23 +405,16 @@ local function onTouch(eventType, touchIdx, x, y, tapCount)
 											break
 										end
 										elem = elem._uiparent
-										if debug_ui then
-											print("\t\t\tparent " .. ui_tostring(elem))
-										end
 									end
 								end
 							end
 							if fn == nil then
 								break
 							end
-							local mx, my = fnElem:worldToModel(wx, wy)
-							local success, result = pcall(processTouch, fn, fnElem, eventType, touchIdx, mx, my, tapCount)
+							local success, result = pcall(processTouch, fn, fnElem, eventType, touchIdx, wx, wy, tapCount)
 							if success then
 								if result then
 									handled = true
-									if debug_ui then
-										print("\t\t\thandled: " .. tostring(handled))
-									end
 								else
 									table_remove(elemList, fnElemIdx)
 								end
@@ -482,7 +426,7 @@ local function onTouch(eventType, touchIdx, x, y, tapCount)
 					end
 				end
 				if handled or layer.handled then
-					break
+					return true
 				end
 			end
 		end
@@ -1311,55 +1255,114 @@ DropList.VERTICAL = "vertical"
 DropList.HORIZONTAL = "horizontal"
 
 function DropList.handleTouchV(self, eventType, touchIdx, x, y, tapCount)
-	local root = self._uiparent._uiparent
+	local this = self._uiparent._uiparent
 	if eventType == ui_TOUCH_UP then
 		capture(nil)
-		if not root._scrolling then
+		if not this._scrolling then
 			if self.onClick then
 				self:onClick()
 			end
 		else
-			if root._velocityY then
-				root._velocityY = root._velocityY + root._diffY
+			if this._velocityV then
+				this._velocityV = this._velocityV + this._diffV
 			else
-				root._velocityY = root._diffY
+				this._velocityV = this._diffV
 			end
-			if not root._scrollAction then
-				root._scrollAction = AS:run(function(dt)
-					local x, y = root._items:getLoc()
-					local newY = y - root._velocityY
-					root._items:setLoc(0, root:clampItemY(newY))
-					root._velocityY = root._velocityY + -root._velocityY * dt * 0.03 * 132
-					if math.abs(root._velocityY) < 1 then
-						root._scrollAction:stop()
-						root._scrollAction = nil
+			if not this._scrollAction then
+				this._scrollAction = AS:wrap(function(dt)
+					local x, y = this._root:getLoc()
+					local newY = y + this._velocityV
+					if this._v >= newY and newY >= this._v - this:getItemCount() * this._space then
+						this._root:setLoc(0, newY)
+						this._velocityV = this._velocityV + -this._velocityV * dt * 0.03 * device.dpi
+					else
+						this._velocityV = 0
+					end
+					if math.abs(this._velocityV) < 1 then
+						this._scrollAction:stop()
+						this._scrollAction = nil
 					end
 				end)
 			end
 		end
-		root._scrolling = nil
+		this._scrolling = nil
 	elseif eventType == ui_TOUCH_DOWN then
 		capture(self)
-		root._lastY = y
-		root._diffY = 0
+		this._lastV = y
+		this._diffV = 0
 	elseif eventType == ui_TOUCH_MOVE and touchIdx == ui_TOUCH_ONE then
-		root._scrolling = true
-		root._diffY = root._lastY - y
-		root._lastY = y
-		if not root._scrollAction then
-			local x, y = root:worldToModel(x, y)
-			root._items:setLoc(0, root:clampItemY(y))
+		this._scrolling = true
+		this._diffV = y - this._lastV
+		this._lastV = y
+		if not this._scrollAction then
+			local x, y = this._root:getLoc()
+			y = y + this._diffV
+			if this._v >= y and y >= this._v - this:getItemCount() * this._space then
+				this._root:moveLoc(0, this._diffV)
+			end
 		end
 	end
 	return true
 end
 
-function DropList.new(w, h, direction)
-	local self = ui.new(MOAIProp2D.new())
+function DropList.handleTouchH(self, eventType, touchIdx, x, y, tapCount)
+	local this = self._uiparent._uiparent
+	if eventType == ui_TOUCH_UP then
+		capture(nil)
+		if not this._scrolling then
+			if self.onClick then
+				self:onClick()
+			end
+		else
+			if this._velocityV then
+				this._velocityV = this._velocityV + this._diffV
+			else
+				this._velocityV = this._diffV
+			end
+			if not this._scrollAction then
+				this._scrollAction = AS:wrap(function(dt)
+					local x, y = this._root:getLoc()
+					x = x + this._velocityV
+					if this._v <= x and x <= this._v + this:getItemCount() * this._space then
+						this._root:setLoc(x, 0)
+						this._velocityV = this._velocityV + -this._velocityV * dt * 0.03 * device.dpi
+					else
+						this._velocityV = 0
+					end
+					if math.abs(this._velocityV) < 1 then
+						this._scrollAction:stop()
+						this._scrollAction = nil
+					end
+				end)
+			end
+		end
+		this._scrolling = nil
+	elseif eventType == ui_TOUCH_DOWN then
+		capture(self)
+		this._lastV = x
+		this._diffV = 0
+	elseif eventType == ui_TOUCH_MOVE and touchIdx == ui_TOUCH_ONE then
+		this._scrolling = true
+		this._diffV = x - this._lastV
+		this._lastV = x
+		if not this._scrollAction then
+			local x, y = this._root:getLoc()
+			x = x + this._diffV
+			if this._v <= x and x <= this._v + this:getItemCount() * this._space then
+				this._root:moveLoc(this._diffV, 0)
+			end
+		end
+	end
+	return true
+end
+
+function DropList.new(w, h, space, direction)
+	local self = ui_new(MOAIProp2D.new())
+	self._size = {w, h}
 	self._scissor = MOAIScissorRect.new()
 	self._scissor:setRect(-w / 2, -h / 2, w / 2, h / 2)
 	self._scissor:setParent(self)
-	self._items = self:add(ui.new(MOAIProp2D.new()))
+	self._root = self:add(ui_new(MOAIProp2D.new()))
 	if direction == DropList.VERTICAL then
 		self.handleItemTouch = DropList.handleTouchV
 		self.addItem = DropList.addItemV
@@ -1369,57 +1372,75 @@ function DropList.new(w, h, direction)
 		self.addItem = DropList.addItemH
 		self.removeItem = DropList.removeItemH
 	end
-	self.addItem = DropList.addItem
-	self.removeItem = DropList.removeItem
+	self._space = space
+	self.getSize = DropList.getSize
 	self.getItemCount = DropList.getItemCount
 	return self
 end
 
-function DropList:addItemV(o, offsetX, offsetY)
-	offsetX = offsetX or 0
-	offsetY = offsetY or 0
-	local w, h = o:getSize()
-	offsetY = offsetY - h / 2
-	self._offsetY = offsetY
-	if self:getItemCount() > 0 then
-		local prev = self.elements[self:getItemCount() - 1]
-		local w, h = prev:getSize()
-		local x, y = prev:getLoc()
-		y = y - h / 2
-		offsetY = offsetY - y
+function DropList:getSize()
+	return unpack(self._size)
+end
+
+function DropList:addItemV(o)
+	if not self._v then
+		local w, h = o:getSize()
+		self._v = self._size[2] / 2 - h / 2
 	end
-	self._items:add(o)
-	o:setLoc(offsetX, offsetY)
+	local y = self._v + self:getItemCount() * -self._space
+	self._root:add(o)
+	o:setLoc(0, y)
 	o:setScissorRect(self._scissor)
 	o.handleTouch = self.handleItemTouch
 	return o
 end
 
 function DropList:removeItemV(o, span, mode)
-	local index = self._items:remove(o)
+	local index = self._root:remove(o)
 	if index then
 		o:setScissorRect(nil)
 		for i = index, self:getItemCount() do
-			v:moveLoc(0, self._offsetY, span, mode)
+			v:moveLoc(0, self._space, span, mode)
+		end
+		if self:getItemCount() == 0 then
+			self._v = nil
+		end
+		return index
+	end
+end
+
+function DropList:addItemH(o)
+	if not self._v then
+		local w, h = o:getSize()
+		self._v = -self._size[1] / 2 + w / 2
+	end
+	local x = self._v + self:getItemCount() * self._space
+	self._root:add(o)
+	o:setLoc(x, 0)
+	o:setScissorRect(self._scissor)
+	o.handleTouch = self.handleItemTouch
+	return o
+end
+
+function DropList:removeItemH(o, span, mode)
+	local index = self._root:remove(o)
+	if index then
+		o:setScissorRect(nil)
+		for i = index, self:getItemCount() do
+			v:moveLoc(-self._space, 0, span, mode)
+		end
+		if self:getItemCount() == 0 then
+			self._v = nil
 		end
 		return index
 	end
 end
 
 function DropList:getItemCount()
-	if not self._items.elements then
+	if not self._root.elements then
 		return 0
 	end
-	return #self._items.elements
-end
-
-function DropList:clampItemY(y)
-	if y < 0 or self:getItemCount() == 0 then
-		return 0
-	end
-	local last = self._items.elements[self:getItemCount()]
-	local lx, ly = last:getLoc()
-	return math.min(y, math.abs(ly))
+	return #self._root.elements
 end
 
 PickBox = {}
