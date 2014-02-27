@@ -5,7 +5,7 @@ local unpack2 = util.unpack2
 
 local timer = {}
 
-function timer.new(span, onStop)
+function timer.new(span, func, parent)
 	local self = MOAITimer.new()
 	self.pause = timer.pause
 	self.resume = timer.resume
@@ -13,33 +13,31 @@ function timer.new(span, onStop)
 	self.throttle = timer.throttle
 	self.whenStop = timer.whenStop
 	self.whenLoop = timer.whenLoop
-	self:whenStop(onStop)
+	self.run = timer.run
+	self.runn = timer.runn
 	if span then
-		self:setSpan(span)
-		self:start()
+		self:run(span, func, parent)
 	end
 	return self
 end
 
-function timer.run(span, func)
+function timer.run(self, span, func, parent)
 	if span <= 0 then
 		func()
 		return nil
 	end
-	local self = timer.new()
 	self:setSpan(span)
 	self:setMode(MOAITimer.LOOP)
 	self:whenLoop(func)
-	self:start()
+	self:start(parent)
 	return self
 end
 
-function timer.runn(span, n, func)
+function timer.runn(self, span, n, func, parent)
 	if span <= 0 then
 		func()
 		return nil
 	end
-	local self = timer.new()
 	self:setMode(MOAITimer.LOOP)
 	self:whenLoop(function()
 		if self:getTimesExecuted() > n then
@@ -48,6 +46,7 @@ function timer.runn(span, n, func)
 		end
 		func()
 	end)
+	self:start(parent)
 	return self
 end
 

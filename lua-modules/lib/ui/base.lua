@@ -425,7 +425,7 @@ local function onTouch(eventType, touchIdx, x, y, tapCount)
 						end
 					end
 				end
-				if handled or layer.handled then
+				if handled or layer.popuped then
 					return true
 				end
 			end
@@ -1441,6 +1441,28 @@ function DropList:getItemCount()
 		return 0
 	end
 	return #self._root.elements
+end
+
+TimeBox = {}
+function TimeBox.new(secs, font, color, justify, width, height, shadow)
+	local self = TextBox.new("", font, color, justify, width, height, shadow)
+	self.setTime = TimeBox.setTime
+	self.getTime = TimeBox.getTime
+	self:setTime(secs)
+	return self
+end
+
+function TimeBox:setTime(secs)
+	local s = math.fmod(secs, 60)
+	local m = math.fmod(math.floor(secs / 60), 60)
+	local h = math.floor(math.floor(secs / 60) / 60)
+	local str = string.format("%d:%02d:%02d", h, m, s)
+	self._time = secs
+	self:setString(str)
+end
+
+function TimeBox:getTime()
+	return self._time
 end
 
 PickBox = {}

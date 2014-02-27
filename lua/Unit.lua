@@ -590,10 +590,10 @@ end
 function Unit:applyDamage(value, source)
 	if self.hp > 0 then
 		self.hp = self.hp - value
+		if self.onDamage then
+			self.onDamage(value, self.hp)
+		end
 		if self.hp <= 0 then
-			if self.onDeath then
-				self.onDeath()
-			end
 			self:onExplode()
 		end
 	end

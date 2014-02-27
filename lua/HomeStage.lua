@@ -1,4 +1,5 @@
 
+local timer = require "timer"
 local resource = require "resource"
 local ui = require "ui.base"
 local profile = require "UserProfile"
@@ -104,58 +105,76 @@ function HomeStage:load(onOkay)
 	-- end)
 	
 	self._base = 1000
-	local mainPlanet = MOAIProp2D.new()
+	local motherPlanet = MOAIProp2D.new()
 	local deck = resource.deck("earthMap6.png")
-	mainPlanet:setDeck(deck)
-	mainPlanet:setPriority(self._base)
-	mainPlanet:setScl(0.5, 0.5)
-	sceneLayer:insertProp(mainPlanet)
+	motherPlanet:setDeck(deck)
+	motherPlanet:setPriority(self._base)
+	motherPlanet:setScl(0.5, 0.5)
+	sceneLayer:insertProp(motherPlanet)
 	
-	popupLayer.handled = true
-	local mainWindow = ui.Image.new("window.png")
-	local close = mainWindow:add(ui.Button.new("close.png"))
+	local taxWindow = ui.Image.new("window.png")
+	local closeButton = taxWindow:add(ui.Button.new("close.png"))
 	local taxRoot = ui.new(MOAIProp2D.new())
 	taxRoot:setLoc(0, 50)
-	close:setLoc(50, 0)
-	local taxes = {}
-	close.onClick = function()
-		local ease = mainWindow:seekScl(1, 0, 1)
+	closeButton:setLoc(50, 0)
+	closeButton.onClick = function()
+		local ease = taxWindow:seekScl(1, 0, 1)
 		ease:setListener(MOAIAction.EVENT_STOP, function()
-			popupLayer:remove(mainWindow)
+			popupLayer:remove(taxWindow)
+		end)
+		popupLayer.popuped = false
+	end
+	local collectCD = taxWindow:add(ui.TimeBox.new(0, FONT_SMALL, nil, "left", 60, 60))
+	collectCD.setCD = function(secs)
+		local cd = timer.new()
+		cd:runn(1, secs, function()
+			secs = secs - 1
+			collectCD:setTime(secs)
+			if secs == 0 then
+			end
 		end)
 	end
-	local collectTax = mainWindow:add(ui.Button.new("button-normal.png", "button-highlight.png"))
+	
+	local taxlist = {}
+	local filltax = function()
+		local x, y, w = 0, 0, 25
+		for i = 1, profile.taxMax do
+			local frame = taxRoot:add(ui.Image.new("tex-frame.png"))
+			frame:setLoc(x, y)
+			if i <= profile.taxCount then
+				local tax = frame:add(ui.Image.new("tax.png"))
+				taxlist[i] = tax
+			end
+			x = x + w
+		end
+	end
+	local collectTax = taxWindow:add(ui.Button.new("button-normal.png", "button-highlight.png"))
 	collectTax:setLoc(0, 100)
 	collectTax.onClick = function()
-		local n = #taxes
+		local n = #taxlist
 		if n > 0 then
-			local tax = taxes[n]
+			local tax = taxlist[n]
 			local e = tax:seekScl(1.5, 1.5, 1)
 			tax:seekColor(0, 0, 0, 0, 1)
 			e:setListener(MOAIAction.EVENT_STOP, function()
 				tax:remove()
 			end)
-			taxes[n] = nil
+			taxlist[n] = nil
+			profile.taxCount = profile.taxCount - 1
+			
+			if profile.taxCount == 0 then
+				collectCD.setCD(profile.collectCD)
+			end
 		end
 	end
 	
-	mainPlanet.onClick = function(self)
-		popupLayer:add(mainWindow)
-		mainWindow:setScl(0.5, 0.5)
-		mainWindow:seekScl(1, 1, 1)
+	motherPlanet.onClick = function(self)
+		popupLayer.popuped = true
+		popupLayer:add(taxWindow)
+		taxWindow:setScl(0.5, 0.5)
+		taxWindow:seekScl(1, 1, 1)
 		taxRoot:remove()
-		mainWindow:add(taxRoot)
-		local x, y, w = 0, 0, 25
-		taxes = {}
-		for i = 1, profile.taxMax do
-			local frame = taxRoot:add(ui.Image.new("tex-frame.png"))
-			frame:setLoc(x, 0)
-			if i <= profile.taxCount then
-				local tax = frame:add(ui.Image.new("tax.png"))
-				taxes[i] = tax
-			end
-			x = x + w
-		end
+		taxWindow:add(taxRoot)
 	end
 	
 	local shipWindow = ui.Image.new("window.png")
@@ -163,6 +182,7 @@ function HomeStage:load(onOkay)
 	for i = 1, 5 do
 		shipList:addItem(ui.Image.new("test.png"))
 	end
+	
 	local millitaryPlanet = MOAIProp2D.new()
 	local deck = resource.deck("planet01.png")
 	millitaryPlanet:setDeck(deck)
@@ -176,11 +196,11 @@ function HomeStage:load(onOkay)
 	
 	-- self:genPlanetOrbit(millitaryPlanet, 300, 100, 60, 0.6, 0.4, 0.2, 3)
 	
-	local planet = MOAIProp2D.new()
+	local techPlanet = MOAIProp2D.new()
 	local deck = resource.deck("planet03.png")
-	planet:setDeck(deck)
-	sceneLayer:insertProp(planet)
-	-- self:genPlanetOrbit(planet, 350, -100, 55, 0.5, 0.3, 0.1, 2)
+	techPlanet:setDeck(deck)
+	sceneLayer:insertProp(techPlanet)
+	-- self:genPlanetOrbit(techPlanet, 350, -100, 55, 0.5, 0.3, 0.1, 2)
 	
 	-- local portal = MOAIProp2D.new()
 	-- local deck = resource.deck("star-portal.png")
@@ -289,13 +309,15 @@ function HomeStage:load(onOkay)
 		m:setColor(0, 0, 0, 0)
 		table.insert(self._menus, m)
 	end
-
+	
 	ui.setDefaultTouchCallback(function(eventType, touchIdx, x, y, tapCount)
-		local wx, wy = sceneLayer:wndToWorld(x, y)
-		local partition = sceneLayer:getPartition()
-		local prop = partition:propForPoint(wx, wy)
-		if prop and prop.onClick then
-			prop:onClick()
+		if eventType == ui.TOUCH_UP then
+			local wx, wy = sceneLayer:wndToWorld(x, y)
+			local partition = sceneLayer:getPartition()
+			local prop = partition:propForPoint(wx, wy)
+			if prop and prop.onClick then
+				prop:onClick()
+			end
 		end
 	end)
 	

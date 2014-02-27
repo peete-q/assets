@@ -22,6 +22,8 @@ function Scene.new(w, h, spaceLayer, skyLayer, seed)
 		_skyLayer = skyLayer,
 		_forces = {},
 		_player = {},
+		_playerOffset = 0,
+		_enemyOffset = 0,
 		
 		ticks = 0,
 	}
@@ -98,7 +100,8 @@ end
 function Scene:spawnPlayerUnit(props)
 	local n = (self.WIDTH / 2) / LANE_SIZE
 	local x = math.random(-n, n) * LANE_SIZE
-	local u = self:addUnit(props, Unit.FORCE_PLAYER, x, self._playerY)
+	local _, y = self._playerMotherShip:getLoc()
+	local u = self:addUnit(props, Unit.FORCE_PLAYER, x, self._playerOffset + y)
 	u:move()
 	return u
 end
@@ -106,7 +109,8 @@ end
 function Scene:spawnEnemyUnit(props)
 	local n = (self.WIDTH / 2) / LANE_SIZE
 	local x = math.random(-n, n) * LANE_SIZE
-	local u = self:addUnit(props, Unit.FORCE_ENEMY, x, self._enemyY)
+	local _, y = self._enemyMotherShip:getLoc()
+	local u = self:addUnit(props, Unit.FORCE_ENEMY, x, self._enemyOffset + y)
 	u:move()
 	return u
 end

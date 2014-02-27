@@ -56,9 +56,14 @@ local timer = require "timer"
 HomeStage:init()
 HomeStage:load()
 
-timer.run(0.1, function()
+local lastdate
+timer.new(0.1, function()
 	HomeStage:update()
-	-- dofile "test.lua"
+	local tb = lfs.attributes("test.lua")
+	if lastdate ~= tb.modification then
+		lastdate = tb.modification
+		dofile "test.lua"
+	end
 end)
 
 if true then return end

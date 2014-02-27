@@ -10,8 +10,11 @@ local GameStage = {
 	width = 400,
 	height = 400,
 }
-local _prepareQVSpace = 0
-local _prepareQHSpace = 22
+local preparingSpace = 22
+local skills = {
+	light = function()
+	end,
+}
 
 function GameStage:init(spaceStage)
 end
@@ -36,9 +39,8 @@ function GameStage:setupSlots()
 	for k, v in ipairs(profile.slots) do
 		local slot = self._root:add(ui.Button.new("slot-btn.png"))
 		slot:setAnchor("BL", x, y)
-		slot._args = {v.props, slot:getLoc()}
 		slot.onClick = function()
-			GameStage:addPreparing(unpack(slot._args))
+			GameStage:addPreparing(v.props, slot:getLoc())
 		end
 		x = x + 50
 	end
@@ -94,7 +96,7 @@ function GameStage:removePreparing(index)
 	for i = index + 1, self._preparings.index do
 		local o = self._preparings[i]
 		if o then
-			o:moveLoc(-_prepareQHSpace, 0, 0.5)
+			o:moveLoc(-preparingSpace, 0, 0.5)
 		end
 	end
 	self._preparings[index] = nil
@@ -106,7 +108,7 @@ function GameStage:getFreeLoc()
 	end
 	
 	if self._preparings.n > 0 then
-		return _prepareQHSpace * self._preparings.n, 0
+		return preparingSpace * self._preparings.n, 0
 	end
 	return 0, 0
 end
