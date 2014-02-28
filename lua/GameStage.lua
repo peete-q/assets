@@ -25,28 +25,28 @@ function GameStage:load(onOkay)
 		return
 	end
 	self._root = uiLayer:add(ui.Group.new())
-	self:setupSlots()
+	self:setupFleet()
 	self:open()
 	if onOkay then
 		onOkay(GameStage)
 	end
 end
 
-function GameStage:setupSlots()
+function GameStage:setupFleet()
 	local x = 0
 	local y = 11
 	local space = 50
-	for k, v in ipairs(profile.slots) do
-		local slot = self._root:add(ui.Button.new("slot-btn.png"))
+	for k, v in ipairs(profile.fleet) do
+		local slot = self._root:add(ui.Button.new("slot.png"))
 		slot:setAnchor("BL", x, y)
 		slot.onClick = function()
-			GameStage:addPreparing(v.props, slot:getLoc())
+			GameStage:addPreparing(v, slot:getLoc())
 		end
 		x = x + 50
 	end
 end
 
-function GameStage:setupSkills()
+function GameStage:setupSpells()
 end
 
 function GameStage:updateProfile()

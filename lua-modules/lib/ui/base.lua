@@ -743,8 +743,12 @@ local function TextBox_setString(self, str, recalcBounds)
 	end
 end
 
-local TextBox_getStringBounds = function(self, index, size)
+local function TextBox_getStringBounds(self, index, size)
 	return self._textbox:getStringBounds(index, size)
+end
+
+local function TextBox_setLineSpacing(self, height)
+	self._textbox:setLineSpacing(height)
 end
 
 function TextBox.new(str, font, color, justify, width, height, shadow)
@@ -857,6 +861,7 @@ function TextBox.new(str, font, color, justify, width, height, shadow)
 	o.getStringBounds = TextBox_getStringBounds
 	o.setString = TextBox_setString
 	o.setShadowOffset = TextBox_setShadowOffset
+	o.setLineSpacing = TextBox_setLineSpacing
 	return o
 end
 
@@ -885,10 +890,6 @@ local function Image_setImage(self, imageName)
 		self.deckLayer = layerName
 	end
 	self.deckIndex = deck:indexOf(layerName)
-	self:setScl(1, 1)
-	self:setRot(0)
-	self:setLoc(0, 0)
-	self:setColor(1, 1, 1, 1)
 	if queryStr ~= nil then
 		local q = url.parse_query(queryStr)
 		if q.scl ~= nil then
@@ -916,57 +917,20 @@ end
 
 function Image.new(imageName)
 	local o = ui_new(MOAIProp2D.new())
-	local deck
-	if type(imageName) == "userdata" then
-		deck = MOAIGfxQuad2D.new()
-		do
-			local tex = imageName
-			deck:setTexture(tex)
-			local w, h = tex:getSize()
-			deck:setRect(-w / 2, -h / 2, w / 2, h / 2)
-			o:setDeck(deck)
-		end
-	else
-		local queryStr
-		imageName, queryStr = breakstr(imageName, "?")
-		local deckName, layerName = breakstr(imageName, "#")
-		deck = resource.deck(deckName)
-		o:setDeck(deck)
-		if layerName ~= nil then
-			o:setIndex(deck:indexOf(layerName))
-			o.deckLayer = layerName
-		end
-		o.deckIndex = deck:indexOf(layerName)
-		o:setScl(1, 1)
-		o:setRot(0)
-		o:setLoc(0, 0)
-		o:setColor(1, 1, 1, 1)
-		if queryStr ~= nil then
-			local q = url.parse_query(queryStr)
-			if q.scl ~= nil then
-				local x, y = breakstr(q.scl, ",")
-				o:setScl(tonumber(x), tonumber(y))
-			end
-			if q.rot ~= nil then
-				local rot = tonumber(q.rot)
-				o:setRot(rot)
-			end
-			if q.pri ~= nil then
-				local pri = tonumber(q.pri)
-				o:setPriority(pri)
-			end
-			if q.loc ~= nil then
-				local x, y = breakstr(q.loc, ",")
-				o:setLoc(tonumber(x), tonumber(y))
-			end
-			if q.alpha ~= nil then
-				o:setColor(1, 1, 1, tonumber(q.alpha))
-			end
-		end
-	end
-	o._deck = deck
 	o.getSize = Image_getSize
 	o.setImage = Image_setImage
+	
+	if type(imageName) == "userdata" then
+		local tex = imageName
+		local deck = MOAIGfxQuad2D.new()
+		deck:setTexture(tex)
+		local w, h = tex:getSize()
+		deck:setRect(-w / 2, -h / 2, w / 2, h / 2)
+		o:setDeck(deck)
+		o._deck = deck
+	else
+		o:setImage(imageName)
+	end
 	return o
 end
 
@@ -1137,11 +1101,17 @@ end
 
 Button = {}
 local function Button_handleTouch(self, eventType, touchIdx, x, y, tapCount)
+	if self._isdisable then
+		return true
+	end
+	
 	if eventType == ui_TOUCH_UP then
 		capture(nil)
 		self:showPage("up")
 		self._isdown = nil
-		self:onClick()
+		if self.onClick then
+			self:onClick()
+		end
 	elseif eventType == ui_TOUCH_DOWN then
 		if not self._isDown then
 			self:showPage("down")
@@ -1162,11 +1132,7 @@ local function Button_handleTouch(self, eventType, touchIdx, x, y, tapCount)
 	return true
 end
 
-local function defaultClickCallback(self)
-	printf("CLICK!")
-end
-
-local function _MakePage(imageOrPage)
+local function _MakeImage(imageOrPage)
 	if type(imageOrPage) == "string" then
 		return Image.new(imageOrPage)
 	elseif type(imageOrPage) == "userdata" then
@@ -1176,21 +1142,34 @@ local function _MakePage(imageOrPage)
 	end
 end
 
-function Button.new(up, down)
+function Button.new(up, down, disable)
 	local o = PageView.new()
-	o._up = _MakePage(up)
-	o._down = _MakePage(down or up)
+	o._up = _MakeImage(up)
+	o._down = _MakeImage(down or up)
+	o._disable = _MakeImage(disable or up)
 	o:setPage("up", o._up)
 	o:setPage("down", o._down)
+	o:setPage("disable", o._disable)
 	o.handleTouch = Button_handleTouch
-	o.onClick = defaultClickCallback
 	o.setPriority = Button.setPriority
+	o.disable = Button.disable
 	return o
+end
+
+function Button:disable(on)
+	if on then
+		self:showPage("disable")
+	else
+		self:showPage("up")
+		self._isdown = nil
+	end
+	self._isdisable = on
 end
 
 function Button:setPriority(priority)
 	self._up:setPriority(priority)
 	self._down:setPriority(priority)
+	self._disable:setPriority(priority)
 end
 
 Switch = {}
@@ -1375,11 +1354,16 @@ function DropList.new(w, h, space, direction)
 	self._space = space
 	self.getSize = DropList.getSize
 	self.getItemCount = DropList.getItemCount
+	self.clearItems = DropList.clearItems
 	return self
 end
 
 function DropList:getSize()
 	return unpack(self._size)
+end
+
+function DropList:clearItems()
+	self._root:removeAll()
 end
 
 function DropList:addItemV(o)

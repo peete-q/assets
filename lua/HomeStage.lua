@@ -8,7 +8,7 @@ local blockOn = MOAIThread.blockOnAction
 
 local HomeStage = {}
 
-local FONT_SMALL = "arial@20"
+local FONT_SMALL = "arial@12"
 
 local menus = {
 	{
@@ -82,6 +82,14 @@ function HomeStage:load(onOkay)
 		return
 	end
 	
+-- MOAIDebugLines.setStyle ( MOAIDebugLines.PARTITION_CELLS, 2, 1, 0, 0 )
+-- MOAIDebugLines.setStyle ( MOAIDebugLines.PARTITION_PADDED_CELLS, 1, 0, 1, 0 )
+-- MOAIDebugLines.setStyle ( MOAIDebugLines.PROP_MODEL_BOUNDS, 2, 0, 0, 1 )
+-- MOAIDebugLines.setStyle ( MOAIDebugLines.PROP_WORLD_BOUNDS, 1, 1, 1, 0 )
+-- MOAIDebugLines.setStyle ( MOAIDebugLines.TEXT_BOX, 1, 1, 0, 1 )
+-- MOAIDebugLines.setStyle ( MOAIDebugLines.TEXT_BOX_BASELINES, 1, 0, 1, 1 )
+-- MOAIDebugLines.setStyle ( MOAIDebugLines.TEXT_BOX_LAYOUT, 1, 1, 1, 1 )
+
 	-- local bg = MOAIProp2D.new()
 	-- local deck = MOAITileDeck2D.new()
 	-- local tex = resource.texture("starfield.jpg")
@@ -114,39 +122,44 @@ function HomeStage:load(onOkay)
 	
 	local taxWindow = ui.Image.new("window.png")
 	local closeButton = taxWindow:add(ui.Button.new("close.png"))
-	local taxRoot = ui.new(MOAIProp2D.new())
+	local taxRoot = taxWindow:add(ui.new(MOAIProp2D.new()))
 	taxRoot:setLoc(0, 50)
 	closeButton:setLoc(50, 0)
 	closeButton.onClick = function()
-		local ease = taxWindow:seekScl(1, 0, 1)
+		local ease = taxWindow:seekScl(1, 0, 0.5, MOAIEaseType.EASE_OUT)
 		ease:setListener(MOAIAction.EVENT_STOP, function()
 			popupLayer:remove(taxWindow)
+			popupLayer.popuped = false
 		end)
-		popupLayer.popuped = false
 	end
-	local collectCD = taxWindow:add(ui.TimeBox.new(0, FONT_SMALL, nil, "left", 60, 60))
+	
+	local taxboxlist = {}
+	local x, y, w = 0, 0, 25
+	for i = 1, profile.taxMax do
+		local taxbox = taxRoot:add(ui.Image.new("tex-box.png"))
+		taxbox:setLoc(x, y)
+		taxboxlist[i] = taxbox
+		x = x + w
+	end
+	local taxlist = {}
+	local filltax = function()
+		for i = 1, profile.taxCount do
+			local tax = taxboxlist[i]:add(ui.Image.new("tax.png"))
+			taxlist[i] = tax
+		end
+	end
+	filltax()
+	local collectCD = taxWindow:add(ui.TimeBox.new(0, FONT_SMALL, nil, "left", 100, 60))
 	collectCD.setCD = function(secs)
 		local cd = timer.new()
 		cd:runn(1, secs, function()
 			secs = secs - 1
 			collectCD:setTime(secs)
 			if secs == 0 then
+				profile.taxCount = profile.taxMax
+				filltax()
 			end
 		end)
-	end
-	
-	local taxlist = {}
-	local filltax = function()
-		local x, y, w = 0, 0, 25
-		for i = 1, profile.taxMax do
-			local frame = taxRoot:add(ui.Image.new("tex-frame.png"))
-			frame:setLoc(x, y)
-			if i <= profile.taxCount then
-				local tax = frame:add(ui.Image.new("tax.png"))
-				taxlist[i] = tax
-			end
-			x = x + w
-		end
 	end
 	local collectTax = taxWindow:add(ui.Button.new("button-normal.png", "button-highlight.png"))
 	collectTax:setLoc(0, 100)
@@ -172,29 +185,62 @@ function HomeStage:load(onOkay)
 		popupLayer.popuped = true
 		popupLayer:add(taxWindow)
 		taxWindow:setScl(0.5, 0.5)
-		taxWindow:seekScl(1, 1, 1)
-		taxRoot:remove()
-		taxWindow:add(taxRoot)
+		taxWindow:seekScl(1, 1, 0.5)
+		taxWindow:setColor(0.5, 0.5, 0.5, 0.5)
+		taxWindow:seekColor(1, 1, 1, 1, 0.5)
 	end
 	
-	local shipWindow = ui.Image.new("window.png")
-	local shipList = shipWindow:add(ui.DropList.new(150, 150, 30))
-	for i = 1, 5 do
-		shipList:addItem(ui.Image.new("test.png"))
+	local fleetWindow = ui.Image.new("window.png")
+	local shipList = fleetWindow:add(ui.DropList.new(150, 150, 30, "vertical"))
+	local shipModel = fleetWindow:add(ui.Image.new(""))
+	local upgrade = fleetWindow:add(ui.Button.new("upgrade.png"))
+	local currInfo = fleetWindow:add(ui.TextBox.new("", FONT_SMALL, nil, "left", 100, 60))
+	local nextInfo = fleetWindow:add(ui.TextBox.new("", FONT_SMALL, nil, "left", 100, 60))
+	currInfo:setLoc(80, 0)
+	currInfo:setLineSpacing(20)
+	nextInfo:setLoc(180, 0)
+	nextInfo:setLineSpacing(20)
+	upgrade:setLoc(50, -50)
+	shipModel:setLoc(50, 0)
+	fleetWindow.updateFleet = function()
+		shipList:clearItems()
+		for i, v in ipairs(profile.fleet) do
+			local item = shipList:addItem(ui.Image.new(v.icon))
+			item.onClick = function()
+				shipModel:setImage(v.model)
+				currInfo:setString(table.concat(v.upgradeCurve[v.level].info, "\n"))
+				local lvl = v.level + 1
+				if lvl <= #v.upgradeCurve then
+					nextInfo:setString(table.concat(v.upgradeCurve[lvl].info, "\n"))
+					local ok = profile.coins >= v.upgradeCost
+					upgrade:disable(not ok)
+					if ok then
+						upgrade.onClick = function()
+							v.level = v.level + 1
+						end
+					end
+				end
+				
+			end
+		end
 	end
 	
-	local millitaryPlanet = MOAIProp2D.new()
+	local millPlanet = MOAIProp2D.new()
 	local deck = resource.deck("planet01.png")
-	millitaryPlanet:setDeck(deck)
-	sceneLayer:insertProp(millitaryPlanet)
-	millitaryPlanet:setLoc(0, -100)
-	millitaryPlanet.onClick = function()
-		popupLayer:add(shipWindow)
-		shipWindow:setScl(0.5, 0.5)
-		shipWindow:seekScl(1, 1, 1)
+	millPlanet:setDeck(deck)
+	sceneLayer:insertProp(millPlanet)
+	millPlanet:setLoc(0, -100)
+	millPlanet.onClick = function()
+		popupLayer.popuped = true
+		popupLayer:add(fleetWindow)
+		fleetWindow:updateFleet()
+		fleetWindow:setScl(0.5, 0.5)
+		fleetWindow:seekScl(1, 1, 0.5)
+		fleetWindow:setColor(0.5, 0.5, 0.5, 0.5)
+		fleetWindow:seekColor(1, 1, 1, 1, 0.5)
 	end
 	
-	-- self:genPlanetOrbit(millitaryPlanet, 300, 100, 60, 0.6, 0.4, 0.2, 3)
+	-- self:genPlanetOrbit(millPlanet, 300, 100, 60, 0.6, 0.4, 0.2, 3)
 	
 	local techPlanet = MOAIProp2D.new()
 	local deck = resource.deck("planet03.png")
