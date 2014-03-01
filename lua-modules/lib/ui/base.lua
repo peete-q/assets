@@ -904,6 +904,10 @@ local function Image_setImage(self, imageName)
 		self.deckLayer = layerName
 	end
 	self.deckIndex = deck:indexOf(layerName)
+	self:setScl(1, 1)
+	self:setRot(0)
+	self:setLoc(0, 0)
+	self:setColor(1, 1, 1, 1)
 	if queryStr ~= nil then
 		local q = url.parse_query(queryStr)
 		if q.scl ~= nil then
@@ -1192,14 +1196,14 @@ function Switch_handleClick(self)
 	if self.isOn then
 		self._up:setImage(self._onUp)
 		self._down:setImage(self._onDown)
-		if self.onSwitchOn then
-			self:onSwitchOn()
+		if self.onTurnOn then
+			self:onTurnOn()
 		end
 	else
 		self._up:setImage(self._offUp)
 		self._down:setImage(self._offDown)
-		if self.onSwitchOff then
-			self:onSwitchOff()
+		if self.onTurnOff then
+			self:onTurnOff()
 		end
 	end
 	if self.onSwitch then
@@ -1215,7 +1219,19 @@ function Switch.new(onUp, onDown, offUp, offDown)
 	o._onDown = onDown
 	o._offUp = offUp
 	o._offDown = offDown
+	o.turnOn = Switch.turnOn
 	return o
+end
+
+function Switch:turnOn(on)
+	self.isOn = on
+	if on then
+		self._up:setImage(self._onUp)
+		self._down:setImage(self._onDown)
+	else
+		self._up:setImage(self._offUp)
+		self._down:setImage(self._offDown)
+	end
 end
 
 ProgressBar = {}

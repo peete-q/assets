@@ -308,13 +308,13 @@ function HomeStage:initMenu()
 			self._menuPanel:moveRot(720, 1)
 		end
 	end
-	self._menuSwitch.onSwitchOn = function()
+	self._menuSwitch.onTurnOn = function()
 		self:showMenu()
 	end
-	self._menuSwitch.onSwitchOff = function()
+	self._menuSwitch.onTurnOff = function()
 		self:hideMenu()
 	end
-	self._menuSwitch.isOn = false
+	self._menuSwitch:turnOn(false)
 	
 	self._scan = self._menuRoot:add(ui.Button.new("scan-btn.png"))
 	self._scan:setLoc(-w / 2, h / 2 + h)
