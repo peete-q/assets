@@ -29,6 +29,12 @@ local menus = {
 		end,
 	},
 	{
+		icon = "menu-rank.png",
+		cb = function()
+			HomeStage:switchRank()
+		end,
+	},
+	{
 		icon = "menu-items.png",
 		cb = function()
 			HomeStage:switchItems()
@@ -105,10 +111,10 @@ function HomeStage:load(onOkay)
 	
 	self._base = 1000
 	local mainPlanet = MOAIProp2D.new()
-	local deck = resource.deck("earthMap6.png")
+	local deck = resource.deck("earth.png")
 	mainPlanet:setDeck(deck)
 	mainPlanet:setPriority(self._base)
-	mainPlanet:setScl(0.5, 0.5)
+	mainPlanet:setScl(0.4, 0.4)
 	sceneLayer:insertProp(mainPlanet)
 	
 	local planet = MOAIProp2D.new()
@@ -217,9 +223,9 @@ function HomeStage:load(onOkay)
 		end
 	end)
 	
-	local x = -158
+	local x = -155
 	local y = 50
-	local space = -110
+	local space = -100
 	self._menus = {}
 	for k, v in ipairs(menus) do
 		local m = ui.Image.new("menu-bg.png")

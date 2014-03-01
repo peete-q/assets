@@ -9,6 +9,7 @@ local Profile = {
 	menus = {
 		[1] = true,
 		[4] = true,
+		[5] = true,
 	},
 	slots = {
 		{props = plane},
