@@ -1,4 +1,5 @@
 
+local timer = require "timer"
 local resource = require "resource"
 local ui = require "ui.base"
 local profile = require "UserProfile"
@@ -7,7 +8,8 @@ local blockOn = MOAIThread.blockOnAction
 
 local HomeStage = {}
 
-local FONT_SMALL = "arial@20"
+local FONT_SMALL = "arial@12"
+local BUTTON_NORMAL = {"button-normal.png", "button-hilite.png", "button-normal.png?alpha=0.3"}
 
 local menus = {
 	{
@@ -42,20 +44,19 @@ local menus = {
 	},
 }
 
-
 function HomeStage:init(spaceStage, gameStage)
 end
 
-function HomeStage:genPlanetOrbit(planet, x, y, t, s1, s2, s3, p, children)
+function HomeStage:makePlanetOrbit(planet, x, y, t, s1, s2, s3, p, children)
 	children = children or {}
 	planet:setScl(s2, s2)
 	local thread = MOAIThread.new()
 	thread:run(function(planet, x, y, t)
 		while true do
 			planet:setLoc(-x, -y)
-			planet:setPriority(p + self._base)
+			planet:setPriority(p + self._spaceBase)
 			for i, v in ipairs(children) do
-				v:setPriority(p + self._base)
+				v:setPriority(p + self._spaceBase)
 			end
 			local e = planet:seekScl(s1, s1, t / 2, MOAIEaseType.LINEAR)
 			e:setListener(MOAIAction.EVENT_STOP, function()
@@ -82,11 +83,7 @@ function HomeStage:genPlanetOrbit(planet, x, y, t, s1, s2, s3, p, children)
 	table.insert(self._orbits, thread)
 end
 
-function HomeStage:load(onOkay)
-	if self._root then
-		uiLayer:add(self._root)
-		return
-	end
+function HomeStage:initSpaceBG()
 	local bg = MOAIProp2D.new()
 	local deck = MOAITileDeck2D.new()
 	local tex = resource.texture("starfield.jpg")
@@ -108,27 +105,152 @@ function HomeStage:load(onOkay)
 			blockOn(bg:moveLoc(-w, 0, w / 3, MOAIEaseType.LINEAR))
 		end
 	end)
-	
-	self._base = 1000
-	local mainPlanet = MOAIProp2D.new()
+end
+
+function HomeStage:initMotherPlanet()
+	self._spaceBase = 1000
+	local motherPlanet = MOAIProp2D.new()
 	local deck = resource.deck("earth.png")
-	mainPlanet:setDeck(deck)
-	mainPlanet:setPriority(self._base)
-	mainPlanet:setScl(0.4, 0.4)
-	sceneLayer:insertProp(mainPlanet)
+	motherPlanet:setDeck(deck)
+	motherPlanet:setPriority(self._spaceBase)
+	motherPlanet:setScl(0.4, 0.4)
+	sceneLayer:insertProp(motherPlanet)
 	
-	local planet = MOAIProp2D.new()
+	local taxWindow = ui.Image.new("window.png")
+	taxWindow:setPriority(1)
+	local closeButton = taxWindow:add(ui.Button.new("button-close01.png"))
+	closeButton:setLoc(50, 0)
+	closeButton.onClick = function()
+		local ease = taxWindow:seekScl(1, 0, 0.5, MOAIEaseType.EASE_OUT)
+		ease:setListener(MOAIAction.EVENT_STOP, function()
+			-- popupLayer:remove(taxWindow)
+			popupLayer.popuped = false
+		end)
+	end
+	
+	local taxRoot = taxWindow:add(ui.new(MOAIProp2D.new()))
+	taxRoot:setLoc(0, 50)
+	local taxboxlist = {}
+	local x, y, w = 0, 0, 25
+	for i = 1, profile.taxMax do
+		local taxbox = taxRoot:add(ui.Image.new("tax-box.png"))
+		taxbox:setLoc(x, y)
+		taxboxlist[i] = taxbox
+		x = x + w
+	end
+	local taxlist = {}
+	local filltax = function()
+		for i = 1, profile.taxCount do
+			local tax = taxboxlist[i]:add(ui.Image.new("tax.png"))
+			taxlist[i] = tax
+		end
+	end
+	filltax()
+	local collectCD = taxWindow:add(ui.TimeBox.new(0, FONT_SMALL, nil, "left", 100, 60))
+	collectCD.setCD = function(secs)
+		local cd = timer.new()
+		cd:runn(1, secs, function()
+			secs = secs - 1
+			collectCD:setTime(secs)
+			if secs == 0 then
+				profile.taxCount = profile.taxMax
+				filltax()
+			end
+		end)
+	end
+	local collectTax = taxWindow:add(ui.Button.new(unpack(BUTTON_NORMAL)))
+	collectTax:setLoc(0, 100)
+	collectTax.onClick = function()
+		local n = #taxlist
+		if n > 0 then
+			local tax = taxlist[n]
+			local e = tax:seekScl(1.5, 1.5, 1)
+			tax:seekColor(0, 0, 0, 0, 1)
+			e:setListener(MOAIAction.EVENT_STOP, function()
+				tax:remove()
+			end)
+			taxlist[n] = nil
+			profile.taxCount = profile.taxCount - 1
+			
+			if profile.taxCount == 0 then
+				collectCD.setCD(profile.collectCD)
+			end
+		end
+	end
+	
+	motherPlanet.onClick = function(self)
+		popupLayer.popuped = true
+		popupLayer:add(taxWindow)
+		taxWindow:setScl(0.5, 0.5)
+		taxWindow:seekScl(1, 1, 0.5)
+		taxWindow:setColor(0.5, 0.5, 0.5, 0.5)
+		taxWindow:seekColor(1, 1, 1, 1, 0.5)
+	end
+end
+
+function HomeStage:initMillPlanet()
+	local fleetWindow = ui.Image.new("window.png")
+	local shipList = fleetWindow:add(ui.DropList.new(150, 150, 30, "vertical"))
+	local shipModel = fleetWindow:add(ui.Image.new(""))
+	local upgrade = fleetWindow:add(ui.Button.new(unpack(BUTTON_NORMAL)))
+	local currInfo = fleetWindow:add(ui.TextBox.new("", FONT_SMALL, nil, "left", 100, 60))
+	local nextInfo = fleetWindow:add(ui.TextBox.new("", FONT_SMALL, nil, "left", 100, 60))
+	currInfo:setLoc(80, 0)
+	currInfo:setLineSpacing(20)
+	nextInfo:setLoc(180, 0)
+	nextInfo:setLineSpacing(20)
+	upgrade:setLoc(50, -50)
+	shipModel:setLoc(50, 0)
+	fleetWindow.updateFleet = function()
+		shipList:clearItems()
+		for i, v in ipairs(profile.fleet) do
+			local item = shipList:addItem(ui.Image.new(v.icon))
+			item.onClick = function()
+				shipModel:setImage(v.model)
+				currInfo:setString(table.concat(v.upgradeCurve[v.level].info, "\n"))
+				local lvl = v.level + 1
+				if lvl <= #v.upgradeCurve then
+					nextInfo:setString(table.concat(v.upgradeCurve[lvl].info, "\n"))
+					local ok = profile.coins >= v.upgradeCost
+					upgrade:disable(not ok)
+					if ok then
+						upgrade.onClick = function()
+							v.level = v.level + 1
+						end
+					end
+				end
+				
+			end
+		end
+	end
+	
+	local millPlanet = MOAIProp2D.new()
 	local deck = resource.deck("planet01.png")
-	planet:setDeck(deck)
-	sceneLayer:insertProp(planet)
-	self:genPlanetOrbit(planet, 300, 100, 60, 0.6, 0.4, 0.2, 3)
+	millPlanet:setDeck(deck)
+	sceneLayer:insertProp(millPlanet)
+	millPlanet:setLoc(0, -100)
+	millPlanet.onClick = function()
+		popupLayer.popuped = true
+		popupLayer:add(fleetWindow)
+		fleetWindow:updateFleet()
+		fleetWindow:setScl(0.5, 0.5)
+		fleetWindow:seekScl(1, 1, 0.5)
+		fleetWindow:setColor(0.5, 0.5, 0.5, 0.5)
+		fleetWindow:seekColor(1, 1, 1, 1, 0.5)
+	end
 	
-	local planet = MOAIProp2D.new()
+	self:makePlanetOrbit(millPlanet, 300, 100, 60, 0.6, 0.4, 0.2, 3)
+end
+
+function HomeStage:initTechPlanet()
+	local techPlanet = MOAIProp2D.new()
 	local deck = resource.deck("planet03.png")
-	planet:setDeck(deck)
-	sceneLayer:insertProp(planet)
-	self:genPlanetOrbit(planet, 350, -100, 55, 0.5, 0.3, 0.1, 2)
-	
+	techPlanet:setDeck(deck)
+	sceneLayer:insertProp(techPlanet)
+	self:makePlanetOrbit(techPlanet, 350, -100, 55, 0.5, 0.3, 0.1, 2)
+end
+
+function HomeStage:initPortal()
 	local portal = MOAIProp2D.new()
 	local deck = resource.deck("star-portal.png")
 	portal:setDeck(deck)
@@ -148,17 +270,16 @@ function HomeStage:load(onOkay)
 		table.insert(children, o)
 	end
 	sceneLayer:insertProp(portal)
-	self:genPlanetOrbit(portal, 150, -200, 10, 0.5, 0.3, 0.1, 1, children)
+	self:makePlanetOrbit(portal, 150, -200, 10, 0.5, 0.3, 0.1, 1, children)
 	self._portalRotating = MOAIThread.new()
 	self._portalRotating:run(function()
 		while true do
 			blockOn(portal02:moveRot(360, 10, MOAIEaseType.LINEAR))
 		end
 	end)
-	
-	sceneLayer:setSortMode(MOAILayer2D.SORT_PRIORITY_ASCENDING)
-	
-	self._root = uiLayer:add(ui.Group.new())
+end
+
+function HomeStage:initUserPanel()
 	self._userPanel = self._root:add(ui.Image.new ("user-panel.png"))
 	local w, h = self._userPanel:getSize()
 	self._userPanel:setAnchor("TL", w / 2, -h / 2)
@@ -168,7 +289,9 @@ function HomeStage:load(onOkay)
     self._diamondsNb:setLoc(0, 0)
 	self._expBar = self._userPanel:add(ui.FillBar.new("exp-bar.png"))
 	self._expBar:setLoc(0, 0)
-	
+end
+
+function HomeStage:initMenu()
 	self._menuRoot = self._root:add(ui.Group.new())
 	self._menuRoot:setAnchor("BR", 0, 0)
 	self._menuPanel = self._menuRoot:add(ui.Image.new("menu-panel.png"))
@@ -236,10 +359,51 @@ function HomeStage:load(onOkay)
 		m:setColor(0, 0, 0, 0)
 		table.insert(self._menus, m)
 	end
-		
+end
+
+
+function HomeStage:load(onOkay)
+	if self._root then
+		uiLayer:add(self._root)
+		return
+	end
+	
+-- MOAIDebugLines.setStyle ( MOAIDebugLines.PARTITION_CELLS, 2, 1, 0, 0 )
+-- MOAIDebugLines.setStyle ( MOAIDebugLines.PARTITION_PADDED_CELLS, 1, 0, 1, 0 )
+-- MOAIDebugLines.setStyle ( MOAIDebugLines.PROP_MODEL_BOUNDS, 2, 0, 0, 1 )
+-- MOAIDebugLines.setStyle ( MOAIDebugLines.PROP_WORLD_BOUNDS, 1, 1, 1, 0 )
+-- MOAIDebugLines.setStyle ( MOAIDebugLines.TEXT_BOX, 1, 1, 0, 1 )
+-- MOAIDebugLines.setStyle ( MOAIDebugLines.TEXT_BOX_BASELINES, 1, 0, 1, 1 )
+-- MOAIDebugLines.setStyle ( MOAIDebugLines.TEXT_BOX_LAYOUT, 1, 1, 1, 1 )
+
+	self._root = uiLayer:add(ui.Group.new())
+	self:initUserPanel()
+	self:initMenu()
+	self:initSpaceBG()
+	self:initMotherPlanet()
+	self:initMillPlanet()
+	self:initTechPlanet()
+	self:initPortal()
+	
+	sceneLayer:setSortMode(MOAILayer2D.SORT_PRIORITY_ASCENDING)
+	
+	ui.setDefaultTouchCallback(function(eventType, touchIdx, x, y, tapCount)
+		if eventType == ui.TOUCH_UP then
+			local wx, wy = sceneLayer:wndToWorld(x, y)
+			local partition = sceneLayer:getPartition()
+			local prop = partition:propForPoint(wx, wy)
+			if prop and prop.onClick then
+				prop:onClick()
+			end
+		end
+	end)
+	
 	if onOkay then
 		onOkay(HomeStage)
 	end
+end
+
+function HomeStage:update()
 end
 
 function HomeStage:showMenu()
@@ -293,6 +457,15 @@ end
 
 function HomeStage:close()
 	uiLayer:remove(self._root)
+	
+	self._bgAnimating:stop()
+	self._portalRotating:stop()
+	if self._menuShowing then
+		self._menuShowing:stop()
+	end
+	if self._menuHiding then
+		self._menuHiding:stop()
+	end
 end
 
 return HomeStage

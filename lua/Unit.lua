@@ -32,7 +32,7 @@ local _defaultProps = {
 	maxHp = 100,
 	recoverHp = 1,
 	bodySize = 10,
-	moveSpeed = 0.1,
+	moveSpeed = 0.01,
 	attackPower = 1,
 	attackSpeed = 10,
 	attackRange = 100,
@@ -89,7 +89,7 @@ function Unit.new(props, force)
 		_attackPowerFactor = Factor.new(),
 		_lastRecoverTicks = 0,
 		_moveSpeed = 0,
-		_logging = false,
+		_logging = true,
 		_scene = nil,
 		_motionDriver = nil,
 		_target = nil,
@@ -238,6 +238,7 @@ function Unit:moveTo(x, y, speed)
 	self._dx = x
 	self._dy = y
 	self:_eraseRigid()
+	self:log("Unit:moveTo", sx, sy, x, y, self._moveSpeed, dist)
 end
 
 function Unit:correctMoveSpeed()
@@ -296,7 +297,7 @@ function Unit:isDead()
 end
 
 function Unit:getAcceleration()
-	return self._accel
+	return self._accel or 1
 end
 
 function Unit:update()
@@ -413,9 +414,11 @@ function Unit:move()
 
 	local x, y = self:getWorldLoc()
 	if self._force.id == Unit.FORCE_PLAYER then
-		y = self._scene:getEnemyLoc()
+		local _x, _y = self._scene:getEnemyLoc()
+		y = _y
 	else
-		y = self._scene:getPlayerLoc()
+		local _x, _y = self._scene:getPlayerLoc()
+		y = _y
 	end
 	self:moveTo(x, y)
 	self._runState = self.stateMove
@@ -587,6 +590,9 @@ end
 function Unit:applyDamage(value, source)
 	if self.hp > 0 then
 		self.hp = self.hp - value
+		if self.onDamage then
+			self.onDamage(value, self.hp)
+		end
 		if self.hp <= 0 then
 			self:onExplode()
 		end
