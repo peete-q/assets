@@ -1,4 +1,5 @@
 require("moai.compat")
+require("string_ext")
 local resource = require("resource")
 local util = require("util")
 local device = require("device")
@@ -62,7 +63,7 @@ local math = math
 local math_floor = math.floor
 local memory = memory
 local pcall = pcall
-local debug_ui = os.getenv("DEBUG_UI") or true
+local debug_ui = os.getenv("DEBUG_UI") or nil
 module(...)
 local layers = {}
 local captureElement, focusElement, touchFilterCallback, defaultTouchCallback, defaultKeyCallback
@@ -83,6 +84,10 @@ local function ui_logf(...)
 	if debug_ui then
 		print("UI:", string.format(...))
 	end
+end
+
+local function ui_get_moai_mt(o)
+	return getmetatable(getmetatable(o)).__index
 end
 
 local function ui_getLayoutSize(self)
@@ -138,6 +143,13 @@ local function ui_unparentChild(child)
 	ui_setLayer(child, nil)
 	child._uiparent = nil
 	child:setParent(nil)
+	child:setScissorRect(nil)
+end
+
+local function ui_setScissorRect(self, rect)
+	self._scissorRect = rect
+	local mt = ui_get_moai_mt(self)
+	mt.setScissorRect(self, rect)
 end
 
 local function ui_add(self, child)
@@ -155,6 +167,9 @@ local function ui_add(self, child)
 	local priority = self:getPriority()
 	if priority and not child:getPriority() then
 		child:setPriority(priority + 1)
+	end
+	if self._scissorRect then
+		child:setScissorRect(self._scissorRect)
 	end
 	table_insert(self.elements, child)
 	child:setParent(self)
@@ -271,6 +286,7 @@ local function ui_new(o)
 	o.remove = ui_remove
 	o.removeAll = ui_removeAll
 	o.setAnchor = ui_setAnchor
+	o.setScissorRect = ui_setScissorRect
 	return o
 end
 
@@ -309,7 +325,7 @@ local function ui_tostring(o)
 	return table_concat(t, "")
 end
 
-local touchEventName = {
+local TOUCH_NAME_MAPPING = {
 	[ui_TOUCH_DOWN] = "TOUCH_DOWN",
 	[ui_TOUCH_MOVE] = "TOUCH_MOVE",
 	[ui_TOUCH_UP] = "TOUCH_UP",
@@ -320,7 +336,7 @@ local TOUCH_HANDLER_MAPPING = {
 	[ui_TOUCH_MOVE] = "onTouchMove",
 	[ui_TOUCH_UP] = "onTouchUp"
 }
-local function processTouch(fn, elem, eventType, touchIdx, x, y, tapCount)
+local function invokeTouch(fn, elem, eventType, touchIdx, x, y, tapCount)
 	local fntype = type(fn)
 	if fntype == "boolean" or fntype == "nil" then
 		return fn
@@ -379,7 +395,7 @@ local function onTouch(eventType, touchIdx, x, y, tapCount)
 					local fn = elem.handleTouch
 					if fn ~= nil then
 						local wx, wy = elem._uilayer:wndToWorld(x, y)
-						local success, result = pcall(processTouch, fn, elem, eventType, touchIdx, wx, wy, tapCount)
+						local success, result = pcall(invokeTouch, fn, elem, eventType, touchIdx, wx, wy, tapCount)
 						if success then
 							if result then
 								handled = true
@@ -424,11 +440,11 @@ local function onTouch(eventType, touchIdx, x, y, tapCount)
 							if fn == nil then
 								break
 							end
-							local success, result = pcall(processTouch, fn, fnElem, eventType, touchIdx, wx, wy, tapCount)
+							local success, result = pcall(invokeTouch, fn, fnElem, eventType, touchIdx, wx, wy, tapCount)
 							if success then
 								if result then
 									handled = true
-									ui_logf("event '%s' catched by (%s)", touchEventName[eventType], tostring(fnElem))
+									ui_logf("event '%s' catched by (%s)", TOUCH_NAME_MAPPING[eventType], tostring(fnElem))
 								else
 									table_remove(elemList, fnElemIdx)
 								end
@@ -566,9 +582,7 @@ function hierarchystring(elem)
 		table_insert(t, ui_tostring(e))
 		e = e._uiparent
 	end
-	return table_concat(t, [[
-
-	]])
+	return table_concat(t, "\n")
 end
 
 function dispatchTouch(e, eventType, touchIdx, x, y, tapCount)
@@ -578,8 +592,8 @@ function dispatchTouch(e, eventType, touchIdx, x, y, tapCount)
 	end
 end
 
-function capture(e, ifEqualToE)
-	if captureElement == ifEqualToE or ifEqualToE == nil then
+function capture(e, ifEqual)
+	if captureElement == ifEqual or ifEqual == nil then
 		captureElement = e
 	end
 end
@@ -620,9 +634,6 @@ TOUCH_UP = ui_TOUCH_UP
 TOUCH_CANCEL = ui_TOUCH_CANCEL
 TOUCH_ONE = ui_TOUCH_ONE
 DRAG_THRESHOLD = 8
-local function ui_get_moai_mt(o)
-	return getmetatable(getmetatable(o))
-end
 
 Layer = {}
 local function ui_Layer_clear(self)
@@ -699,9 +710,6 @@ function Group.new()
 end
 
 TextBox = {}
-TextBox.LEFT = "left"
-TextBox.CENTER = "center"
-TextBox.RIGHT = "right"
 local function TextBox_setColorVerPreMOAI1(self, color)
 	if color ~= nil then
 		self._textbox:setShader(ui_parseShader(color))
@@ -791,16 +799,25 @@ function TextBox.new(str, font, color, justify, width, height, shadow)
 		size = 12
 	end
 	font = resource.font(face, size)
-	justify = string.lower(justify or "center")
+	justify = justify or "MM"
 	local textbox = ui_new(MOAITextBox.new())
 	textbox:setFont(font)
-	if justify == "left" then
-		textbox:setAlignment(MOAITextBox.LEFT_JUSTIFY)
-	elseif justify == "right" then
-		textbox:setAlignment(MOAITextBox.RIGHT_JUSTIFY)
-	else
-		textbox:setAlignment(MOAITextBox.CENTER_JUSTIFY)
+	local h, v
+	if justify[1] == "L" then
+		h = MOAITextBox.LEFT_JUSTIFY
+	elseif justify[1] == "R" then
+		h = MOAITextBox.RIGHT_JUSTIFY
+	elseif justify[1] == "M" then
+		h = MOAITextBox.CENTER_JUSTIFY
 	end
+	if justify[2] == "T" then
+		v = MOAITextBox.LEFT_JUSTIFY
+	elseif justify[2] == "B" then
+		v = MOAITextBox.RIGHT_JUSTIFY
+	elseif justify[2] == "M" then
+		v = MOAITextBox.CENTER_JUSTIFY
+	end
+	textbox:setAlignment(h, v)
 	if device.ui_assetrez == device.ASSET_MODE_HI then
 		textbox:setTextSize(size)
 	elseif device.ui_assetrez == device.ASSET_MODE_LO then
@@ -912,7 +929,7 @@ local function Image_setImage(self, imageName)
 		local q = url.parse_query(queryStr)
 		if q.scl ~= nil then
 			local x, y = breakstr(q.scl, ",")
-			self:setScl(tonumber(x), tonumber(y))
+			self:setScl(tonumber(x), tonumber(y or x))
 		end
 		if q.rot ~= nil then
 			local rot = tonumber(q.rot)
@@ -1080,7 +1097,13 @@ local function PageView_showPage(self, page)
 		return
 	end
 	if self._pagemap[self.currentPageName] then
-		ui_unparentChild(self._pagemap[self.currentPageName])
+		self:remove(self._pagemap[self.currentPageName])
+	end
+	if self.currentPageName then
+		local onShowPage = self.onShowPage[self.currentPageName]
+		if onShowPage then
+			onShowPage(self, false)
+		end
 	end
 	self.currentPageName = page
 	if page ~= nil and self._pagemap then
@@ -1088,11 +1111,15 @@ local function PageView_showPage(self, page)
 		if elem ~= nil then
 			self:add(elem)
 		end
+		local onShowPage = self.onShowPage[page]
+		if onShowPage then
+			onShowPage(self, true)
+		end
 	end
 end
 
 local function PageView_setPage(self, page, child)
-	assert(page ~= nil, "PageView:setPage(page, child, page), page must not be nil")
+	assert(page ~= nil, "page must not be nil")
 	if self.currentPageName == page then
 		self:showPage(nil)
 	end
@@ -1103,8 +1130,8 @@ local function PageView_setPage(self, page, child)
 end
 
 function PageView.new(pages)
-	local o = ui_new(MOAIProp2D.new())
 	assert(pages == nil or type(pages) == "table", "pages must be a table or nil")
+	local o = ui_new(MOAIProp2D.new())
 	o._pagemap = {}
 	o.currentPageName = nil
 	o.showPage = PageView_showPage
@@ -1114,12 +1141,13 @@ function PageView.new(pages)
 			o:setPage(k, v)
 		end
 	end
+	o.onShowPage = {}
 	return o
 end
 
 Button = {}
 local function Button_handleTouch(self, eventType, touchIdx, x, y, tapCount)
-	if self._isdisable then
+	if self._isDisable then
 		return true
 	end
 	
@@ -1155,19 +1183,46 @@ local function _MakeImage(imageOrPage)
 		return Image.new(imageOrPage)
 	elseif type(imageOrPage) == "userdata" then
 		return imageOrPage
+	end
+end
+
+local function _showPageDown(self, on)
+	if on then
+		self:setScl(self._downScl, self._downScl)
 	else
-		error("Invalid page type: " .. type(imageOrPage))
+		self:setScl(1, 1)
+	end
+end
+
+local function _showPageDisable(self, on)
+	if on then
+		self:setColor(self._disableAlpha, self._disableAlpha, self._disableAlpha, self._disableAlpha)
+	else
+		self:setColor(1, 1, 1, 1)
 	end
 end
 
 function Button.new(up, down, disable)
 	local o = PageView.new()
 	o._up = _MakeImage(up)
-	o._down = _MakeImage(down or up)
-	o._disable = _MakeImage(disable or up)
 	o:setPage("up", o._up)
+	
+	if type(down) == "number" then
+		o._downScl = down
+		o.onShowPage.down = _showPageDown
+		down = up
+	end
+	o._down = _MakeImage(down or up)
 	o:setPage("down", o._down)
+	
+	if type(disable) == "number" then
+		o._disableAlpha = disable
+		o.onShowPage.disable = _showPageDisable
+		disable = up
+	end
+	o._disable = _MakeImage(disable or up)
 	o:setPage("disable", o._disable)
+	
 	o.handleTouch = Button_handleTouch
 	o.setPriority = Button.setPriority
 	o.disable = Button.disable
@@ -1178,10 +1233,11 @@ function Button:disable(on)
 	if on then
 		self:showPage("disable")
 	else
+		capture(nil, self)
 		self:showPage("up")
 		self._isdown = nil
 	end
-	self._isdisable = on
+	self._isDisable = on
 end
 
 function Button:setPriority(priority)
@@ -1280,9 +1336,9 @@ function DropList.handleTouchV(self, eventType, touchIdx, x, y, tapCount)
 			if not this._scrollAction then
 				this._scrollAction = AS:wrap(function(dt)
 					local x, y = this._root:getLoc()
-					local newY = y + this._velocityV
-					if this._v >= newY and newY >= this._v - this:getItemCount() * this._space then
-						this._root:setLoc(0, newY)
+					y = y + this._velocityV
+					if 0 <= y and y <= (this:getItemCount() - 1) * this._space then
+						this._root:setLoc(0, y)
 						this._velocityV = this._velocityV + -this._velocityV * dt * 0.03 * device.dpi
 					else
 						this._velocityV = 0
@@ -1306,7 +1362,7 @@ function DropList.handleTouchV(self, eventType, touchIdx, x, y, tapCount)
 		if not this._scrollAction then
 			local x, y = this._root:getLoc()
 			y = y + this._diffV
-			if this._v >= y and y >= this._v - this:getItemCount() * this._space then
+			if 0 <= y and y <= (this:getItemCount() - 1) * this._space then
 				this._root:moveLoc(0, this._diffV)
 			end
 		end
@@ -1332,7 +1388,7 @@ function DropList.handleTouchH(self, eventType, touchIdx, x, y, tapCount)
 				this._scrollAction = AS:wrap(function(dt)
 					local x, y = this._root:getLoc()
 					x = x + this._velocityV
-					if this._v <= x and x <= this._v + this:getItemCount() * this._space then
+					if 0 <= x and x <= (this:getItemCount() - 1) * this._space then
 						this._root:setLoc(x, 0)
 						this._velocityV = this._velocityV + -this._velocityV * dt * 0.03 * device.dpi
 					else
@@ -1357,7 +1413,7 @@ function DropList.handleTouchH(self, eventType, touchIdx, x, y, tapCount)
 		if not this._scrollAction then
 			local x, y = this._root:getLoc()
 			x = x + this._diffV
-			if this._v <= x and x <= this._v + this:getItemCount() * this._space then
+			if 0 <= x and x <= (this:getItemCount() - 1) * this._space then
 				this._root:moveLoc(this._diffV, 0)
 			end
 		end
@@ -1397,11 +1453,7 @@ function DropList:clearItems()
 end
 
 function DropList:addItemV(o)
-	if not self._v then
-		local w, h = o:getSize()
-		self._v = self._size[2] / 2 - h / 2
-	end
-	local y = self._v + self:getItemCount() * -self._space
+	local y = self._size[2] / 2 - self._space / 2 + self:getItemCount() * -self._space
 	self._root:add(o)
 	o:setLoc(0, y)
 	o:setScissorRect(self._scissor)
@@ -1416,19 +1468,13 @@ function DropList:removeItemV(o, span, mode)
 		for i = index, self:getItemCount() do
 			v:moveLoc(0, self._space, span, mode)
 		end
-		if self:getItemCount() == 0 then
-			self._v = nil
-		end
+		self:getItemCount()
 		return index
 	end
 end
 
 function DropList:addItemH(o)
-	if not self._v then
-		local w, h = o:getSize()
-		self._v = -self._size[1] / 2 + w / 2
-	end
-	local x = self._v + self:getItemCount() * self._space
+	local x = -self._size[1] / 2 + self._space / 2 + self:getItemCount() * self._space
 	self._root:add(o)
 	o:setLoc(x, 0)
 	o:setScissorRect(self._scissor)
@@ -1443,9 +1489,7 @@ function DropList:removeItemH(o, span, mode)
 		for i = index, self:getItemCount() do
 			v:moveLoc(-self._space, 0, span, mode)
 		end
-		if self:getItemCount() == 0 then
-			self._v = nil
-		end
+		self:getItemCount()
 		return index
 	end
 end

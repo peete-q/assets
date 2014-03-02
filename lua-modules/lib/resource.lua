@@ -290,6 +290,7 @@ end
 function path.resolvepath(file)
   return _resolve_path(file)
 end
+path.push("fonts/")
 path.push("img/")
 if device.ui_assetrez == device.ASSET_MODE_LO then
   path.push("img/ldpi/")

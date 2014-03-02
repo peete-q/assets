@@ -1,7 +1,7 @@
 
 local ship = {
-	icon = "attacker-icon.png",
-	model = "attacker-model.png",
+	icon = "ship001-icon.png?rot=-90&scl=0.9",
+	model = "ship001.png",
 	bodyGfx="attacker.png",
 	level = 1,
 	upgradeCurve = {
@@ -48,8 +48,8 @@ local Profile = {
 	energyRecover = 5,
 	energyMax = 500,
 	energyInitial = 100,
-	taxCount = 5,
-	taxMax = 5,
+	taxMax = 10,
+	taxCount = 8,
 	collectCD = 10,
 	coins = 100,
 }

@@ -8,8 +8,11 @@ local blockOn = MOAIThread.blockOnAction
 
 local HomeStage = {}
 
-local FONT_SMALL = "arial@12"
-local BUTTON_NORMAL = {"button-normal.png", "button-hilite.png", "button-normal.png?alpha=0.3"}
+local FONT_SMALL = "normal@18"
+local FONT_MIDDLE = "normal@24"
+local FONT_BUTTON = "normal@30"
+local BUTTON_IMAGE = {"button-normal.png", 1.1, 0.5}
+local BUTTON_TEXT_COLOR = {84/255, 212/255, 240/255}
 
 local menus = {
 	{
@@ -54,9 +57,9 @@ function HomeStage:makePlanetOrbit(planet, x, y, t, s1, s2, s3, p, children)
 	thread:run(function(planet, x, y, t)
 		while true do
 			planet:setLoc(-x, -y)
-			planet:setPriority(p + self._spaceBase)
+			planet:setPriority(p + self._basePriority)
 			for i, v in ipairs(children) do
-				v:setPriority(p + self._spaceBase)
+				v:setPriority(p + self._basePriority)
 			end
 			local e = planet:seekScl(s1, s1, t / 2, MOAIEaseType.LINEAR)
 			e:setListener(MOAIAction.EVENT_STOP, function()
@@ -108,18 +111,18 @@ function HomeStage:initSpaceBG()
 end
 
 function HomeStage:initMotherPlanet()
-	self._spaceBase = 1000
+	self._basePriority = 1000
 	local motherPlanet = MOAIProp2D.new()
 	local deck = resource.deck("earth.png")
 	motherPlanet:setDeck(deck)
-	motherPlanet:setPriority(self._spaceBase)
-	motherPlanet:setScl(0.4, 0.4)
+	motherPlanet:setPriority(self._basePriority)
+	motherPlanet:setScl(0.9, 0.9)
 	sceneLayer:insertProp(motherPlanet)
 	
 	local taxWindow = ui.Image.new("window.png")
 	taxWindow:setPriority(1)
-	local closeButton = taxWindow:add(ui.Button.new("button-close01.png"))
-	closeButton:setLoc(50, 0)
+	local closeButton = taxWindow:add(ui.Button.new("back.png", "back.png?scl=1.2"))
+	closeButton:setLoc(435, 228)
 	closeButton.onClick = function()
 		local ease = taxWindow:seekScl(1, 0, 0.5, MOAIEaseType.EASE_OUT)
 		ease:setListener(MOAIAction.EVENT_STOP, function()
@@ -127,9 +130,16 @@ function HomeStage:initMotherPlanet()
 			popupLayer.popuped = false
 		end)
 	end
+	planet = taxWindow:add(ui.Image.new("earth.png"))
+	planet:setScl(0.6)
+	planet:setLoc(200, 0)
+	planet:setColor(1, 1, 1, 0.8)
 	
-	local taxRoot = taxWindow:add(ui.new(MOAIProp2D.new()))
-	taxRoot:setLoc(0, 50)
+	timerIcon = taxWindow:add(ui.Image.new("timer-icon.png"))
+	timerIcon:setLoc(-300, 0)
+	
+	taxRoot = taxWindow:add(ui.new(MOAIProp2D.new()))
+	taxRoot:setLoc(-300, 70)
 	local taxboxlist = {}
 	local x, y, w = 0, 0, 25
 	for i = 1, profile.taxMax do
@@ -146,7 +156,7 @@ function HomeStage:initMotherPlanet()
 		end
 	end
 	filltax()
-	local collectCD = taxWindow:add(ui.TimeBox.new(0, FONT_SMALL, nil, "left", 100, 60))
+	collectCD = taxWindow:add(ui.TimeBox.new(0, FONT_MIDDLE, nil, "MM", 100, 60))
 	collectCD.setCD = function(secs)
 		local cd = timer.new()
 		cd:runn(1, secs, function()
@@ -158,8 +168,13 @@ function HomeStage:initMotherPlanet()
 			end
 		end)
 	end
-	local collectTax = taxWindow:add(ui.Button.new(unpack(BUTTON_NORMAL)))
-	collectTax:setLoc(0, 100)
+	collectCD:setLoc(-200, 0)
+	collectCD:setColor(0.8, 0.8, 0.8, 0.8)
+	
+	collectTax = taxWindow:add(ui.Button.new(unpack(BUTTON_IMAGE)))
+	local collectText = collectTax:add(ui.TextBox.new("征税", FONT_BUTTON, nil, "MM", 100, 60))
+	collectText:setColor(unpack(BUTTON_TEXT_COLOR))
+	collectTax:setLoc(-250, -150)
 	collectTax.onClick = function()
 		local n = #taxlist
 		if n > 0 then
@@ -190,37 +205,47 @@ end
 
 function HomeStage:initMillPlanet()
 	local fleetWindow = ui.Image.new("window.png")
-	local shipList = fleetWindow:add(ui.DropList.new(150, 150, 30, "vertical"))
-	local shipModel = fleetWindow:add(ui.Image.new(""))
-	local upgrade = fleetWindow:add(ui.Button.new(unpack(BUTTON_NORMAL)))
-	local currInfo = fleetWindow:add(ui.TextBox.new("", FONT_SMALL, nil, "left", 100, 60))
-	local nextInfo = fleetWindow:add(ui.TextBox.new("", FONT_SMALL, nil, "left", 100, 60))
+	fleetWindow:setPriority(1)
+	local closeButton = fleetWindow:add(ui.Button.new("back.png", "back.png?scl=1.2"))
+	closeButton:setLoc(435, 228)
+	closeButton.onClick = function()
+		local ease = fleetWindow:seekScl(1, 0, 0.5, MOAIEaseType.EASE_OUT)
+		ease:setListener(MOAIAction.EVENT_STOP, function()
+			-- popupLayer:remove(fleetWindow)
+			popupLayer.popuped = false
+		end)
+	end
+	local upgrade = fleetWindow:add(ui.Button.new(unpack(BUTTON_IMAGE)))
+	upgrade:setLoc(50, -50)
+	local currInfo = fleetWindow:add(ui.TextBox.new("", FONT_SMALL, nil, "MM", 100, 60))
 	currInfo:setLoc(80, 0)
 	currInfo:setLineSpacing(20)
+	local nextInfo = fleetWindow:add(ui.TextBox.new("", FONT_SMALL, nil, "MM", 100, 60))
 	nextInfo:setLoc(180, 0)
 	nextInfo:setLineSpacing(20)
-	upgrade:setLoc(50, -50)
-	shipModel:setLoc(50, 0)
+	-- local shipModel = fleetWindow:add(ui.Image.new(""))
+	-- shipModel:setLoc(50, 0)
+	local shipList = fleetWindow:add(ui.DropList.new(150, 500, 150, "vertical"))
 	fleetWindow.updateFleet = function()
 		shipList:clearItems()
 		for i, v in ipairs(profile.fleet) do
-			local item = shipList:addItem(ui.Image.new(v.icon))
-			item.onClick = function()
-				shipModel:setImage(v.model)
-				currInfo:setString(table.concat(v.upgradeCurve[v.level].info, "\n"))
-				local lvl = v.level + 1
-				if lvl <= #v.upgradeCurve then
-					nextInfo:setString(table.concat(v.upgradeCurve[lvl].info, "\n"))
-					local ok = profile.coins >= v.upgradeCost
-					upgrade:disable(not ok)
-					if ok then
-						upgrade.onClick = function()
-							v.level = v.level + 1
-						end
-					end
-				end
-				
-			end
+			local frame = shipList:addItem(ui.Image.new("frame_icon.png"))
+			local item = frame:add(ui.Image.new(v.icon))
+			-- item.onClick = function()
+				-- shipModel:setImage(v.model)
+				-- currInfo:setString(table.concat(v.upgradeCurve[v.level].info, "\n"))
+				-- local lvl = v.level + 1
+				-- if lvl <= #v.upgradeCurve then
+					-- nextInfo:setString(table.concat(v.upgradeCurve[lvl].info, "\n"))
+					-- local ok = profile.coins >= v.upgradeCost
+					-- upgrade:disable(not ok)
+					-- if ok then
+						-- upgrade.onClick = function()
+							-- v.level = v.level + 1
+						-- end
+					-- end
+				-- end
+			-- end
 		end
 	end
 	
@@ -283,9 +308,9 @@ function HomeStage:initUserPanel()
 	self._userPanel = self._root:add(ui.Image.new ("user-panel.png"))
 	local w, h = self._userPanel:getSize()
 	self._userPanel:setAnchor("TL", w / 2, -h / 2)
-	self._coinsNb = self._userPanel:add(ui.TextBox.new("0", FONT_SMALL, nil, "left", 60, 60))
+	self._coinsNb = self._userPanel:add(ui.TextBox.new("0", FONT_SMALL, nil, "MM", 60, 60))
     self._coinsNb:setLoc(0, 0)
-	self._diamondsNb = self._userPanel:add(ui.TextBox.new("0", FONT_SMALL, nil, "left", 60, 60))
+	self._diamondsNb = self._userPanel:add(ui.TextBox.new("0", FONT_SMALL, nil, "MM", 60, 60))
     self._diamondsNb:setLoc(0, 0)
 	self._expBar = self._userPanel:add(ui.FillBar.new("exp-bar.png"))
 	self._expBar:setLoc(0, 0)
@@ -298,7 +323,7 @@ function HomeStage:initMenu()
 	local w, h = self._menuPanel:getSize()
 	self._menuPanel:setLoc(-w / 2, h / 2)
 	self._menuPanel:setPriority(1)
-	self._menuSwitch = self._menuRoot:add(ui.Switch.new("menu-icon.png", "menu-icon.png?scl=1.1,1.1", "menu-icon.png?scl=-1,1", "menu-icon.png?scl=-1.1,1.1"))
+	self._menuSwitch = self._menuRoot:add(ui.Switch.new("menu-icon.png?scl=-1,1", "menu-icon.png?scl=-1.1,1.1", "menu-icon.png", "menu-icon.png?scl=1.1,1.1"))
 	self._menuSwitch:setPriority(2)
 	self._menuSwitch:setLoc(-w / 2, h / 2)
 	self._menuSwitch.onPress = function()
