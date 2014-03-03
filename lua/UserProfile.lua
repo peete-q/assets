@@ -27,6 +27,8 @@ local ship = {
 			},
 		},
 	},
+	
+	cost = 0,
 }
 
 local Profile = {

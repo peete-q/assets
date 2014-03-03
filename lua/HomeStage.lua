@@ -13,6 +13,7 @@ local FONT_MIDDLE = "normal@24"
 local FONT_BUTTON = "normal@30"
 local BUTTON_IMAGE = {"button-normal.png", 1.1, 0.5}
 local BUTTON_TEXT_COLOR = {84/255, 212/255, 240/255}
+local BUTTON_NUM_COLOR = {84/255, 212/255, 240/255}
 
 local menus = {
 	{
@@ -156,7 +157,7 @@ function HomeStage:initMotherPlanet()
 		end
 	end
 	filltax()
-	collectCD = taxWindow:add(ui.TimeBox.new(0, FONT_MIDDLE, nil, "MM", 100, 60))
+	collectCD = taxWindow:add(ui.TextBox.new(0, FONT_MIDDLE, nil, "MM", 100, 60))
 	collectCD.setCD = function(secs)
 		local cd = timer.new()
 		cd:runn(1, secs, function()
@@ -171,8 +172,31 @@ function HomeStage:initMotherPlanet()
 	collectCD:setLoc(-200, 0)
 	collectCD:setColor(0.8, 0.8, 0.8, 0.8)
 	
+	local collectCountLabel = taxWindow:add(ui.TextBox.new("collect count", FONT_BUTTON, nil, "MM", 100, 60))
+	collectCountLabel:setColor(unpack(BUTTON_TEXT_COLOR))
+	
+	local collectCount = taxWindow:add(ui.TextBox.new("", FONT_BUTTON, nil, "MM", 100, 60))
+	collectCount.setCount = function(self, numerator, denominator)
+		local str = string.format("%d/%d", numerator, denominator)
+		self:setString(str)
+	end
+	collectCount:setColor(unpack(BUTTON_NUM_COLOR))
+	
+	local coinText = taxWindow:add(ui.TextBox.new("", FONT_BUTTON, nil, "MM", 100, 60))
+	coinText:setColor(unpack(BUTTON_TEXT_COLOR))
+	
+	local coinIcon = taxWindow:add(ui.Image.new("coin-icon.png"))
+	coinIcon:setLoc(0, 0)
+	
+	local coinNum = taxWindow:add(ui.TextBox.new("", FONT_BUTTON, nil, "MM", 100, 60))
+	coinNum.setNum = function(self, num)
+		local str = string.format("%d", num)
+		self:setString(str)
+	end
+	coinNum:setColor(unpack(BUTTON_NUM_COLOR))
+	
 	collectTax = taxWindow:add(ui.Button.new(unpack(BUTTON_IMAGE)))
-	local collectText = collectTax:add(ui.TextBox.new("征税", FONT_BUTTON, nil, "MM", 100, 60))
+	local collectText = collectTax:add(ui.TextBox.new("collect tax", FONT_BUTTON, nil, "MM", 100, 60))
 	collectText:setColor(unpack(BUTTON_TEXT_COLOR))
 	collectTax:setLoc(-250, -150)
 	collectTax.onClick = function()
@@ -186,6 +210,7 @@ function HomeStage:initMotherPlanet()
 			end)
 			taxlist[n] = nil
 			profile.taxCount = profile.taxCount - 1
+			collectCount:setCount(profile.taxCount, profile.taxMax)
 			
 			if profile.taxCount == 0 then
 				collectCD.setCD(profile.collectCD)
@@ -402,15 +427,13 @@ function HomeStage:load(onOkay)
 -- MOAIDebugLines.setStyle ( MOAIDebugLines.TEXT_BOX_LAYOUT, 1, 1, 1, 1 )
 
 	self._root = uiLayer:add(ui.Group.new())
-	self:initUserPanel()
-	self:initMenu()
-	self:initSpaceBG()
-	self:initMotherPlanet()
-	self:initMillPlanet()
-	self:initTechPlanet()
-	self:initPortal()
-	
-	sceneLayer:setSortMode(MOAILayer2D.SORT_PRIORITY_ASCENDING)
+	-- self:initUserPanel()
+	-- self:initMenu()
+	-- self:initSpaceBG()
+	-- self:initMotherPlanet()
+	-- self:initMillPlanet()
+	-- self:initTechPlanet()
+	-- self:initPortal()
 	
 	ui.setDefaultTouchCallback(function(eventType, touchIdx, x, y, tapCount)
 		if eventType == ui.TOUCH_UP then

@@ -7,6 +7,8 @@ local memory = require("memory")
 local color = require("color")
 local url = require("url")
 local actionset = require("actionset")
+local interpolate = require("interpolate")
+local MOAIIndexBuffer = MOAIIndexBuffer
 local MOAIScissorRect = MOAIScissorRect
 local MOAIEaseType = MOAIEaseType
 local MOAITextBox = MOAITextBox
@@ -52,16 +54,12 @@ local print = print
 local string = string
 local printf = printf
 local getfenv = getfenv
-local resource = resource
-local device = device
 local nilify = util.nilify
 local breakstr = util.breakstr
 local file = file
-local util = util
 local dofile = dofile
 local math = math
 local math_floor = math.floor
-local memory = memory
 local pcall = pcall
 local debug_ui = os.getenv("DEBUG_UI") or nil
 module(...)
@@ -773,6 +771,40 @@ local function TextBox_setLineSpacing(self, height)
 	self._textbox:setLineSpacing(height)
 end
 
+local function TextBox_countupNumber(self, start, goal, length, prefix, suffix, cb)
+	prefix = prefix or ""
+	suffix = suffix or ""
+	local runtime = 0
+	local num, prevNum, action
+	action = AS:run(function(dt)
+		if runtime < length then
+			runtime = runtime + dt
+			if runtime > length then
+				runtime = length
+			end
+			num = interpolate.lerp(start, goal, runtime / length)
+			self:setString(prefix .. util.commasInNumbers(math.floor(num)) .. suffix)
+			if prevNum ~= nil and math.floor(prevNum) ~= math.floor(num) then
+				if cb then
+					cb()
+				end
+			end
+			prevNum = num
+		else
+			action:stop()
+		end
+	end)
+	return action
+end
+
+function TextBox_setTime(self, secs)
+	local s = math.fmod(secs, 60)
+	local m = math.fmod(math.floor(secs / 60), 60)
+	local h = math.floor(math.floor(secs / 60) / 60)
+	local str = string.format("02%d:%02d:%02d", h, m, s)
+	self:setString(str)
+end
+
 function TextBox.new(str, font, color, justify, width, height, shadow)
 	local o = ui_new(MOAIProp2D.new())
 	local face, size
@@ -893,6 +925,8 @@ function TextBox.new(str, font, color, justify, width, height, shadow)
 	o.setString = TextBox_setString
 	o.setShadowOffset = TextBox_setShadowOffset
 	o.setLineSpacing = TextBox_setLineSpacing
+	o.countupNumber = TextBox_countupNumber
+	o.setTime = TextBox_setTime
 	return o
 end
 
@@ -1290,31 +1324,6 @@ function Switch:turnOn(on)
 	end
 end
 
-ProgressBar = {}
-function ProgressBar.new(imageName)
-	local o = Image.new(imageName)
-	o._scissor = MOAIScissorRect.new()
-	local w, h = o:getSize()
-	o._scissor:setRect(-w / 2, -h / 2, w / 2, h / 2)
-	o._scissor:setParent(o)
-	o._scissor:setLoc(-w - 1, 0)
-	o:setScissorRect(o._scissor)
-	o.setProgress = ProgressBar.setProgress
-	o.seekProgress = ProgressBar.seekProgress
-	return o
-end
-
-function ProgressBar:setProgress(value, length)
-	self._value = value
-	local x = value * self._width
-	self._scissor:setLoc(x, 0)
-end
-
-function ProgressBar:seekProgress(value, length, mode)
-	self._value = value
-	return self._scissor:seekLoc(0, 0, length, mode or MOAIEaseType.LINEAR)
-end
-
 DropList = {}
 DropList.VERTICAL = "vertical"
 DropList.HORIZONTAL = "horizontal"
@@ -1501,28 +1510,6 @@ function DropList:getItemCount()
 	return #self._root.elements
 end
 
-TimeBox = {}
-function TimeBox.new(secs, font, color, justify, width, height, shadow)
-	local self = TextBox.new("", font, color, justify, width, height, shadow)
-	self.setTime = TimeBox.setTime
-	self.getTime = TimeBox.getTime
-	self:setTime(secs)
-	return self
-end
-
-function TimeBox:setTime(secs)
-	local s = math.fmod(secs, 60)
-	local m = math.fmod(math.floor(secs / 60), 60)
-	local h = math.floor(math.floor(secs / 60) / 60)
-	local str = string.format("%d:%02d:%02d", h, m, s)
-	self._time = secs
-	self:setString(str)
-end
-
-function TimeBox:getTime()
-	return self._time
-end
-
 PickBox = {}
 local function PickBox_setColor(self, color)
 	if color ~= nil then
@@ -1683,16 +1670,12 @@ RadialImage = {}
 function RadialImage.new(imageName)
 	local self = ui_new(MOAIProp2D.new())
 	local fmt = MOAIVertexFormat.new()
-	if MOAI_VERSION >= MOAI_VERSION_1_0 then
-		fmt:declareCoord(1, MOAIVertexFormat.GL_FLOAT, 2)
-		fmt:declareUV(2, MOAIVertexFormat.GL_FLOAT, 2)
-	else
-		fmt:declareCoord(MOAIVertexFormat.GL_FLOAT, 2)
-		fmt:declareUV(MOAIVertexFormat.GL_FLOAT, 2)
-	end
+	fmt:declareCoord(1, MOAIVertexFormat.GL_FLOAT, 2)
+	fmt:declareUV(2, MOAIVertexFormat.GL_FLOAT, 2)
+	fmt:declareColor(3, MOAIVertexFormat.GL_UNSIGNED_BYTE)
+	
 	local vbo = MOAIVertexBuffer.new()
 	vbo:setFormat(fmt)
-	vbo:setPrimType(MOAIVertexBuffer.GL_TRIANGLE_FAN)
 	self.vbo = vbo
 	local tex = resource.texture(imageName)
 	local w, h = tex:getSize()
@@ -1700,6 +1683,7 @@ function RadialImage.new(imageName)
 	self._yRadius = h / 2
 	local mesh = MOAIMesh.new()
 	mesh:setTexture(tex)
+	mesh:setPrimType(MOAIMesh.GL_TRIANGLE_FAN)
 	mesh:setVertexBuffer(vbo)
 	self:setDeck(mesh)
 	if MOAIGfxDevice.isProgrammable() then
@@ -1728,6 +1712,7 @@ function RadialImage:setArc(startAngle, endAngle)
 	vbo:reset()
 	vbo:writeFloat(0, 0)
 	vbo:writeFloat(0.5, 0.5)
+	vbo:writeColor32(1, 1, 1)
 	local uRad = 0.5
 	local vRad = -0.5
 	local a = startAngle
@@ -1736,36 +1721,28 @@ function RadialImage:setArc(startAngle, endAngle)
 		dy = sin(a)
 		vbo:writeFloat(dx * xRad, dy * yRad)
 		vbo:writeFloat(0.5 + dx * uRad, 0.5 + dy * vRad)
+		vbo:writeColor32(1, 1, 1)
 		a = a + inc
 	end
 	dx = cos(endAngle)
 	dy = sin(endAngle)
 	vbo:writeFloat(dx * xRad, dy * yRad)
 	vbo:writeFloat(0.5 + dx * uRad, 0.5 + dy * vRad)
+	vbo:writeColor32(1, 1, 1)
 	vbo:bless()
 	self:forceUpdate()
 end
 
 FillBar = {}
-local function FillBar_setColor(self, color)
-	if color ~= nil then
-		self:setShader(ui_parseShader(color))
-	end
-end
-
 function FillBar.new(image, colorstr)
 	local self = ui_new(MOAIProp2D.new())
 	local fmt = MOAIVertexFormat.new()
-	if MOAI_VERSION >= MOAI_VERSION_1_0 then
-		fmt:declareCoord(1, MOAIVertexFormat.GL_FLOAT, 2)
-		fmt:declareUV(2, MOAIVertexFormat.GL_FLOAT, 2)
-	else
-		fmt:declareCoord(MOAIVertexFormat.GL_FLOAT, 2)
-		fmt:declareUV(MOAIVertexFormat.GL_FLOAT, 2)
-	end
+	fmt:declareCoord(1, MOAIVertexFormat.GL_FLOAT, 2)
+	fmt:declareUV(2, MOAIVertexFormat.GL_FLOAT, 2)
+	fmt:declareColor(3, MOAIVertexFormat.GL_UNSIGNED_BYTE)
+		
 	local vbo = MOAIVertexBuffer.new()
 	vbo:setFormat(fmt)
-	vbo:setPrimType(MOAIVertexBuffer.GL_TRIANGLE_STRIP)
 	self.vbo = vbo
 	local tex
 	if type(image) == "string" then
@@ -1783,6 +1760,7 @@ function FillBar.new(image, colorstr)
 	if tex then
 		mesh:setTexture(tex)
 	end
+	mesh:setPrimType(MOAIMesh.GL_TRIANGLE_STRIP)
 	mesh:setVertexBuffer(vbo)
 	self:setDeck(mesh)
 	if colorstr then
@@ -1791,9 +1769,42 @@ function FillBar.new(image, colorstr)
 		self:setShader(resource.shader("xyuv"))
 	end
 	self.setFill = FillBar.setFill
-	self.setColor = FillBar_setColor
+	self.setColor = FillBar.setColor
+	self.seekFill = FillBar.seekFill
 	self:setFill(0, 1)
 	return self
+end
+
+function FillBar.setColor(self, color)
+	if color ~= nil then
+		self:setShader(ui_parseShader(color))
+	end
+end
+
+function FillBar.seekFill(self, startValLeft, startValRight, endValLeft, endValRight, length, cd)
+	local runtime = 0
+	local leftNum, prevLeftNum, rightNum, prevRightNum, action
+	action = AS:run(function(dt)
+		if runtime < length then
+			runtime = runtime + dt
+			if runtime > length then
+				runtime = length
+			end
+			leftNum = interpolate.lerp(startValLeft, endValLeft, runtime / length)
+			rightNum = interpolate.lerp(startValRight, endValRight, runtime / length)
+			self:setFill(leftNum, rightNum)
+			if prevLeftNum ~= nil and math.floor(prevLeftNum * 100) ~= math.floor(leftNum * 100) or prevRightNum ~= nil and math.floor(prevRightNum * 100) ~= math.floor(rightNum * 100) then
+				if cb then
+					cb()
+				end
+			end
+			prevLeftNum = leftNum
+			prevRightNum = rightNum
+		else
+			action:stop()
+		end
+	end)
+	return action
 end
 
 local cos = math.cos
@@ -1814,12 +1825,16 @@ function FillBar:setFill(startVal, endVal)
 	local endWidth = endVal - 0.5
 	vbo:writeFloat(width * startWidth, -halfHeight)
 	vbo:writeFloat(startVal, 1)
+	vbo:writeColor32(1, 1, 1)
 	vbo:writeFloat(width * startWidth, halfHeight)
 	vbo:writeFloat(startVal, 0)
+	vbo:writeColor32(1, 1, 1)
 	vbo:writeFloat(width * endWidth, -halfHeight)
 	vbo:writeFloat(endVal, 1)
+	vbo:writeColor32(1, 1, 1)
 	vbo:writeFloat(width * endWidth, halfHeight)
 	vbo:writeFloat(endVal, 0)
+	vbo:writeColor32(1, 1, 1)
 	vbo:bless()
 	self:forceUpdate()
 end
