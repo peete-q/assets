@@ -10,10 +10,9 @@ local HomeStage = {}
 
 local FONT_SMALL = "normal@18"
 local FONT_MIDDLE = "normal@24"
-local FONT_BUTTON = "normal@30"
 local BUTTON_IMAGE = {"button-normal.png", 1.1, 0.5}
-local BUTTON_TEXT_COLOR = {84/255, 212/255, 240/255}
-local BUTTON_NUM_COLOR = {84/255, 212/255, 240/255}
+local FONT_COLOR_LIGHT = {120/255, 255/255, 220/255}
+local FONT_COLOR_GOLD = {255/255, 191/255, 7/255}
 
 local menus = {
 	{
@@ -137,10 +136,10 @@ function HomeStage:initMotherPlanet()
 	planet:setColor(1, 1, 1, 0.8)
 	
 	timerIcon = taxWindow:add(ui.Image.new("timer-icon.png"))
-	timerIcon:setLoc(-300, 0)
+	timerIcon:setLoc(-300, 20)
 	
 	taxRoot = taxWindow:add(ui.new(MOAIProp2D.new()))
-	taxRoot:setLoc(-300, 70)
+	taxRoot:setLoc(-350, 80)
 	local taxboxlist = {}
 	local x, y, w = 0, 0, 25
 	for i = 1, profile.taxMax do
@@ -157,7 +156,7 @@ function HomeStage:initMotherPlanet()
 		end
 	end
 	filltax()
-	collectCD = taxWindow:add(ui.TextBox.new(0, FONT_MIDDLE, nil, "MM", 100, 60))
+	collectCD = taxWindow:add(ui.TextBox.new("00:00:00", FONT_SMALL, nil, "LM", 100, 50))
 	collectCD.setCD = function(secs)
 		local cd = timer.new()
 		cd:runn(1, secs, function()
@@ -169,36 +168,40 @@ function HomeStage:initMotherPlanet()
 			end
 		end)
 	end
-	collectCD:setLoc(-200, 0)
-	collectCD:setColor(0.8, 0.8, 0.8, 0.8)
+	collectCD:setLoc(-210, 20)
+	collectCD:setColor(unpack(FONT_COLOR_LIGHT))
 	
-	local collectCountLabel = taxWindow:add(ui.TextBox.new("collect count", FONT_BUTTON, nil, "MM", 100, 60))
-	collectCountLabel:setColor(unpack(BUTTON_TEXT_COLOR))
+	collectCountLabel = taxWindow:add(ui.TextBox.new("collect count", FONT_MIDDLE, nil, "MM", 200, 50))
+	collectCountLabel:setColor(unpack(FONT_COLOR_LIGHT))
+	collectCountLabel:setLoc(-300, 140)
 	
-	local collectCount = taxWindow:add(ui.TextBox.new("", FONT_BUTTON, nil, "MM", 100, 60))
+	collectCount = taxWindow:add(ui.TextBox.new("", FONT_SMALL, nil, "LM", 100, 50))
 	collectCount.setCount = function(self, numerator, denominator)
 		local str = string.format("%d/%d", numerator, denominator)
 		self:setString(str)
 	end
-	collectCount:setColor(unpack(BUTTON_NUM_COLOR))
+	collectCount:setCount(profile.taxCount, profile.taxMax)
+	collectCount:setColor(unpack(FONT_COLOR_GOLD))
+	collectCount:setLoc(-140, 137)
 	
-	local coinText = taxWindow:add(ui.TextBox.new("", FONT_BUTTON, nil, "MM", 100, 60))
-	coinText:setColor(unpack(BUTTON_TEXT_COLOR))
+	coinText = taxWindow:add(ui.TextBox.new("coins", FONT_MIDDLE, nil, "MM", 100, 50))
+	coinText:setColor(unpack(FONT_COLOR_LIGHT))
+	coinText:setLoc(-320, -100)
 	
-	local coinIcon = taxWindow:add(ui.Image.new("coin-icon.png"))
-	coinIcon:setLoc(0, 0)
+	coinIcon = taxWindow:add(ui.Image.new("coin.png"))
+	coinIcon:setLoc(-180, -100)
 	
-	local coinNum = taxWindow:add(ui.TextBox.new("", FONT_BUTTON, nil, "MM", 100, 60))
+	coinNum = taxWindow:add(ui.TextBox.new("", FONT_SMALL, nil, "LM", 100, 50))
 	coinNum.setNum = function(self, num)
 		local str = string.format("%d", num)
 		self:setString(str)
 	end
-	coinNum:setColor(unpack(BUTTON_NUM_COLOR))
+	coinNum:setNum(profile.coins)
+	coinNum:setColor(unpack(FONT_COLOR_GOLD))
+	coinNum:setLoc(-100, -100)
 	
 	collectTax = taxWindow:add(ui.Button.new(unpack(BUTTON_IMAGE)))
-	local collectText = collectTax:add(ui.TextBox.new("collect tax", FONT_BUTTON, nil, "MM", 100, 60))
-	collectText:setColor(unpack(BUTTON_TEXT_COLOR))
-	collectTax:setLoc(-250, -150)
+	collectTax:setLoc(-250, -180)
 	collectTax.onClick = function()
 		local n = #taxlist
 		if n > 0 then
@@ -217,6 +220,9 @@ function HomeStage:initMotherPlanet()
 			end
 		end
 	end
+	
+	collectText = collectTax:add(ui.TextBox.new("collect", FONT_MIDDLE, nil, "MM", 100, 50))
+	collectText:setColor(unpack(FONT_COLOR_LIGHT))
 	
 	motherPlanet.onClick = function(self)
 		popupLayer.popuped = true
@@ -242,10 +248,10 @@ function HomeStage:initMillPlanet()
 	end
 	local upgrade = fleetWindow:add(ui.Button.new(unpack(BUTTON_IMAGE)))
 	upgrade:setLoc(50, -50)
-	local currInfo = fleetWindow:add(ui.TextBox.new("", FONT_SMALL, nil, "MM", 100, 60))
+	local currInfo = fleetWindow:add(ui.TextBox.new("", FONT_SMALL, nil, "MM", 100, 50))
 	currInfo:setLoc(80, 0)
 	currInfo:setLineSpacing(20)
-	local nextInfo = fleetWindow:add(ui.TextBox.new("", FONT_SMALL, nil, "MM", 100, 60))
+	local nextInfo = fleetWindow:add(ui.TextBox.new("", FONT_SMALL, nil, "MM", 100, 50))
 	nextInfo:setLoc(180, 0)
 	nextInfo:setLineSpacing(20)
 	-- local shipModel = fleetWindow:add(ui.Image.new(""))
@@ -427,13 +433,13 @@ function HomeStage:load(onOkay)
 -- MOAIDebugLines.setStyle ( MOAIDebugLines.TEXT_BOX_LAYOUT, 1, 1, 1, 1 )
 
 	self._root = uiLayer:add(ui.Group.new())
-	-- self:initUserPanel()
-	-- self:initMenu()
-	-- self:initSpaceBG()
-	-- self:initMotherPlanet()
-	-- self:initMillPlanet()
-	-- self:initTechPlanet()
-	-- self:initPortal()
+	self:initUserPanel()
+	self:initMenu()
+	self:initSpaceBG()
+	self:initMotherPlanet()
+	self:initMillPlanet()
+	self:initTechPlanet()
+	self:initPortal()
 	
 	ui.setDefaultTouchCallback(function(eventType, touchIdx, x, y, tapCount)
 		if eventType == ui.TOUCH_UP then
