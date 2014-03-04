@@ -1691,8 +1691,28 @@ function RadialImage.new(imageName)
 	end
 	self.angleIncrement = math.pi / 8
 	self.setArc = RadialImage.setArc
+	self.seekArc = RadialImage.seekArc
 	self:setArc(0, math.pi * 2)
 	return self
+end
+
+function RadialImage.seekArc(self, startValLeft, startValRight, endValLeft, endValRight, length)
+	local runtime = 0
+	local leftNum, rightNum, action
+	action = AS:run(function(dt)
+		if runtime < length then
+			runtime = runtime + dt
+			if runtime > length then
+				runtime = length
+			end
+			leftNum = interpolate.lerp(startValLeft, endValLeft, runtime / length)
+			rightNum = interpolate.lerp(startValRight, endValRight, runtime / length)
+			self:setArc(leftNum, rightNum)
+		else
+			action:stop()
+		end
+	end)
+	return action
 end
 
 local cos = math.cos

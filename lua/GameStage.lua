@@ -73,9 +73,9 @@ function GameStage:addPreparing(props, x, y)
 	
 	self._energy = self._energy - props.cost
 	local unit = self._root:add(ui.Image.new("prepare-bg.png"))
-	local prog = unit:add(ui.ProgressBar.new("prepare-progress.png"))
+	local prog = unit:add(ui.FillBar.new("prepare-progress.png"))
 	prog:setLoc(0, -30)
-	local e = prog:seekProgress(1, props.prepareTime)
+	local e = prog:seekFill(0, 0, 0, 1, props.prepareTime)
 	self._preparings.index = self._preparings.index + 1
 	self._preparings.n = self._preparings.n + 1
 	local index = self._preparings.index

@@ -435,6 +435,7 @@ function HomeStage:load(onOkay)
 	-- self:initTechPlanet()
 	-- self:initPortal()
 	
+	sceneLayer:setSortMode(MOAILayer2D.SORT_PRIORITY_ASCENDING)
 	ui.setDefaultTouchCallback(function(eventType, touchIdx, x, y, tapCount)
 		if eventType == ui.TOUCH_UP then
 			local wx, wy = sceneLayer:wndToWorld(x, y)
