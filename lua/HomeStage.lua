@@ -157,12 +157,13 @@ function HomeStage:initMotherPlanet()
 	end
 	filltax()
 	collectCD = taxWindow:add(ui.TextBox.new("00:00:00", FONT_SMALL, nil, "LM", 100, 50))
-	collectCD.setCD = function(secs)
+	collectCD.cooldown = function(secs)
+		profile.currCCD = secs
 		local cd = timer.new()
-		cd:runn(1, secs, function()
-			secs = secs - 1
-			collectCD:setTime(secs)
-			if secs == 0 then
+		cd:runn(1, profile.currCCD, function()
+			profile.currCCD = profile.currCCD - 1
+			collectCD:setTime(profile.currCCD)
+			if profile.currCCD == 0 then
 				profile.taxCount = profile.taxMax
 				filltax()
 			end
@@ -170,6 +171,9 @@ function HomeStage:initMotherPlanet()
 	end
 	collectCD:setLoc(-210, 20)
 	collectCD:setColor(unpack(FONT_COLOR_LIGHT))
+	if profile.currCCD > 0 then
+		collectCD.cooldown(profile.currCCD)
+	end
 	
 	collectCountLabel = taxWindow:add(ui.TextBox.new("collect count", FONT_MIDDLE, nil, "MM", 200, 50))
 	collectCountLabel:setColor(unpack(FONT_COLOR_LIGHT))
@@ -202,6 +206,7 @@ function HomeStage:initMotherPlanet()
 	
 	collectTax = taxWindow:add(ui.Button.new(unpack(BUTTON_IMAGE)))
 	collectTax:setLoc(-250, -180)
+	local action
 	collectTax.onClick = function()
 		local n = #taxlist
 		if n > 0 then
@@ -216,8 +221,15 @@ function HomeStage:initMotherPlanet()
 			collectCount:setCount(profile.taxCount, profile.taxMax)
 			
 			if profile.taxCount == 0 then
-				collectCD.setCD(profile.collectCD)
+				collectCD.cooldown(profile.collectCD)
 			end
+			local num = profile.coins
+			if action then
+				num = action.rollingNumber
+				action:stop()
+			end
+			coinNum:rollNumber(num, profile.coins + profile.taxNum, 0.75)
+			profile.coins = profile.coins + profile.taxNum
 		end
 	end
 	

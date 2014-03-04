@@ -52,7 +52,9 @@ local Profile = {
 	energyInitial = 100,
 	taxMax = 10,
 	taxCount = 8,
+	taxNum = 12,
 	collectCD = 10,
+	currCCD = 3,
 	coins = 198,
 }
 

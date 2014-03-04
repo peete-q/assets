@@ -89,12 +89,12 @@ local function ui_get_moai_mt(o)
 end
 
 local function ui_getLayoutSize(self)
-	local uiparent = self
-	while uiparent ~= nil do
-		if uiparent._uilayoutsize ~= nil then
-			return uiparent._uilayoutsize
+	local parent = self
+	while parent ~= nil do
+		if parent._layoutsize ~= nil then
+			return parent._layoutsize
 		end
-		uiparent = uiparent._uiparent
+		parent = parent._parent
 	end
 end
 
@@ -106,13 +106,13 @@ local function ui_fireEvent(self, eventName, ...)
 end
 
 local function ui_setLayer(self, layer)
-	if self._uilayer == layer then
+	if self._layer == layer then
 		return
 	end
 	if layer ~= nil then
 		layer:insertProp(self)
-		if self._uilayer ~= self then
-			self._uilayer = layer
+		if self._layer ~= self then
+			self._layer = layer
 		end
 		if self.elements ~= nil then
 			for k, v in pairs(self.elements) do
@@ -120,13 +120,13 @@ local function ui_setLayer(self, layer)
 			end
 		end
 		ui_fireEvent(self, "onLayerChanged", layer)
-	elseif self._uilayer ~= nil then
-		self._uilayer:removeProp(self)
+	elseif self._layer ~= nil then
+		self._layer:removeProp(self)
 		if captureElement == self then
 			captureElement = nil
 		end
-		if self._uilayer ~= self then
-			self._uilayer = nil
+		if self._layer ~= self then
+			self._layer = nil
 		end
 		if self.elements ~= nil then
 			for k, v in pairs(self.elements) do
@@ -139,7 +139,7 @@ end
 
 local function ui_unparentChild(child)
 	ui_setLayer(child, nil)
-	child._uiparent = nil
+	child._parent = nil
 	child:setParent(nil)
 	child:setScissorRect(nil)
 end
@@ -152,12 +152,12 @@ end
 
 local function ui_add(self, child)
 	assert(child ~= nil, "Child must not be null")
-	assert(child._uilayer == nil or child._uilayer ~= child, "Nested viewports not supported")
-	if child._uiparent ~= nil then
-		if child._uiparent == self then
+	assert(child._layer == nil or child._layer ~= child, "Nested viewports not supported")
+	if child._parent ~= nil then
+		if child._parent == self then
 			return
 		end
-		child._uiparent:remove(child)
+		child._parent:remove(child)
 	end
 	if self.elements == nil then
 		self.elements = {}
@@ -171,12 +171,12 @@ local function ui_add(self, child)
 	end
 	table_insert(self.elements, child)
 	child:setParent(self)
-	child._uiparent = self
-	ui_setLayer(child, self._uilayer)
-	if child._uilayoutsize ~= nil then
-		local uilayoutsize = ui_getLayoutSize(self)
-		if uilayoutsize ~= nil then
-			child:setLayoutSize(uilayoutsize.width, uilayoutsize.height)
+	child._parent = self
+	ui_setLayer(child, self._layer)
+	if child._layoutsize ~= nil then
+		local layoutsize = ui_getLayoutSize(self)
+		if layoutsize ~= nil then
+			child:setLayoutSize(layoutsize.width, layoutsize.height)
 		else
 			error("No parent layout size")
 		end
@@ -184,12 +184,12 @@ local function ui_add(self, child)
 	return child
 end
 
-local function ui_removeAll(self, fullClear)
+local function ui_removeAll(self, recursion)
 	if self.elements ~= nil then
 		for k, v in pairs(self.elements) do
 			ui_unparentChild(v)
-			if fullClear then
-				ui_removeAll(v)
+			if recursion then
+				ui_removeAll(v, recursion)
 			end
 			self.elements[k] = nil
 		end
@@ -198,8 +198,8 @@ local function ui_removeAll(self, fullClear)
 	if self._pagemap ~= nil then
 		for k, v in pairs(self._pagemap) do
 			ui_unparentChild(v)
-			if fullClear then
-				ui_removeAll(v)
+			if recursion then
+				ui_removeAll(v, recursion)
 			end
 			self._pagemap[k] = nil
 		end
@@ -209,12 +209,12 @@ end
 
 local function ui_remove(self, child)
 	if child == nil then
-		if self._uiparent ~= nil then
-			return ui_remove(self._uiparent, self)
+		if self._parent ~= nil then
+			return ui_remove(self._parent, self)
 		end
 		return nil
 	end
-	if child._uiparent ~= self then
+	if child._parent ~= self then
 		return nil
 	end
 	if self.elements ~= nil then
@@ -233,10 +233,10 @@ local function ui_remove(self, child)
 end
 
 local function ui_setAnchor(self, dir, x, y)
-	self._uianchor = dir
-	local uilayoutsize = self._uilayer:getLayoutSize()
-	local diffX = math_floor(uilayoutsize.width / 2)
-	local diffY = math_floor(uilayoutsize.height / 2)
+	self._anchor = dir
+	local layoutsize = self._layer:getLayoutSize()
+	local diffX = math_floor(layoutsize.width / 2)
+	local diffY = math_floor(layoutsize.height / 2)
 	if dir:find("T") then
 		y = y + diffY
 	elseif dir:find("B") then
@@ -252,12 +252,12 @@ end
 
 local function ui_setLayoutSize(self, w, h)
 	assert(not w or not nil, "Bad layout size")
-	local uilayoutsize = self._uilayoutsize or {width = 0, height = 0}
-	if self.elements and (uilayoutsize.width ~= w or uilayoutsize.height ~= h) then
-		local diffX = math_floor((w - uilayoutsize.width) / 2)
-		local diffY = math_floor((h - uilayoutsize.height) / 2)
+	local layoutsize = self._layoutsize or {width = 0, height = 0}
+	if self.elements and (layoutsize.width ~= w or layoutsize.height ~= h) then
+		local diffX = math_floor((w - layoutsize.width) / 2)
+		local diffY = math_floor((h - layoutsize.height) / 2)
 		for i, e in pairs(self.elements) do
-			local uianchor = e._uianchor
+			local uianchor = e._anchor
 			if uianchor ~= nil then
 				local x, y = e:getLoc()
 				if uianchor:find("T") then
@@ -274,7 +274,7 @@ local function ui_setLayoutSize(self, w, h)
 			end
 		end
 	end
-	self._uilayoutsize = {width = w, height = h}
+	self._layoutsize = {width = w, height = h}
 end
 
 local function ui_new(o)
@@ -307,12 +307,12 @@ local function ui_tostring(o)
 			table_insert(t, " \"")
 			table_insert(t, tostring(o._uiname))
 			table_insert(t, "\" [")
-			if o._uilayer then
-				if o._uilayer._uiname then
-					table_insert(t, o._uilayer._uiname .. " ")
+			if o._layer then
+				if o._layer._uiname then
+					table_insert(t, o._layer._uiname .. " ")
 				end
-				table_insert(t, tostring(o._uilayer))
-				local p = o._uilayer:getPartition()
+				table_insert(t, tostring(o._layer))
+				local p = o._layer:getPartition()
 				if p then
 					table_insert(t, " [" .. tostring(p) .. "]")
 				end
@@ -388,11 +388,11 @@ local function onTouch(eventType, touchIdx, x, y, tapCount)
 				end
 				return handled
 			end
-			if elem._uilayer ~= nil then
+			if elem._layer ~= nil then
 				while elem ~= nil do
 					local fn = elem.handleTouch
 					if fn ~= nil then
-						local wx, wy = elem._uilayer:wndToWorld(x, y)
+						local wx, wy = elem._layer:wndToWorld(x, y)
 						local success, result = pcall(invokeTouch, fn, elem, eventType, touchIdx, wx, wy, tapCount)
 						if success then
 							if result then
@@ -405,7 +405,7 @@ local function onTouch(eventType, touchIdx, x, y, tapCount)
 						end
 					end
 					
-					elem = elem._uiparent
+					elem = elem._parent
 				end
 			end
 		else
@@ -414,7 +414,7 @@ local function onTouch(eventType, touchIdx, x, y, tapCount)
 				local wx, wy = layer:wndToWorld(x, y)
 				local partition = layer:getPartition()
 				if partition then
-					local elemList = partition:propListForPoint(wx, wy)
+					local elemList = {partition:propListForPoint(wx, wy)}
 					if elemList ~= nil then
 						while not handled and #elemList > 0 do
 							local lastPriority, fn, fnElemIdx, fnElem
@@ -431,7 +431,7 @@ local function onTouch(eventType, touchIdx, x, y, tapCount)
 											fnElem = elem
 											break
 										end
-										elem = elem._uiparent
+										elem = elem._parent
 									end
 								end
 							end
@@ -578,7 +578,7 @@ function hierarchystring(elem)
 	local e = elem
 	while e do
 		table_insert(t, ui_tostring(e))
-		e = e._uiparent
+		e = e._parent
 	end
 	return table_concat(t, "\n")
 end
@@ -605,12 +605,12 @@ function focus(e)
 end
 
 function treeCheck(x, y, elem)
-	local layer = elem._uilayer
+	local layer = elem._layer
 	if layer == nil then
 		return false
 	end
 	local wx, wy = elem:modelToWorld(x, y)
-	local elemList = layer:getPartition():propListForPoint(wx, wy)
+	local elemList = {layer:getPartition():propListForPoint(wx, wy)}
 	if elemList then
 		for i, e in ipairs(elemList) do
 			local temp = e
@@ -618,7 +618,7 @@ function treeCheck(x, y, elem)
 				if temp == elem then
 					return true
 				end
-				temp = temp._uiparent
+				temp = temp._parent
 			end
 		end
 	end
@@ -635,19 +635,19 @@ DRAG_THRESHOLD = 8
 
 Layer = {}
 local function ui_Layer_clear(self)
-	ui_removeAll(self, true)
+	ui_removeAll(self)
 	local mt = ui_get_moai_mt(self)
 	mt.clear(self)
 end
 
 local function ui_Layer_setViewport(self, vp)
-	self._uidata.viewport = vp
+	self._viewport = vp
 	local mt = ui_get_moai_mt(self)
 	mt.setViewport(self, vp)
 end
 
 local ui_Layer_getViewport = function(self)
-	return self._uidata.viewport
+	return self._viewport
 end
 
 function Layer.new(viewport, scale)
@@ -683,16 +683,13 @@ function Layer.new(viewport, scale)
 		error("Invalid viewport: " .. tostring(viewport))
 	end
 	local o = ui_new(MOAILayer2D.new())
-	o._uidata = {}
-	setmetatable(o._uidata, {__mode = "k"})
-	o._uidata.viewport = viewport
-	o:setViewport(viewport)
-	o._uilayer = o
+	o._layer = o
 	o.clear = ui_Layer_clear
 	o.setViewport = ui_Layer_setViewport
 	o.getViewport = ui_Layer_getViewport
 	o.getLayoutSize = ui_getLayoutSize
 	o.setLayoutSize = ui_setLayoutSize
+	o:setViewport(viewport)
 	o:setLayoutSize(device.width, device.height)
 	table_insert(layers, o)
 	MOAISim.pushRenderPass(o)
@@ -771,7 +768,7 @@ local function TextBox_setLineSpacing(self, height)
 	self._textbox:setLineSpacing(height)
 end
 
-local function TextBox_countupNumber(self, start, goal, length, prefix, suffix, cb)
+local function TextBox_rollNumber(self, start, goal, length, prefix, suffix, cb)
 	prefix = prefix or ""
 	suffix = suffix or ""
 	local runtime = 0
@@ -785,6 +782,7 @@ local function TextBox_countupNumber(self, start, goal, length, prefix, suffix, 
 			num = interpolate.lerp(start, goal, runtime / length)
 			self:setString(prefix .. util.commasInNumbers(math.floor(num)) .. suffix)
 			if prevNum ~= nil and math.floor(prevNum) ~= math.floor(num) then
+				action.rollingNumber = num
 				if cb then
 					cb()
 				end
@@ -926,7 +924,7 @@ function TextBox.new(str, font, color, justify, width, height, shadow)
 	o.setString = TextBox_setString
 	o.setShadowOffset = TextBox_setShadowOffset
 	o.setLineSpacing = TextBox_setLineSpacing
-	o.countupNumber = TextBox_countupNumber
+	o.rollNumber = TextBox_rollNumber
 	o.setTime = TextBox_setTime
 	o.setSize = TextBox_setSize
 	return o
@@ -1007,8 +1005,8 @@ end
 
 Anim = {}
 local Anim_defaultCallback = function(self)
-	if self._uiparent then
-		self._uiparent:remove(self)
+	if self._parent then
+		self._parent:remove(self)
 		if self._anim ~= nil then
 			self._anim:stop()
 			self._anim = nil
@@ -1331,7 +1329,7 @@ DropList.VERTICAL = "vertical"
 DropList.HORIZONTAL = "horizontal"
 
 function DropList.handleTouchV(self, eventType, touchIdx, x, y, tapCount)
-	local this = self._uiparent._uiparent
+	local this = self._parent._parent
 	if eventType == ui_TOUCH_UP then
 		capture(nil)
 		if not this._scrolling then
@@ -1382,7 +1380,7 @@ function DropList.handleTouchV(self, eventType, touchIdx, x, y, tapCount)
 end
 
 function DropList.handleTouchH(self, eventType, touchIdx, x, y, tapCount)
-	local this = self._uiparent._uiparent
+	local this = self._parent._parent
 	if eventType == ui_TOUCH_UP then
 		capture(nil)
 		if not this._scrolling then
