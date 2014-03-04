@@ -53,7 +53,7 @@ local Profile = {
 	taxMax = 10,
 	taxCount = 8,
 	collectCD = 10,
-	coins = 100,
+	coins = 198,
 }
 
 return Profile

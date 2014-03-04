@@ -797,12 +797,19 @@ local function TextBox_countupNumber(self, start, goal, length, prefix, suffix, 
 	return action
 end
 
-function TextBox_setTime(self, secs)
+local function TextBox_setTime(self, secs)
 	local s = math.fmod(secs, 60)
 	local m = math.fmod(math.floor(secs / 60), 60)
 	local h = math.floor(math.floor(secs / 60) / 60)
-	local str = string.format("02%d:%02d:%02d", h, m, s)
+	local str = string.format("%02d:%02d:%02d", h, m, s)
 	self:setString(str)
+end
+
+local function TextBox_setSize(self, width, height)
+	self._textbox:setRect(-width / 2, -height / 2, width / 2, height / 2)
+	if self._shadow then
+		self._shadow:setRect(-width / 2, -height / 2, width / 2, height / 2)
+	end
 end
 
 function TextBox.new(str, font, color, justify, width, height, shadow)
@@ -891,13 +898,7 @@ function TextBox.new(str, font, color, justify, width, height, shadow)
 	if shadow then
 		local shadow = ui_new(MOAITextBox.new())
 		shadow:setFont(font)
-		if justify == "left" then
-			shadow:setAlignment(MOAITextBox.LEFT_JUSTIFY)
-		elseif justify == "right" then
-			shadow:setAlignment(MOAITextBox.RIGHT_JUSTIFY)
-		else
-			shadow:setAlignment(MOAITextBox.CENTER_JUSTIFY)
-		end
+		shadow:setAlignment(h, v)
 		if device.ui_assetrez == device.ASSET_MODE_HI then
 			shadow:setTextSize(size)
 		elseif device.ui_assetrez == device.ASSET_MODE_LO then
@@ -927,6 +928,7 @@ function TextBox.new(str, font, color, justify, width, height, shadow)
 	o.setLineSpacing = TextBox_setLineSpacing
 	o.countupNumber = TextBox_countupNumber
 	o.setTime = TextBox_setTime
+	o.setSize = TextBox_setSize
 	return o
 end
 
@@ -1432,9 +1434,7 @@ end
 
 function DropList.new(w, h, space, direction)
 	local self = ui_new(MOAIProp2D.new())
-	self._size = {w, h}
 	self._scissor = MOAIScissorRect.new()
-	self._scissor:setRect(-w / 2, -h / 2, w / 2, h / 2)
 	self._scissor:setParent(self)
 	self._root = self:add(ui_new(MOAIProp2D.new()))
 	if direction == DropList.VERTICAL then
@@ -1448,13 +1448,20 @@ function DropList.new(w, h, space, direction)
 	end
 	self._space = space
 	self.getSize = DropList.getSize
+	self.setSize = DropList.setSize
 	self.getItemCount = DropList.getItemCount
 	self.clearItems = DropList.clearItems
+	self:setSize(w, h)
 	return self
 end
 
 function DropList:getSize()
 	return unpack(self._size)
+end
+
+function DropList:setSize(w, h)
+	self._size = {w, h}
+	self._scissor:setRect(-w / 2, -h / 2, w / 2, h / 2)
 end
 
 function DropList:clearItems()
