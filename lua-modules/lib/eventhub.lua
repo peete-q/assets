@@ -1,9 +1,7 @@
 local _M = {}
-local funcutil = require("funcutil")
 local table_insert = table.insert
 local table_remove = table.remove
 local _debug, _warn, _error = require("qlog").loggers("eventhub")
-local _cbdebugstr = funcutil.debugstr
 local _BindingCache = setmetatable({}, {__mode = "k"})
 local _ReferenceList = setmetatable({}, {__mode = "v"})
 function _M.bind(obj, event, callback)
@@ -71,7 +69,7 @@ function _M.trigger(obj, event, ...)
     local v = callbacks[i]
     success, result = pcall(v, ...)
     if not success then
-      print("ERROR: " .. _cbdebugstr(v) .. ": " .. tostring(result))
+      print("ERROR: " .. debug.getfuncinfo(v) .. ": " .. tostring(result))
     end
   end
   return result

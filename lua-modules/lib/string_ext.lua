@@ -8,7 +8,7 @@
 local _prev_index = getmetatable ("").__index
 getmetatable ("").__index = function (s, n)
 	if type (n) == "number" then
-		return sub (s, n, n)
+		return string.sub (s, n, n)
 	-- Fall back to old metamethods
 	elseif type (_prev_index) == "function" then
 		return _prev_index (s, n)

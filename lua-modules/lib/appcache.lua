@@ -3,7 +3,6 @@ local device = require("device")
 local util = require("util")
 local jws = require("net.jws")
 local file = require("file")
-local funcutil = require("funcutil")
 local timerutil = require("timerutil")
 local versionutil = require("versionutil")
 local table_insert = table.insert
@@ -46,7 +45,7 @@ local function _fireEvent(self, eventName, ...)
     if success then
       return result
     else
-      _error("Event Handler encountered error: " .. funcutil.debugstr(fn) .. ": " .. tostring(result))
+      _error("Event Handler encountered error: " .. debug.getfuncinfo(fn) .. ": " .. tostring(result))
     end
   end
 end

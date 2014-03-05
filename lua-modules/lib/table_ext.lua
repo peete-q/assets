@@ -75,3 +75,11 @@ function table.merge (t, o)
 	end
 	return t
 end
+
+function table.copy (t)
+	local o = {}
+	for k, v in pairs (t) do
+		o[k] = v
+	end
+	return o
+end

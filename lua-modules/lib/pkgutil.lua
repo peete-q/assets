@@ -1,5 +1,4 @@
-local funcutil = require("funcutil")
-local debugstr = funcutil.debugstr
+
 local _M = {}
 local _debug, _warn, _error = require("qlog").loggers("pkgutil")
 function _M.pkgname(filename)
@@ -20,7 +19,7 @@ function _M.replace(pkgname, source, loader)
       local newt = loader(source, pkgname)
       if type(t) == "table" and type(newt) == "table" then
         if _debug then
-          _debug(string.format("REPLACE package.loaded[%q] contents with %s(%s)", pkgname, debugstr(loader), tostring(source)))
+          _debug(string.format("REPLACE package.loaded[%q] contents with %s(%s)", pkgname, debug.getfuncinfo(loader), tostring(source)))
         end
         for k, v in pairs(t) do
           t[k] = nil
@@ -44,7 +43,7 @@ function _M.replace(pkgname, source, loader)
     end
   else
     if _debug then
-      _debug(string.format("ASSIGN package.preload[%q] = %s", pkgname, debugstr(loader)))
+      _debug(string.format("ASSIGN package.preload[%q] = %s", pkgname, debug.getfuncinfo(loader)))
     end
     package.preload[pkgname] = function(modname)
       return loader(source, modname)
