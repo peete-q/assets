@@ -1,5 +1,5 @@
 
-function debug.tracefull(level)
+function debug.traceall(level)
 	local ret = ""
 	level = level or 2
 	ret = ret .. "stack traceback:\n"
@@ -22,7 +22,7 @@ function debug.tracefull(level)
 			if not name then
 				break
 			end
-			ret = ret .. "\t\t" .. name .. "=" .. string.topretty(value) .. "\n"
+			ret = ret .. "\t\t" .. name .. "=" .. toprettystring(value) .. "\n"
 			i = i + 1
 		end
 		level = level + 1

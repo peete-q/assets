@@ -351,56 +351,63 @@ function HomeStage:initUserPanel()
 	self._userPanel = self._root:add(ui.Image.new ("user-panel.png"))
 	local w, h = self._userPanel:getSize()
 	self._userPanel:setAnchor("TL", w / 2, -h / 2)
-	self._coinsNb = self._userPanel:add(ui.TextBox.new("0", FONT_SMALL, nil, "MM", 60, 60))
-    self._coinsNb:setLoc(0, 0)
-	self._diamondsNb = self._userPanel:add(ui.TextBox.new("0", FONT_SMALL, nil, "MM", 60, 60))
-    self._diamondsNb:setLoc(0, 0)
+	self._coinsNum = self._userPanel:add(ui.TextBox.new("0", FONT_SMALL, nil, "MM", 60, 60))
+    self._coinsNum:setLoc(0, 0)
+	self._diamondsNum = self._userPanel:add(ui.TextBox.new("0", FONT_SMALL, nil, "MM", 60, 60))
+    self._diamondsNum:setLoc(0, 0)
 	self._expBar = self._userPanel:add(ui.FillBar.new("exp-bar.png"))
 	self._expBar:setLoc(0, 0)
+end
+
+function HomeStage:updateUserPanel()
+	local num = profile.currExp / profile.expList[profile.level]
+	self._expBar:setFill(num)
+	self._coinsNum:setString(tostring(profile.coins))
+	self._diamondsNum:setString(tostring(profile.diamonds))
 end
 
 function HomeStage:initMenu()
 	self._menuRoot = self._root:add(ui.Group.new())
 	self._menuRoot:setAnchor("BR", 0, 0)
-	self._menuPanel = self._menuRoot:add(ui.Image.new("menu-panel.png"))
-	local w, h = self._menuPanel:getSize()
-	self._menuPanel:setLoc(-w / 2, h / 2)
-	self._menuPanel:setPriority(1)
-	self._menuSwitch = self._menuRoot:add(ui.Switch.new("menu-icon.png?scl=-1,1", "menu-icon.png?scl=-1.1,1.1", "menu-icon.png", "menu-icon.png?scl=1.1,1.1"))
-	self._menuSwitch:setPriority(2)
-	self._menuSwitch:setLoc(-w / 2, h / 2)
-	self._menuSwitch.onPress = function()
-		if self._menuSwitch.isOn then
-			self._menuPanel:moveRot(-720, 1)
+	menuPanel = self._menuRoot:add(ui.Image.new("menu-panel.png"))
+	local w, h = menuPanel:getSize()
+	menuPanel:setLoc(-w / 2, h / 2)
+	menuPanel:setPriority(1)
+	menuSwitch = self._menuRoot:add(ui.Switch.new("menu-icon.png?scl=-1,1", "menu-icon.png?scl=-1.1,1.1", "menu-icon.png", "menu-icon.png?scl=1.1,1.1"))
+	menuSwitch:setPriority(2)
+	menuSwitch:setLoc(-w / 2, h / 2)
+	menuSwitch.onPress = function()
+		if menuSwitch.isOn then
+			menuPanel:moveRot(-720, 1)
 		else
-			self._menuPanel:moveRot(720, 1)
+			menuPanel:moveRot(720, 1)
 		end
 	end
-	self._menuSwitch.onTurnOn = function()
+	menuSwitch.onTurnOn = function()
 		self:showMenu()
 	end
-	self._menuSwitch.onTurnOff = function()
+	menuSwitch.onTurnOff = function()
 		self:hideMenu()
 	end
-	self._menuSwitch:turnOn(false)
+	menuSwitch:turnOn(false)
 	
-	self._scan = self._menuRoot:add(ui.Button.new("scan-btn.png"))
-	self._scan:setLoc(-w / 2, h / 2 + h)
-	local scanCenter = self._scan:add(ui.new(MOAIProp2D.new()))
-	local enemy = self._scan:add(ui.Image.new("scan-btn-03.png"))
+	scanButton = self._menuRoot:add(ui.Button.new("scan-btn.png"))
+	scanButton:setLoc(-w / 2, h / 2 + h)
+	local scanCenter = scanButton:add(ui.new(MOAIProp2D.new()))
+	local enemy = scanButton:add(ui.Image.new("scan-btn-03.png"))
 	local scan = scanCenter:add(ui.Image.new("scan-btn-02.png"))
-	self._scan:setPriority(0)
+	scanButton:setPriority(0)
 	enemy:setPriority(1)
 	scan:setPriority(2)
 	scan:setLoc(5, 20)
-	self._scanning = MOAIThread.new()
-	self._scanning:run(function()
+	local scanThread = MOAIThread.new()
+	scanThread:run(function()
 		while true do
 			blockOn(scanCenter:moveRot(-180, 2, MOAIEaseType.LINEAR))
 		end
 	end)
-	self._enemy = MOAIThread.new()
-	self._enemy:run(function()
+	local enemyThread = MOAIThread.new()
+	enemyThread:run(function()
 		while true do
 			local x = 30 - math.random(60)
 			local y = 30 - math.random(60)
@@ -428,7 +435,6 @@ function HomeStage:initMenu()
 		table.insert(self._menus, m)
 	end
 end
-
 
 function HomeStage:load(onOkay)
 	if self._root then

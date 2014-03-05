@@ -44,15 +44,17 @@ end
 -- @param t table
 -- @param nometa if non-nil don't copy metatable
 -- @return copy of table
-function table.clone (t, nometa, map)
+function table.clone (t, nometa, _ref)
+	_ref = _ref or {}
+	_ref[t] = t
 	local o = {}
-	map = map or {}
-	map[t] = t
 	for k, v in pairs(t) do
-		if map[v] then
-			o[k] = map[v]
+		if _ref[v] then
+			o[k] = _ref[v]
 		elseif type(v) == "table" then
-			o[k] = table.clone(v, nometa, map)
+			local c = table.clone(v, nometa, _ref)
+			o[k] = c
+			_ref[v] = c
 		else
 			o[k] = v
 		end
@@ -82,4 +84,43 @@ function table.copy (t)
 		o[k] = v
 	end
 	return o
+end
+
+local function _keystr(v)
+	if type(v) == "number" then
+		return string.format("[%d]", v)
+	elseif type(v) == "string" then
+		return string.format("[%q]", v)
+	end
+	return string.format("[%s]", tostring(v))
+end
+
+function table.tostring(v, sep, tab, _pre, _loc, _ref)
+	sep = sep or ""
+	tab = tab or ""
+	_pre = _pre or ""
+	_loc = _loc or "*"
+	_ref = _ref or {}
+	_ref[v] = _loc
+	local ret = ""
+	local str = ""
+	local comma = ""
+	for k, v in pairs(v) do
+		str = str..comma
+		comma = ","
+		str = str..sep..tab.._pre.._keystr(k).."="
+		if not _ref[v] then
+			local _loc = _loc.._keystr(k)
+			str = str..table.tostring(v, sep, tab, _pre..tab, _loc, _ref)
+			_ref[v] = _loc
+		else
+			str = str..tab.._ref[v]
+		end
+	end
+	if str == "" then
+		ret = ret.."{}"
+	else
+		ret = ret.."{"..str..sep.._pre.."}"
+	end
+	return ret
 end

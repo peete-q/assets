@@ -56,6 +56,10 @@ local Profile = {
 	collectCD = 10,
 	currCCD = 3,
 	coins = 198,
+	diamonds = 100,
+	currExp = 10,
+	level = 1,
+	expList = {100, 200, 300},
 }
 
 return Profile
