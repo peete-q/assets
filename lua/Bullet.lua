@@ -1,8 +1,8 @@
 
 local math2d = require "math2d"
 local resource = require "resource"
+local node = require "node"
 local Sprite = require "Sprite"
-local Node = require "Node"
 
 local distance = math2d.distance
 local distanceSq = math2d.distanceSq
@@ -178,9 +178,8 @@ function Bullet.new(props)
 	}
 	setmetatable(self, Bullet)
 	
-	local body = Sprite.new(self.bodyGfx)
-	self._root = Node.new(MOAIProp2D.new())
-	self._root:add(body)
+	self._root = node.new(MOAIProp2D.new())
+	local body = self._root:add(Sprite.new(self.bodyGfx))
 	if self.propellerGfx then
 		local o = Sprite.new(self.propellerGfx)
 		o:setLoc(0,0)

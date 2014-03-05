@@ -1,7 +1,7 @@
 
 local math2d = require "math2d"
 local resource = require "resource"
-local Node = require "Node"
+local node = require "node"
 local Sprite = require "Sprite"
 local Bullet = require "Bullet"
 local Factor = require "Factor"
@@ -101,9 +101,8 @@ function Unit.new(props, force)
 	self._fireRange = self.attackRange
 	self._force.enemy = self:getEnemy()
 	
-	local body = Sprite.new(self.bodyGfx)
-	self._root = Node.new(MOAIProp2D.new())
-	self._root:add(body)
+	self._root = node.new(MOAIProp2D.new())
+	local body = self._root:add(Sprite.new(self.bodyGfx))
 	if props.propellerGfx then
 		self._propeller = Sprite.new(props.propellerGfx)
 		self._root:add(self._propeller)
