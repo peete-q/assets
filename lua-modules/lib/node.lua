@@ -67,12 +67,12 @@ function node.add(self, child)
 	return child
 end
 
-function node.removeAll(self, fullClear)
+function node.removeAll(self, recursion)
 	if self._children ~= nil then
 		for k, v in pairs(self._children) do
 			node_unparentChild(v)
-			if fullClear then
-				node.removeAll(v)
+			if recursion then
+				node.removeAll(v, recursion)
 			end
 		end
 		self._children = nil

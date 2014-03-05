@@ -372,7 +372,7 @@ end
 
 function HomeStage:initMenu()
 	self._menuRoot = self._uiRoot:add(ui.Group.new())
-	self._menuRoot:setAnchor("BR", 0, 0)
+	self._menuRoot:setAnchor("RB", 0, 0)
 	menuPanel = self._menuRoot:add(ui.Image.new("menu-panel.png"))
 	local w, h = menuPanel:getSize()
 	menuPanel:setLoc(-w / 2, h / 2)

@@ -114,8 +114,8 @@ local function ui_setLayer(self, layer)
 		if self._layer ~= self then
 			self._layer = layer
 		end
-		if self.elements ~= nil then
-			for k, v in pairs(self.elements) do
+		if self._children ~= nil then
+			for k, v in pairs(self._children) do
 				ui_setLayer(v, layer)
 			end
 		end
@@ -128,8 +128,8 @@ local function ui_setLayer(self, layer)
 		if self._layer ~= self then
 			self._layer = nil
 		end
-		if self.elements ~= nil then
-			for k, v in pairs(self.elements) do
+		if self._children ~= nil then
+			for k, v in pairs(self._children) do
 				ui_setLayer(v, nil)
 			end
 		end
@@ -159,8 +159,8 @@ local function ui_add(self, child)
 		end
 		child._parent:remove(child)
 	end
-	if self.elements == nil then
-		self.elements = {}
+	if self._children == nil then
+		self._children = {}
 	end
 	local priority = self:getPriority()
 	if priority and not child:getPriority() then
@@ -169,7 +169,7 @@ local function ui_add(self, child)
 	if self._scissorRect then
 		child:setScissorRect(self._scissorRect)
 	end
-	table_insert(self.elements, child)
+	table_insert(self._children, child)
 	child:setParent(self)
 	child._parent = self
 	ui_setLayer(child, self._layer)
@@ -185,15 +185,15 @@ local function ui_add(self, child)
 end
 
 local function ui_removeAll(self, recursion)
-	if self.elements ~= nil then
-		for k, v in pairs(self.elements) do
+	if self._children ~= nil then
+		for k, v in pairs(self._children) do
 			ui_unparentChild(v)
 			if recursion then
 				ui_removeAll(v, recursion)
 			end
-			self.elements[k] = nil
+			self._children[k] = nil
 		end
-		self.elements = nil
+		self._children = nil
 	end
 	if self._pagemap ~= nil then
 		for k, v in pairs(self._pagemap) do
@@ -217,13 +217,13 @@ local function ui_remove(self, child)
 	if child._parent ~= self then
 		return nil
 	end
-	if self.elements ~= nil then
-		for k, v in pairs(self.elements) do
+	if self._children ~= nil then
+		for k, v in pairs(self._children) do
 			if v == child then
 				ui_unparentChild(child)
-				table_remove(self.elements, k)
-				if #self.elements == 0 then
-					self.elements = nil
+				table_remove(self._children, k)
+				if #self._children == 0 then
+					self._children = nil
 				end
 				return k
 			end
@@ -237,15 +237,15 @@ local function ui_setAnchor(self, dir, x, y)
 	local layoutsize = self._layer:getLayoutSize()
 	local diffX = math_floor(layoutsize.width / 2)
 	local diffY = math_floor(layoutsize.height / 2)
-	if dir:find("T") then
-		y = y + diffY
-	elseif dir:find("B") then
-		y = y - diffY
-	end
-	if dir:find("L") then
+	if dir[1] == "L" then
 		x = x - diffX
-	elseif dir:find("R") then
+	elseif dir[1] == "R" then
 		x = x + diffX
+	end
+	if dir[2] == "T" then
+		y = y + diffY
+	elseif dir[2] == "B" then
+		y = y - diffY
 	end
 	self:setLoc(x, y)
 end
@@ -253,10 +253,10 @@ end
 local function ui_setLayoutSize(self, w, h)
 	assert(not w or not nil, "Bad layout size")
 	local layoutsize = self._layoutsize or {width = 0, height = 0}
-	if self.elements and (layoutsize.width ~= w or layoutsize.height ~= h) then
+	if self._children and (layoutsize.width ~= w or layoutsize.height ~= h) then
 		local diffX = math_floor((w - layoutsize.width) / 2)
 		local diffY = math_floor((h - layoutsize.height) / 2)
-		for i, e in pairs(self.elements) do
+		for i, e in pairs(self._children) do
 			local uianchor = e._anchor
 			if uianchor ~= nil then
 				local x, y = e:getLoc()
@@ -1509,10 +1509,10 @@ function DropList:removeItemH(o, span, mode)
 end
 
 function DropList:getItemCount()
-	if not self._root.elements then
+	if not self._root._children then
 		return 0
 	end
-	return #self._root.elements
+	return #self._root._children
 end
 
 PickBox = {}
