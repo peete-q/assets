@@ -46,7 +46,7 @@ end
 -- @return copy of table
 function table.clone (t, nometa, map)
 	local o = {}
-	map = or {}
+	map = map or {}
 	map[t] = t
 	for k, v in pairs(t) do
 		if map[v] then

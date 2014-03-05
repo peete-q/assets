@@ -1,7 +1,7 @@
 require "constants"
 local device = require "device"
 local util = require "util"
-local ui = require "ui.base"
+local ui = require "ui"
 local actionset = require "actionset"
 local resource = require "resource"
 local memory = require "memory"

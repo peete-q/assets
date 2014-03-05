@@ -1,7 +1,7 @@
 
 local timer = require "timer"
 local resource = require "resource"
-local ui = require "ui.base"
+local ui = require "ui"
 local profile = require "UserProfile"
 
 local blockOn = MOAIThread.blockOnAction

@@ -1,5 +1,5 @@
 
-local ui = require "ui.base"
+local ui = require "ui"
 local Unit = require "Unit"
 local Scene = require "Scene"
 local profile = require "UserProfile"
