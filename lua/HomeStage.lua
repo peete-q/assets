@@ -17,37 +17,39 @@ local FONT_COLOR_GOLD = {255/255, 191/255, 7/255}
 local menus = {
 	{
 		icon = "menu-settings.png",
-		cb = function()
+		onClick = function()
 			HomeStage:switchSettings()
 		end,
 	},
 	{
 		icon = "menu-friends.png",
-		cb = function()
+		onClick = function()
 			HomeStage:switchFriends()
 		end,
 	},
 	{
 		icon = "menu-alliances.png",
-		cb = function()
+		onClick = function()
 			HomeStage:switchAlliances()
 		end,
 	},
 	{
 		icon = "menu-rank.png",
-		cb = function()
+		onClick = function()
 			HomeStage:switchRank()
 		end,
 	},
 	{
 		icon = "menu-items.png",
-		cb = function()
+		onClick = function()
 			HomeStage:switchItems()
 		end,
 	},
 }
 
 function HomeStage:init(spaceStage, gameStage)
+	self._spaceStage = spaceStage
+	self._gameStage = gameStage
 end
 
 function HomeStage:makePlanetOrbit(planet, x, y, t, s1, s2, s3, p, children)
@@ -477,6 +479,9 @@ function HomeStage:load(onOkay)
 end
 
 function HomeStage:update()
+end
+
+function HomeStage:switchToSpace()
 end
 
 function HomeStage:showMenu()
