@@ -1,7 +1,7 @@
 
-local Node = {}
+local node = {}
 
-local function Node_setLayer(self, layer)
+local function node_setLayer(self, layer)
 	if self._layer == layer then
 		return
 	end
@@ -10,7 +10,7 @@ local function Node_setLayer(self, layer)
 		self._layer = layer
 		if self._children ~= nil then
 			for k, v in pairs(self._children) do
-				Node_setLayer(v, layer)
+				node_setLayer(v, layer)
 			end
 		end
 	elseif self._layer ~= nil then
@@ -18,19 +18,30 @@ local function Node_setLayer(self, layer)
 		self._layer = nil
 		if self._children ~= nil then
 			for k, v in pairs(self._children) do
-				Node_setLayer(v, nil)
+				node_setLayer(v, nil)
 			end
 		end
 	end
 end
 
-local function Node_unparentChild(child)
-	Node_setLayer(child, nil)
+local function node_unparentChild(child)
+	node_setLayer(child, nil)
 	child._parent = nil
 	child:setParent(nil)
+	child:setScissorRect(nil)
 end
 
-local function Node_add(self, child)
+function node.setScissorRect(self, rect)
+	self._scissorRect = rect
+	local mt = util.get_moai_mt(self)
+	mt.setScissorRect(self, rect)
+end
+
+function node.getScissorRect(self)
+	return self._scissorRect
+end
+
+function node.add(self, child)
 	assert(child ~= nil, "Child must not be null")
 	assert(child._layer == nil or child._layer ~= child, "Nested viewports not supported")
 	if child._parent ~= nil then
@@ -39,32 +50,39 @@ local function Node_add(self, child)
 		end
 		child._parent:remove(child)
 	end
+	local priority = self:getPriority()
+	if priority and not child:getPriority() then
+		child:setPriority(priority + 1)
+	end
+	if self._scissorRect then
+		child:setScissorRect(self._scissorRect)
+	end
 	if self._children == nil then
 		self._children = {}
 	end
 	self._children[child] = child
 	child:setParent(self)
 	child._parent = self
-	Node_setLayer(child, self._layer)
+	node_setLayer(child, self._layer)
 	return child
 end
 
-local function Node_removeAll(self, fullClear)
+function node.removeAll(self, fullClear)
 	if self._children ~= nil then
 		for k, v in pairs(self._children) do
-			Node_unparentChild(v)
+			node_unparentChild(v)
 			if fullClear then
-				Node_removeAll(v)
+				node.removeAll(v)
 			end
 		end
 		self._children = nil
 	end
 end
 
-local function Node_remove(self, child)
+function node.remove(self, child)
 	if child == nil then
 		if self._parent ~= nil then
-			return Node_remove(self._parent, self)
+			return node.remove(self._parent, self)
 		end
 		return false
 	end
@@ -73,14 +91,14 @@ local function Node_remove(self, child)
 	end
 	if self._children ~= nil then
 		if self._children[child] ~= nil then
-			Node_unparentChild(child)
+			node_unparentChild(child)
 			self._children[child] = nil
 		end
 	end
 	return false
 end
 
-local function Node_destroy(self)
+function node.destroy(self)
 	self:remove()
 	if self._children ~= nil then
 		for k, v in pairs(self._children) do
@@ -88,20 +106,21 @@ local function Node_destroy(self)
 		end
 		self._children = nil
 	end
-	if self._oldreNodeDestroy then
+	if self._olderNodeDestroy then
 		self._olderNodeDestroy(self)
 	end
 end
 
-function Node.new(o)
+function node.new(o)
 	o = o or MOAIProp2D.new()
 	o._olderNodeDestroy = o.destroy
-	o.destroy = Node_destroy
-	o.add = Node_add
-	o.setLayer = Node_setLayer
-	o.remove = Node_remove
-	o.removeAll = Node_removeAll
+	o.destroy = node.destroy
+	o.add = node.add
+	o.remove = node.remove
+	o.removeAll = node.removeAll
+	o.setScissorRect = node.setScissorRect
+	o.getScissorRect = node.getScissorRect
 	return o
 end
 
-return Node
+return node

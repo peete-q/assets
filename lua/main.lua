@@ -2,6 +2,7 @@ require "constants"
 local device = require "device"
 local util = require "util"
 local ui = require "ui"
+local layer = require "layer"
 local actionset = require "actionset"
 local resource = require "resource"
 local memory = require "memory"
@@ -14,15 +15,18 @@ local environment = require "environment"
 local qlog = require "qlog"
 local randutil = require "randutil"
 randutil.randomseed()
+
 if os.getenv("NO_SOUND") then
 	MOAIUntzSystem = nil
 end
+
 local gettext = require("gettext.gettext")
 if os.getenv("I18N_TEST") then
 	gettext.setlang("*")
 else
 	gettext.setlang(PREFERRED_LANGUAGES, "mo/?.mo")
 end
+
 MOAISim.openWindow(_("SBC"), device.width, device.height)
 ui.init()
 
@@ -30,33 +34,37 @@ viewport = MOAIViewport.new()
 viewport:setScale(device.width, device.height)
 viewport:setSize(0, 0, device.width, device.height)
 
-spaceLayer = MOAILayer2D.new()
-spaceLayer:setViewport(viewport)
-MOAISim.pushRenderPass(spaceLayer)
+farLayer = layer.new(viewport)
+farLayer:setSortMode(MOAILayer2D.SORT_PRIORITY_ASCENDING)
+farLayer:setPriority(0)
 
-sceneLayer = MOAILayer2D.new()
-sceneLayer:setViewport(viewport)
-MOAISim.pushRenderPass(sceneLayer)
+sceneLayer = layer.new(viewport)
+sceneLayer:setSortMode(MOAILayer2D.SORT_PRIORITY_ASCENDING)
+sceneLayer:setPriority(0)
 
 uiLayer = ui.Layer.new(viewport)
-uiLayer._uiname = "uiLayer"
 uiLayer:setSortMode(MOAILayer2D.SORT_PRIORITY_ASCENDING)
-uiLayer:setPriority(1)
+uiLayer:setPriority(0)
+uiLayer._uiname = "uiLayer"
 
 popupLayer = ui.Layer.new(viewport)
-popupLayer._uiname = "popupLayer"
 popupLayer:setSortMode(MOAILayer2D.SORT_PRIORITY_ASCENDING)
-popupLayer:setPriority(1)
+popupLayer:setPriority(0)
+popupLayer._uiname = "popupLayer"
 
 local HomeStage = require "HomeStage"
 local GameStage = require "GameStage"
+local SpaceStage = require "SpaceStage"
 local Scene = require "Scene"
 local Unit = require "Unit"
 local Bullet = require "Bullet"
 local timer = require "timer"
 
-HomeStage:init()
-HomeStage:load()
+HomeStage:init(SpaceStage, GameStage)
+SpaceStage:init(HomeStage, GameStage)
+GameStage:init(SpaceStage, HomeStage)
+
+HomeStage:open()
 
 local lastdate
 timer.new(0.1, function()

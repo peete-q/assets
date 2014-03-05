@@ -2,6 +2,7 @@
 local timer = require "timer"
 local resource = require "resource"
 local ui = require "ui"
+local node = require "node"
 local profile = require "UserProfile"
 
 local blockOn = MOAIThread.blockOnAction
@@ -88,8 +89,10 @@ function HomeStage:makePlanetOrbit(planet, x, y, t, s1, s2, s3, p, children)
 	table.insert(self._orbits, thread)
 end
 
-function HomeStage:initSpaceBG()
-	local bg = MOAIProp2D.new()
+function HomeStage:initStageBG()
+	self._sceneRoot = node.new()
+	
+	local bg = self._sceneRoot:add(node.new())
 	local deck = MOAITileDeck2D.new()
 	local tex = resource.texture("starfield.jpg")
 	deck:setTexture(tex)
@@ -102,7 +105,6 @@ function HomeStage:initSpaceBG()
 	grid:setRow(1, 1)
 	bg:setDeck(deck)
 	bg:setGrid(grid)
-	sceneLayer:insertProp(bg)
 	
 	self._bgAnimating = MOAIThread.new()
 	self._bgAnimating:run(function()
@@ -350,7 +352,7 @@ function HomeStage:initPortal()
 end
 
 function HomeStage:initUserPanel()
-	self._userPanel = self._root:add(ui.Image.new ("user-panel.png"))
+	self._userPanel = self._uiRoot:add(ui.Image.new ("user-panel.png"))
 	local w, h = self._userPanel:getSize()
 	self._userPanel:setAnchor("TL", w / 2, -h / 2)
 	self._coinsNum = self._userPanel:add(ui.TextBox.new("0", FONT_SMALL, nil, "MM", 60, 60))
@@ -369,7 +371,7 @@ function HomeStage:updateUserPanel()
 end
 
 function HomeStage:initMenu()
-	self._menuRoot = self._root:add(ui.Group.new())
+	self._menuRoot = self._uiRoot:add(ui.Group.new())
 	self._menuRoot:setAnchor("BR", 0, 0)
 	menuPanel = self._menuRoot:add(ui.Image.new("menu-panel.png"))
 	local w, h = menuPanel:getSize()
@@ -439,11 +441,6 @@ function HomeStage:initMenu()
 end
 
 function HomeStage:load(onOkay)
-	if self._root then
-		uiLayer:add(self._root)
-		return
-	end
-	
 -- MOAIDebugLines.setStyle ( MOAIDebugLines.PARTITION_CELLS, 2, 1, 0, 0 )
 -- MOAIDebugLines.setStyle ( MOAIDebugLines.PARTITION_PADDED_CELLS, 1, 0, 1, 0 )
 -- MOAIDebugLines.setStyle ( MOAIDebugLines.PROP_MODEL_BOUNDS, 2, 0, 0, 1 )
@@ -452,10 +449,10 @@ function HomeStage:load(onOkay)
 -- MOAIDebugLines.setStyle ( MOAIDebugLines.TEXT_BOX_BASELINES, 1, 0, 1, 1 )
 -- MOAIDebugLines.setStyle ( MOAIDebugLines.TEXT_BOX_LAYOUT, 1, 1, 1, 1 )
 
-	self._root = uiLayer:add(ui.Group.new())
+	self._uiRoot = uiLayer:add(ui.Group.new())
 	self:initUserPanel()
 	self:initMenu()
-	self:initSpaceBG()
+	self:initStageBG()
 	self:initMotherPlanet()
 	self:initMillPlanet()
 	self:initTechPlanet()
@@ -531,10 +528,19 @@ function HomeStage:updateProfile()
 end
 
 function HomeStage:open()
+	if not self._loaded then
+		self:load()
+		self._loaded = true
+	end
+	uiLayer:add(self._uiRoot)
+	sceneLayer:add(self._sceneRoot)
+	
+	self:updateUserPanel()
 end
 
 function HomeStage:close()
-	uiLayer:remove(self._root)
+	uiLayer:remove(self._uiRoot)
+	sceneLayer:remove(self._sceneRoot)
 	
 	self._bgAnimating:stop()
 	self._portalRotating:stop()

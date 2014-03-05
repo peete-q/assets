@@ -278,7 +278,7 @@ local function ui_setLayoutSize(self, w, h)
 end
 
 local function ui_new(o)
-	assert(type(o) == "userdata" and getmetatable(o) ~= nil, "Improper use of ui_new")
+	o = o or MOAIProp2D.new()
 	o.add = ui_add
 	o.setLayer = ui_setLayer
 	o.remove = ui_remove
