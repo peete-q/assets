@@ -129,7 +129,7 @@ function HomeStage:initMotherPlanet()
 	closeButton.onClick = function()
 		local ease = taxWindow:seekScl(1, 0, 0.5, MOAIEaseType.EASE_OUT)
 		ease:setListener(MOAIAction.EVENT_STOP, function()
-			-- popupLayer:remove(taxWindow)
+			popupLayer:remove(taxWindow)
 			popupLayer.popuped = false
 		end)
 	end
@@ -154,8 +154,10 @@ function HomeStage:initMotherPlanet()
 	local taxlist = {}
 	local filltax = function()
 		for i = 1, profile.taxCount do
-			local tax = taxboxlist[i]:add(ui.Image.new("tax.png"))
-			taxlist[i] = tax
+			if not taxlist[i] then
+				local tax = taxboxlist[i]:add(ui.Image.new("tax.png"))
+				taxlist[i] = tax
+			end
 		end
 	end
 	filltax()
@@ -205,7 +207,7 @@ function HomeStage:initMotherPlanet()
 	end
 	coinNum:setNum(profile.coins)
 	coinNum:setColor(unpack(FONT_COLOR_GOLD))
-	coinNum:setLoc(-100, -100)
+	coinNum:setLoc(-130, -100)
 	
 	collectTax = taxWindow:add(ui.Button.new(unpack(BUTTON_IMAGE)))
 	collectTax:setLoc(-250, -180)
@@ -215,8 +217,8 @@ function HomeStage:initMotherPlanet()
 		local n = #taxlist
 		if n > 0 then
 			local tax = taxlist[n]
-			local e = tax:seekScl(1.5, 1.5, 1)
-			tax:seekColor(0, 0, 0, 0, 1)
+			local e = tax:seekScl(1.5, 1.5, 0.75)
+			tax:seekColor(0, 0, 0, 0, 0.75)
 			e:setListener(MOAIAction.EVENT_STOP, function()
 				tax:remove()
 			end)
@@ -233,8 +235,8 @@ function HomeStage:initMotherPlanet()
 				rolling:stop()
 				blinking:stop()
 			end
-			rolling = coinNum:rollNumber(num, profile.coins + profile.taxNum, 0.75)
-			coinNum:setScl(2, 2)
+			rolling = coinNum:rollNumber(num, profile.coins + profile.taxNum, 0.6)
+			coinNum:setScl(1.5, 1.5)
 			blinking = coinNum:seekScl(1, 1, 0.5, MOAIEaseType.EASE_IN)
 			profile.coins = profile.coins + profile.taxNum
 		end
@@ -330,18 +332,14 @@ function HomeStage:initPortal()
 	local deck = resource.deck("star-portal.png")
 	portal:setDeck(deck)
 	local children = {}
-	local portal02 = node.new()
-	portal02:setParent(portal)
-	self._sceneRoot:add(portal02)
+	local portal02 = portal:add(node.new())
 	local deck = resource.deck("star-portal-02.png")
 	portal02:setDeck(deck)
 	table.insert(children, portal02)
 	for i = 1, 7 do
-		local o = node.new()
-		o:setParent(portal02)
+		local o = portal02:add(node.new())
 		o:setDeck(deck)
 		o:setRot(45 * i)
-		self._sceneRoot:add(o)
 		table.insert(children, o)
 	end
 	self._sceneRoot:add(portal)
