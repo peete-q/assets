@@ -6,7 +6,6 @@ local node = require "node"
 local profile = require "UserProfile"
 
 local blockOn = MOAIThread.blockOnAction
-
 local HomeStage = {}
 
 local FONT_SMALL = "normal@18"
@@ -116,12 +115,12 @@ end
 
 function HomeStage:initMotherPlanet()
 	self._basePriority = 1000
-	local motherPlanet = MOAIProp2D.new()
+	local motherPlanet = node.new()
 	local deck = resource.deck("earth.png")
 	motherPlanet:setDeck(deck)
 	motherPlanet:setPriority(self._basePriority)
 	motherPlanet:setScl(0.9, 0.9)
-	sceneLayer:insertProp(motherPlanet)
+	self._sceneRoot:add(motherPlanet)
 	
 	local taxWindow = ui.Image.new("window.png")
 	taxWindow:setPriority(1)
@@ -300,10 +299,10 @@ function HomeStage:initMillPlanet()
 		end
 	end
 	
-	local millPlanet = MOAIProp2D.new()
+	local millPlanet = node.new()
 	local deck = resource.deck("planet01.png")
 	millPlanet:setDeck(deck)
-	sceneLayer:insertProp(millPlanet)
+	self._sceneRoot:add(millPlanet)
 	millPlanet:setLoc(0, -100)
 	millPlanet.onClick = function()
 		popupLayer.popuped = true
@@ -319,33 +318,33 @@ function HomeStage:initMillPlanet()
 end
 
 function HomeStage:initTechPlanet()
-	local techPlanet = MOAIProp2D.new()
+	local techPlanet = node.new()
 	local deck = resource.deck("planet03.png")
 	techPlanet:setDeck(deck)
-	sceneLayer:insertProp(techPlanet)
+	self._sceneRoot:add(techPlanet)
 	self:makePlanetOrbit(techPlanet, 350, -100, 55, 0.5, 0.3, 0.1, 2)
 end
 
 function HomeStage:initPortal()
-	local portal = MOAIProp2D.new()
+	local portal = node.new()
 	local deck = resource.deck("star-portal.png")
 	portal:setDeck(deck)
 	local children = {}
-	local portal02 = MOAIProp2D.new()
+	local portal02 = node.new()
 	portal02:setParent(portal)
-	sceneLayer:insertProp(portal02)
+	self._sceneRoot:add(portal02)
 	local deck = resource.deck("star-portal-02.png")
 	portal02:setDeck(deck)
 	table.insert(children, portal02)
 	for i = 1, 7 do
-		local o = MOAIProp2D.new()
+		local o = node.new()
 		o:setParent(portal02)
 		o:setDeck(deck)
 		o:setRot(45 * i)
-		sceneLayer:insertProp(o)
+		self._sceneRoot:add(o)
 		table.insert(children, o)
 	end
-	sceneLayer:insertProp(portal)
+	self._sceneRoot:add(portal)
 	self:makePlanetOrbit(portal, 150, -200, 10, 0.5, 0.3, 0.1, 1, children)
 	self._portalRotating = MOAIThread.new()
 	self._portalRotating:run(function()
@@ -401,6 +400,9 @@ function HomeStage:initMenu()
 	
 	scanButton = self._menuRoot:add(ui.Button.new("scan-btn.png"))
 	scanButton:setLoc(-w / 2, h / 2 + h)
+	scanButton.onClick = function()
+		self:switchToSpace()
+	end
 	local scanCenter = scanButton:add(ui.new(MOAIProp2D.new()))
 	local enemy = scanButton:add(ui.Image.new("scan-btn-03.png"))
 	local scan = scanCenter:add(ui.Image.new("scan-btn-02.png"))
@@ -483,6 +485,8 @@ function HomeStage:update()
 end
 
 function HomeStage:switchToSpace()
+	self:close()
+	self._spaceStage:open()
 end
 
 function HomeStage:showMenu()

@@ -80,6 +80,14 @@ function table.merge (t, o, nocover)
 	return t
 end
 
+function table.find(t, o)
+	for k, v in pairs(t) do
+		if v == o then
+			return k
+		end
+	end
+end
+
 function table.copy (t)
 	local o = {}
 	for k, v in pairs (t) do

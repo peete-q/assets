@@ -46,6 +46,7 @@ local Profile = {
 	},
 	spells = {
 	},
+	motherShip = ship,
 	prepareMax = 5,
 	energyRecover = 5,
 	energyMax = 500,

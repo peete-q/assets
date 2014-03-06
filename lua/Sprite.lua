@@ -13,8 +13,8 @@ local function Sprite_getSize(self)
 	return self._deck:getSize(self.deckLayer)
 end
 
-local function Sprite_parse(self, imageName)
-	local imageName, queryStr = breakstr(imageName, "?")
+local function Sprite_parse(self, url)
+	local imageName, queryStr = breakstr(url, "?")
 	local deckName, layerName = breakstr(imageName, "#")
 	local deck = resource.deck(deckName)
 	self:setDeck(deck)

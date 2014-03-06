@@ -195,16 +195,6 @@ local function ui_removeAll(self, recursion)
 		end
 		self._children = nil
 	end
-	if self._pagemap ~= nil then
-		for k, v in pairs(self._pagemap) do
-			ui_unparentChild(v)
-			if recursion then
-				ui_removeAll(v, recursion)
-			end
-			self._pagemap[k] = nil
-		end
-		self._pagemap = nil
-	end
 end
 
 local function ui_remove(self, child)
@@ -623,6 +613,18 @@ function treeCheck(x, y, elem)
 		end
 	end
 	return false
+end
+
+function removeLayer(layer)
+	local i = table.find(layers, layer)
+	if i then
+		table.remove(layers, i)
+	end
+end
+
+function insertLayer(layer, ...)
+	removeLayer(layer)
+	table.insert(layers, ...)
 end
 
 new = ui_new

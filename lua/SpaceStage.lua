@@ -1,8 +1,11 @@
 
 local ui = require "ui"
 local node = require "node"
+local Unit = require "Unit"
 local profile = require "UserProfile"
+local device = require "device"
 
+local blockOn = MOAIThread.blockOnAction
 local SpaceStage = {}
 
 function SpaceStage:init(homeStgae, gameStage)
@@ -12,6 +15,7 @@ end
 
 function SpaceStage:initStageBG()
 	self._sceneRoot = node.new()
+	self._unitRoot = self._sceneRoot:add(node.new())
 	
 	local bg = self._sceneRoot:add(node.new())
 	local deck = MOAITileDeck2D.new()
@@ -38,6 +42,17 @@ end
 function SpaceStage:load()
 	self._uiRoot = ui.new()
 	self:initStageBG()
+	
+	self._motherShip = self._unitRoot:add(profile.motherShip)
+end
+
+function SpaceStage:loadLevel(tb)
+	local w, h = device.width, device.height
+	local force = {}
+	for i, v in ipairs(tb) do
+		local o = self._unitRoot:add(Unit.new(v.props, force))
+		o:setWorldLoc(w * v.x, h * v.y)
+	end
 end
 
 function SpaceStage:open()
@@ -47,11 +62,13 @@ function SpaceStage:open()
 	end
 	uiLayer:add(self._uiRoot)
 	sceneLayer:add(self._sceneRoot)
+	ui.insertLayer(sceneLayer)
 end
 
 function SpaceStage:close()
 	uiLayer:remove(self._uiRoot)
 	sceneLayer:remove(self._sceneRoot)
+	ui.removeLayer(sceneLayer)
 end
 
 return SpaceStage

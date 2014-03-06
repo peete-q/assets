@@ -1,4 +1,6 @@
 
+local util = require "moai.util"
+
 local node = {}
 
 local function node_setLayer(self, layer)

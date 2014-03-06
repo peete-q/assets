@@ -232,6 +232,8 @@ function Unit:moveTo(x, y, speed)
 	self:stop()
 	local sx, sy = self:getWorldLoc()
 	local dist = distance(sx, sy, x, y)
+	local dir = math2d.dir(sx - x, sy - y)
+	self:setDir(dir)
 	self._moveSpeed = speed or self:getMoveSpeed()
 	self._motionDriver = self._root:seekLoc(x, y, self._moveSpeed * dist, MOAIEaseType.LINEAR)
 	self._dx = x
@@ -460,12 +462,14 @@ function Unit:fire(target)
 	self:stop()
 	local targets = self:getAttackTargets()
 	local x, y = self:getWorldLoc()
+	local tx, ty = v:getWorldLoc()
+	local dir = math2d.dir(x - tx, y - ty)
+	self:setDir(dir)
 	local n = 0
 	for k, v in pairs(targets) do
 		if self.lockTarget then
 			Bullet.fireLocked(self.bullet, self._scene, self:getAttackPower(), self:getEnemy(), x, y, v)
 		else
-			local tx, ty = v:getWorldLoc()
 			Bullet.fireToward(self.bullet, self._scene, self:getAttackPower(), self:getEnemy(), x, y, tx, ty)
 		end
 		n = n + 1
