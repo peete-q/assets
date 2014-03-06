@@ -71,9 +71,11 @@ end
 -- @param t first table
 -- @param o second table
 -- @return merged table
-function table.merge (t, o)
+function table.merge (t, o, nocover)
 	for k, v in pairs (o) do
-		t[k] = v
+		if t[k] == nil or not nocover then
+			t[k] = v
+		end
 	end
 	return t
 end

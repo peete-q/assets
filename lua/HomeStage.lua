@@ -199,7 +199,7 @@ function HomeStage:initMotherPlanet()
 	coinIcon = taxWindow:add(ui.Image.new("coin.png"))
 	coinIcon:setLoc(-180, -100)
 	
-	coinNum = taxWindow:add(ui.TextBox.new("", FONT_SMALL, nil, "LM", 100, 50))
+	coinNum = taxWindow:add(ui.TextBox.new("", FONT_SMALL, nil, "MM", 100, 50))
 	coinNum.setNum = function(self, num)
 		local str = string.format("%d", num)
 		self:setString(str)
@@ -210,7 +210,8 @@ function HomeStage:initMotherPlanet()
 	
 	collectTax = taxWindow:add(ui.Button.new(unpack(BUTTON_IMAGE)))
 	collectTax:setLoc(-250, -180)
-	local action
+	local blinking
+	local rolling
 	collectTax.onClick = function()
 		local n = #taxlist
 		if n > 0 then
@@ -228,11 +229,14 @@ function HomeStage:initMotherPlanet()
 				collectCD.cooldown(profile.collectCD)
 			end
 			local num = profile.coins
-			if action then
-				num = action.rollingNumber
-				action:stop()
+			if rolling then
+				num = rolling.rollingNumber
+				rolling:stop()
+				blinking:stop()
 			end
-			coinNum:rollNumber(num, profile.coins + profile.taxNum, 0.75)
+			rolling = coinNum:rollNumber(num, profile.coins + profile.taxNum, 0.75)
+			coinNum:setScl(2, 2)
+			blinking = coinNum:seekScl(1, 1, 0.5, MOAIEaseType.EASE_IN)
 			profile.coins = profile.coins + profile.taxNum
 		end
 	end
@@ -354,7 +358,7 @@ end
 function HomeStage:initUserPanel()
 	self._userPanel = self._uiRoot:add(ui.Image.new ("user-panel.png"))
 	local w, h = self._userPanel:getSize()
-	self._userPanel:setAnchor("TL", w / 2, -h / 2)
+	self._userPanel:setAnchor("LT", w / 2, -h / 2)
 	self._coinsNum = self._userPanel:add(ui.TextBox.new("0", FONT_SMALL, nil, "MM", 60, 60))
     self._coinsNum:setLoc(0, 0)
 	self._diamondsNum = self._userPanel:add(ui.TextBox.new("0", FONT_SMALL, nil, "MM", 60, 60))
