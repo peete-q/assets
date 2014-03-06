@@ -37,10 +37,8 @@ local MOAIParticleTimedEmitter = MOAIParticleTimedEmitter
 local MOAIPexPlugin = MOAIPexPlugin
 local MOAI_VERSION = MOAI_VERSION
 local MOAI_VERSION_1_0 = MOAI_VERSION_1_0
-local table_insert = table.insert
-local table_remove = table.remove
-local table_concat = table.concat
 local clock = os.clock
+local table = table
 local ipairs = ipairs
 local pairs = pairs
 local error = error
@@ -54,12 +52,9 @@ local print = print
 local string = string
 local printf = printf
 local getfenv = getfenv
-local nilify = util.nilify
 local breakstr = util.breakstr
-local file = file
 local dofile = dofile
 local math = math
-local math_floor = math.floor
 local pcall = pcall
 local debug_ui = os.getenv("DEBUG_UI") or nil
 module(...)
@@ -169,7 +164,7 @@ local function ui_add(self, child)
 	if self._scissorRect then
 		child:setScissorRect(self._scissorRect)
 	end
-	table_insert(self._children, child)
+	table.insert(self._children, child)
 	child:setParent(self)
 	child._parent = self
 	ui_setLayer(child, self._layer)
@@ -211,7 +206,7 @@ local function ui_remove(self, child)
 		for k, v in pairs(self._children) do
 			if v == child then
 				ui_unparentChild(child)
-				table_remove(self._children, k)
+				table.remove(self._children, k)
 				if #self._children == 0 then
 					self._children = nil
 				end
@@ -225,8 +220,8 @@ end
 local function ui_setAnchor(self, dir, x, y)
 	self._anchor = dir
 	local layoutsize = self._layer:getLayoutSize()
-	local diffX = math_floor(layoutsize.width / 2)
-	local diffY = math_floor(layoutsize.height / 2)
+	local diffX = math.floor(layoutsize.width / 2)
+	local diffY = math.floor(layoutsize.height / 2)
 	if dir[1] == "L" then
 		x = x - diffX
 	elseif dir[1] == "R" then
@@ -244,8 +239,8 @@ local function ui_setLayoutSize(self, w, h)
 	assert(not w or not nil, "Bad layout size")
 	local layoutsize = self._layoutsize or {width = 0, height = 0}
 	if self._children and (layoutsize.width ~= w or layoutsize.height ~= h) then
-		local diffX = math_floor((w - layoutsize.width) / 2)
-		local diffY = math_floor((h - layoutsize.height) / 2)
+		local diffX = math.floor((w - layoutsize.width) / 2)
+		local diffY = math.floor((h - layoutsize.height) / 2)
 		for i, e in pairs(self._children) do
 			local uianchor = e._anchor
 			if uianchor ~= nil then
@@ -289,28 +284,28 @@ end
 
 local function ui_tostring(o)
 	local t = {}
-	table_insert(t, tostring(o))
+	table.insert(t, tostring(o))
 	if o ~= nil then
 		if type(o) == "function" then
-			table_insert(t, tostring(o))
+			table.insert(t, tostring(o))
 		else
-			table_insert(t, " \"")
-			table_insert(t, tostring(o._uiname))
-			table_insert(t, "\" [")
+			table.insert(t, " \"")
+			table.insert(t, tostring(o._uiname))
+			table.insert(t, "\" [")
 			if o._layer then
 				if o._layer._uiname then
-					table_insert(t, o._layer._uiname .. " ")
+					table.insert(t, o._layer._uiname .. " ")
 				end
-				table_insert(t, tostring(o._layer))
+				table.insert(t, tostring(o._layer))
 				local p = o._layer:getPartition()
 				if p then
-					table_insert(t, " [" .. tostring(p) .. "]")
+					table.insert(t, " [" .. tostring(p) .. "]")
 				end
 			end
-			table_insert(t, "]")
+			table.insert(t, "]")
 		end
 	end
-	return table_concat(t, "")
+	return table.concat(t, "")
 end
 
 local TOUCH_NAME_MAPPING = {
@@ -434,7 +429,7 @@ local function onTouch(eventType, touchIdx, x, y, tapCount)
 									handled = true
 									ui_logf("event '%s' catched by (%s)", TOUCH_NAME_MAPPING[eventType], tostring(fnElem))
 								else
-									table_remove(elemList, fnElemIdx)
+									table.remove(elemList, fnElemIdx)
 								end
 							else
 								print("ERROR: " .. tostring(result))
@@ -567,10 +562,10 @@ function hierarchystring(elem)
 	local t = {}
 	local e = elem
 	while e do
-		table_insert(t, ui_tostring(e))
+		table.insert(t, ui_tostring(e))
 		e = e._parent
 	end
-	return table_concat(t, "\n")
+	return table.concat(t, "\n")
 end
 
 function dispatchTouch(e, eventType, touchIdx, x, y, tapCount)
@@ -693,7 +688,7 @@ function Layer.new(viewport, scale)
 	o.setLayoutSize = ui_setLayoutSize
 	o:setViewport(viewport)
 	o:setLayoutSize(device.width, device.height)
-	table_insert(layers, o)
+	table.insert(layers, o)
 	MOAISim.pushRenderPass(o)
 	return o
 end

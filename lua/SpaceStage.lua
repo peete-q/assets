@@ -15,7 +15,6 @@ end
 
 function SpaceStage:initStageBG()
 	self._sceneRoot = node.new()
-	self._unitRoot = self._sceneRoot:add(node.new())
 	
 	local bg = self._sceneRoot:add(node.new())
 	local deck = MOAITileDeck2D.new()
@@ -43,14 +42,14 @@ function SpaceStage:load()
 	self._uiRoot = ui.new()
 	self:initStageBG()
 	
-	self._motherShip = self._unitRoot:add(profile.motherShip)
 end
 
 function SpaceStage:loadLevel(tb)
-	local w, h = device.width, device.height
 	local force = {}
+	self._motherShip = self._sceneRoot:add(Unit.new(profile.motherShip), force)
+	local w, h = device.width, device.height
 	for i, v in ipairs(tb) do
-		local o = self._unitRoot:add(Unit.new(v.props, force))
+		local o = self._sceneRoot:add(Unit.new(v.props, force))
 		o:setWorldLoc(w * v.x, h * v.y)
 	end
 end
