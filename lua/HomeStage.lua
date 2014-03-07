@@ -464,21 +464,12 @@ function HomeStage:load(onOkay)
 	self:initTechPlanet()
 	self:initPortal()
 	
-	sceneLayer:setSortMode(MOAILayer2D.SORT_PRIORITY_ASCENDING)
-	ui.setDefaultTouchCallback(function(eventType, touchIdx, x, y, tapCount)
-		if eventType == ui.TOUCH_UP then
-			local wx, wy = sceneLayer:wndToWorld(x, y)
-			local partition = sceneLayer:getPartition()
-			local prop = partition:propForPoint(wx, wy)
-			if prop and prop.onClick then
-				prop:onClick()
-			end
-		end
-	end)
-	
 	if onOkay then
 		onOkay(HomeStage)
 	end
+end
+
+function HomeStage.handleTouch(eventType, touchIdx, x, y, tapCount)
 end
 
 function HomeStage:update()
@@ -542,6 +533,8 @@ function HomeStage:open()
 	end
 	uiLayer:add(self._uiRoot)
 	sceneLayer:add(self._sceneRoot)
+	ui.insertLayer(sceneLayer)
+	ui.setDefaultTouchCallback(self.handleTouch)
 	
 	self:updateUserPanel()
 end
@@ -549,6 +542,7 @@ end
 function HomeStage:close()
 	uiLayer:remove(self._uiRoot)
 	sceneLayer:remove(self._sceneRoot)
+	ui.removeLayer(sceneLayer)
 	
 	self._bgAnimating:stop()
 	self._portalRotating:stop()

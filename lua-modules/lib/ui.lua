@@ -319,7 +319,7 @@ local TOUCH_NAME_MAPPING = {
 	[ui_TOUCH_UP] = "TOUCH_UP",
 	[ui_TOUCH_CANCEL] = "TOUCH_CANCEL"
 }
-local TOUCH_HANDLER_MAPPING = {
+local TOUCH_EVENT_MAPPING = {
 	[ui_TOUCH_DOWN] = "onTouchDown",
 	[ui_TOUCH_MOVE] = "onTouchMove",
 	[ui_TOUCH_UP] = "onTouchUp"
@@ -329,7 +329,7 @@ local function invokeTouch(fn, elem, eventType, touchIdx, x, y, tapCount)
 	if fntype == "boolean" or fntype == "nil" then
 		return fn
 	elseif fntype == "table" then
-		fn = fn[TOUCH_HANDLER_MAPPING[eventType]]
+		fn = fn[TOUCH_EVENT_MAPPING[eventType]]
 		if fn ~= nil then
 			return fn(elem, touchIdx, x, y, tapCount)
 		end
@@ -370,15 +370,7 @@ local function onTouch(eventType, touchIdx, x, y, tapCount)
 		if elem ~= nil then
 			if type(elem) == "function" then
 				handled = elem(eventType, touchIdx, x, y, tapCount)
-				if not handled and defaultTouchCallback ~= nil then
-					local success, result = pcall(defaultTouchCallback, eventType, touchIdx, x, y, tapCount)
-					if success and result then
-						handled = true
-					end
-				end
-				return handled
-			end
-			if elem._layer ~= nil then
+			elseif elem._layer ~= nil then
 				while elem ~= nil do
 					local fn = elem.handleTouch
 					if fn ~= nil then
@@ -449,7 +441,14 @@ local function onTouch(eventType, touchIdx, x, y, tapCount)
 			end
 		end
 		if not handled and defaultTouchCallback ~= nil then
-			handled = defaultTouchCallback(eventType, touchIdx, x, y, tapCount)
+			if type(defaultTouchCallback) == "table" then
+				fn = defaultTouchCallback[TOUCH_EVENT_MAPPING[eventType]]
+				if fn then
+					handled = fn(touchIdx, x, y, tapCount)
+				end
+			else
+				handled = defaultTouchCallback(eventType, touchIdx, x, y, tapCount)
+			end
 		end
 	end
 	return handled
@@ -574,7 +573,7 @@ function hierarchystring(elem)
 end
 
 function dispatchTouch(e, eventType, touchIdx, x, y, tapCount)
-	local handler = e[TOUCH_HANDLER_MAPPING[eventType]]
+	local handler = e[TOUCH_EVENT_MAPPING[eventType]]
 	if handler ~= nil then
 		return handler(e, touchIdx, x, y, tapCount)
 	end
@@ -1192,7 +1191,7 @@ local function Button_handleTouch(self, eventType, touchIdx, x, y, tapCount)
 		self:showPage("up")
 		self._isdown = nil
 		if self.onClick then
-			self:onClick()
+			self:onClick(touchIdx, x, y, tapCount)
 		end
 	elseif eventType == ui_TOUCH_DOWN then
 		if not self._isDown then
@@ -1336,7 +1335,7 @@ function DropList.handleTouchV(self, eventType, touchIdx, x, y, tapCount)
 		capture(nil)
 		if not this._scrolling then
 			if self.onClick then
-				self:onClick()
+				self:onClick(touchIdx, x, y, tapCount)
 			end
 		else
 			if this._velocityV then
@@ -1387,7 +1386,7 @@ function DropList.handleTouchH(self, eventType, touchIdx, x, y, tapCount)
 		capture(nil)
 		if not this._scrolling then
 			if self.onClick then
-				self:onClick()
+				self:onClick(touchIdx, x, y, tapCount)
 			end
 		else
 			if this._velocityV then
@@ -1528,7 +1527,7 @@ local function PickBox_handleTouch(self, eventType, touchIdx, x, y, tapCount)
 	if eventType == ui_TOUCH_UP then
 		capture(nil)
 		if self._isdown and self._inside then
-			self:onClick(tapCount)
+			self:onClick(touchIdx, x, y, tapCount)
 		end
 		self._isdown = nil
 		self._inside = nil
@@ -1577,7 +1576,6 @@ function PickBox.new(width, height, colorstr)
 		o.setColor = PickBox_setColor
 	end
 	o.handleTouch = PickBox_handleTouch
-	o.onClick = defaultClickCallback
 	return o
 end
 
