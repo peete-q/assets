@@ -47,23 +47,29 @@ function SpaceStage:load()
 	self._motherShip = self._sceneRoot:add(profile.motherShip)
 end
 
+function SpaceStage:startFighting(o)
+	self:close()
+	self._gameStage:open(self, o._level)
+end
+
 function SpaceStage.onClickUnit(o, touchIdx, x, y, tapCount)
 	self._motherShip:moveTo(x, y)
 	self._motherShip:whenArrive(function()
-		self.startFighting(o)
+		self:startFighting(o)
 	end)
 end
 
-function SpaceStage:loadLevel(level)
+function SpaceStage:loadSpace(data)
 	local force = {}
-	for i, v in ipairs(level.units) do
+	for i, v in ipairs(data.units) do
 		local o = self._sceneRoot:add(Unit.new(v.props, force))
 		o:setLoc(v.x, v.y)
+		o._level = v.level
 		o.onClick = self.onClickUnit
 	end
 	self._motherShip = self._sceneRoot:add(Unit.new(profile.motherShip))
-	self._motherShip:setLoc(level.motherShipX, level.motherShipY)
-	self._sceneRoot:setLoc(level.initX, level.initY)
+	self._motherShip:setLoc(data.motherShipX, data.motherShipY)
+	self._sceneRoot:setLoc(data.initX, data.initY)
 	self._xMin = (device.width - w) / 2
 	self._xMax = (w - device.width) / 2
 	self._yMin = (device.height - h) / 2
