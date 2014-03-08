@@ -57,6 +57,10 @@ function SpaceStage.onClickUnit(o, touchIdx, x, y, tapCount)
 	end)
 end
 
+local space = {
+	units = {},
+}
+
 function SpaceStage:loadSpace(data)
 	for i, v in ipairs(data.units) do
 		local o = self._sceneRoot:add(Unit.new(v.props, force))
@@ -111,7 +115,7 @@ function SpaceStage:open()
 	uiLayer:add(self._uiRoot)
 	sceneLayer:add(self._sceneRoot)
 	deepLayer:add(self._deepRoot)
-	ui.insertLayer(sceneLayer)
+	ui.insertLayer(sceneLayer, 1)
 	ui.setDefaultTouchCallback(self)
 end
 

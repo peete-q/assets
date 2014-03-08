@@ -238,6 +238,7 @@ function HomeStage:initMotherPlanet()
 	collectText = collectTax:add(ui.TextBox.new("collect", FONT_MIDDLE, nil, "MM", 100, 50))
 	collectText:setColor(unpack(FONT_COLOR_LIGHT))
 	
+	motherPlanet.handleTouch = ui.handleTouch
 	motherPlanet.onClick = function(self)
 		popupLayer.popuped = true
 		popupLayer:add(taxWindow)
@@ -368,28 +369,24 @@ function HomeStage:initMenu()
 	local w, h = menuPanel:getSize()
 	menuPanel:setLoc(-w / 2, h / 2)
 	menuPanel:setPriority(1)
-	menuSwitch = self._menuRoot:add(ui.Switch.new("menu-icon.png?scl=-1,1", "menu-icon.png?scl=-1.1,1.1", "menu-icon.png", "menu-icon.png?scl=1.1,1.1"))
+	menuSwitch = self._menuRoot:add(ui.Switch.new(2, "menu-icon.png?scl=-1,1", "menu-icon.png?scl=-1.1,1.1", "menu-icon.png", "menu-icon.png?scl=1.1,1.1"))
 	menuSwitch:setPriority(2)
 	menuSwitch:setLoc(-w / 2, h / 2)
-	menuSwitch.onPress = function()
-		if menuSwitch.isOn then
+	menuSwitch.onTurn = function(o, status)
+		if status == 1 then
 			menuPanel:moveRot(-720, 1)
+			self:showMenu()
 		else
 			menuPanel:moveRot(720, 1)
+			self:hideMenu()
 		end
 	end
-	menuSwitch.onTurnOn = function()
-		self:showMenu()
-	end
-	menuSwitch.onTurnOff = function()
-		self:hideMenu()
-	end
-	menuSwitch:turnOn(false)
+	menuSwitch:turn(2)
 	
 	scanButton = self._menuRoot:add(ui.Button.new("scan-btn.png"))
 	scanButton:setLoc(-w / 2, h / 2 + h)
 	scanButton.onClick = function()
-		self:switchToSpace()
+		self:enterSpace()
 	end
 	local scanCenter = scanButton:add(ui.new(MOAIProp2D.new()))
 	local enemy = scanButton:add(ui.Image.new("scan-btn-03.png"))
@@ -463,7 +460,7 @@ end
 function HomeStage:update()
 end
 
-function HomeStage:switchToSpace()
+function HomeStage:enterSpace()
 	self:close()
 	self._spaceStage:open()
 end
@@ -521,7 +518,7 @@ function HomeStage:open()
 	end
 	uiLayer:add(self._uiRoot)
 	sceneLayer:add(self._sceneRoot)
-	ui.insertLayer(sceneLayer)
+	ui.insertLayer(sceneLayer, 1)
 	ui.setDefaultTouchCallback(self.handleTouch)
 	
 	self:updateUserPanel()

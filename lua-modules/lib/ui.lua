@@ -415,7 +415,6 @@ local function onTouch(eventType, touchIdx, x, y, tapCount)
 							if success then
 								if result then
 									handled = true
-									ui_logf("event '%s' catched by (%s)", TOUCH_NAME_MAPPING[eventType], tostring(fnElem))
 								else
 									table.remove(elemList, fnElemIdx)
 								end
@@ -443,6 +442,60 @@ local function onTouch(eventType, touchIdx, x, y, tapCount)
 		end
 	end
 	return handled
+end
+
+local dragDelta = 3
+function dragHappen(x1, y1, x2, y2)
+	return math.abs(x1 - x2) > dragDelta or math.abs(y1 - y2) > dragDelta
+end
+
+function handleTouch(self, eventType, touchIdx, x, y, tapCount)
+	if eventType == ui_TOUCH_UP then
+		capture(nil)
+		if self._isdragging then
+			if self.onDragEnd then
+				self:onDragEnd(touchIdx, x, y, tapCount)
+			end
+			self._isdragging = nil
+		elseif self._isdown then
+			if self.onTouchUp then
+				self:onTouchUp()
+			end
+			self._isdown = nil
+			if self.onClick then
+				self:onClick(touchIdx, x, y, tapCount)
+			end
+		end
+	elseif eventType == ui_TOUCH_DOWN then
+		if not self._isDown then
+			if self.onTouchDown then
+				self:onTouchDown()
+			end
+			self._isdown = true
+			self._downX = x
+			self._downY = y
+			capture(self)
+		end
+	elseif eventType == ui_TOUCH_MOVE and touchIdx == ui_TOUCH_ONE then
+		if dragHappen(self._downX, self._downY, x, y) then
+			if self.onDragBegin then
+				self._isdragging = self:onDragBegin(touchIdx, x, y, tapCount)
+			end
+		end
+		if self._isdragging then
+			if self.onDragMove then
+				self:onDragMove(touchIdx, x, y, tapCount)
+			end
+		elseif self._isdown then
+			if not treeCheck(x, y, self) then
+				if self.onTouchUp then
+					self:onTouchUp()
+				end
+				self._isdown = nil
+			end
+		end
+	end
+	return true
 end
 
 local mouseX = 0
@@ -589,8 +642,7 @@ function treeCheck(x, y, elem)
 	if layer == nil then
 		return false
 	end
-	local wx, wy = elem:modelToWorld(x, y)
-	local elemList = {layer:getPartition():propListForPoint(wx, wy)}
+	local elemList = {layer:getPartition():propListForPoint(x, y)}
 	if elemList then
 		for i, e in ipairs(elemList) do
 			local temp = e
@@ -612,9 +664,10 @@ function removeLayer(o)
 	end
 end
 
-function insertLayer(o, ...)
+function insertLayer(o, pos)
 	removeLayer(o)
-	table.insert(layers, o, ...)
+	pos = pos or #layers
+	table.insert(layers, pos, o)
 end
 
 new = ui_new
@@ -1119,19 +1172,19 @@ end
 
 PageView = {}
 local function PageView_showPage(self, page)
-	if self.currentPageName == page then
+	if self.currPage == page then
 		return
 	end
-	if self._pagemap[self.currentPageName] then
-		self:remove(self._pagemap[self.currentPageName])
+	if self._pagemap[self.currPage] then
+		self:remove(self._pagemap[self.currPage])
 	end
-	if self.currentPageName then
-		local onShowPage = self.onShowPage[self.currentPageName]
+	if self.currPage then
+		local onShowPage = self.onShowPage[self.currPage]
 		if onShowPage then
 			onShowPage(self, false)
 		end
 	end
-	self.currentPageName = page
+	self.currPage = page
 	if page ~= nil and self._pagemap then
 		local elem = self._pagemap[page]
 		if elem ~= nil then
@@ -1146,11 +1199,11 @@ end
 
 local function PageView_setPage(self, page, child)
 	assert(page ~= nil, "page must not be nil")
-	if self.currentPageName == page then
+	if self.currPage == page then
 		self:showPage(nil)
 	end
 	self._pagemap[page] = child
-	if self.currentPageName == nil then
+	if self.currPage == nil then
 		self:showPage(page)
 	end
 end
@@ -1159,7 +1212,7 @@ function PageView.new(pages)
 	assert(pages == nil or type(pages) == "table", "pages must be a table or nil")
 	local o = ui_new(MOAIProp2D.new())
 	o._pagemap = {}
-	o.currentPageName = nil
+	o.currPage = nil
 	o.showPage = PageView_showPage
 	o.setPage = PageView_setPage
 	if pages ~= nil then
@@ -1177,79 +1230,56 @@ local function Button_handleTouch(self, eventType, touchIdx, x, y, tapCount)
 		return true
 	end
 	
-	if eventType == ui_TOUCH_UP then
-		capture(nil)
+	return handleTouch(self, eventType, touchIdx, x, y, tapCount)
+end
+
+local function _MakePage(o)
+	if type(o) == "string" then
+		return Image.new(o)
+	elseif type(o) == "userdata" then
+		return o
+	end
+	return o
+end
+
+local function Button_showPageUp(self)
+	if self._downScl then
+		self:setScl(1, 1)
+	else
 		self:showPage("up")
-		self._isdown = nil
-		if self.onClick then
-			self:onClick(touchIdx, x, y, tapCount)
-		end
-	elseif eventType == ui_TOUCH_DOWN then
-		if not self._isDown then
-			self:showPage("down")
-			self._isdown = true
-			capture(self)
-			if self.onPress then
-				self:onPress()
-			end
-		end
-	elseif eventType == ui_TOUCH_MOVE and touchIdx == ui_TOUCH_ONE then
-		if self._isdown and treeCheck(x, y, self) then
-			self:showPage("down")
-		else
-			self:showPage("up")
-			self._isdown = nil
-		end
-	end
-	return true
-end
-
-local function _MakeImage(imageOrPage)
-	if type(imageOrPage) == "string" then
-		return Image.new(imageOrPage)
-	elseif type(imageOrPage) == "userdata" then
-		return imageOrPage
 	end
 end
 
-local function _showPageDown(self, on)
-	if on then
+local function Button_showPageDown(self)
+	if self._downScl then
 		self:setScl(self._downScl, self._downScl)
 	else
-		self:setScl(1, 1)
-	end
-end
-
-local function _showPageDisable(self, on)
-	if on then
-		self:setColor(self._disableAlpha, self._disableAlpha, self._disableAlpha, self._disableAlpha)
-	else
-		self:setColor(1, 1, 1, 1)
+		self:showPage("down")
 	end
 end
 
 function Button.new(up, down, disable)
 	local o = PageView.new()
-	o._up = _MakeImage(up)
+	o._up = _MakePage(up)
 	o:setPage("up", o._up)
 	
 	if type(down) == "number" then
 		o._downScl = down
-		o.onShowPage.down = _showPageDown
 		down = up
 	end
-	o._down = _MakeImage(down or up)
+	o._down = _MakePage(down or up)
 	o:setPage("down", o._down)
 	
 	if type(disable) == "number" then
 		o._disableAlpha = disable
-		o.onShowPage.disable = _showPageDisable
 		disable = up
 	end
-	o._disable = _MakeImage(disable or up)
+	o._disable = _MakePage(disable or up)
 	o:setPage("disable", o._disable)
 	
 	o.handleTouch = Button_handleTouch
+	o.onTouchDown = Button_showPageDown
+	o.onTouchUp = Button_showPageUp
 	o.setPriority = Button.setPriority
 	o.disable = Button.disable
 	return o
@@ -1257,10 +1287,18 @@ end
 
 function Button:disable(on)
 	if on then
-		self:showPage("disable")
+		if self._disableAlpha then
+			self:setColor(1, 1, 1, self._disableAlpha)
+		else
+			self:showPage("disable")
+		end
 	else
 		capture(nil, self)
-		self:showPage("up")
+		if self._disableAlpha then
+			self:setColor(1, 1, 1, 1)
+		else
+			self:showPage("up")
+		end
 		self._isdown = nil
 	end
 	self._isDisable = on
@@ -1273,47 +1311,54 @@ function Button:setPriority(priority)
 end
 
 Switch = {}
-function Switch_handleClick(self)
-	self.isOn = not self.isOn
-	if self.isOn then
-		self._up:setImage(self._onUp)
-		self._down:setImage(self._onDown)
-		if self.onTurnOn then
-			self:onTurnOn()
-		end
-	else
-		self._up:setImage(self._offUp)
-		self._down:setImage(self._offDown)
-		if self.onTurnOff then
-			self:onTurnOff()
-		end
+local function Switch_handleClick(self)
+	self._status = self._status + 1
+	if self._status > self._num then
+		self._status = 1
 	end
-	if self.onSwitch then
-		self:onSwitch()
+	self:turn(self._status)
+	if self.onTurn then
+		self:onTurn(self._status)
 	end
 end
 
-function Switch.new(onUp, onDown, offUp, offDown)
-	local o = Button.new(onUp, onDown)
+local function Switch_handleTouchDown(self)
+	self:showPage(self._status * 2)
+end
+
+local function Switch_handleTouchUp(self)
+	self:showPage(self._status * 2 - 1)
+end
+
+function Switch.new(num, ...)
+	local args = {...}
+	local o = PageView.new()
+	for k, v in pairs(args) do
+		if type(v) == "number" then
+			o.onShowPage = function(self, on)
+				if on then
+					self:setScl(v, v)
+				else
+					self:setScl(1, 1)
+				end
+			end
+		else
+			o:setPage(k, _MakePage(v))
+		end
+	end
+	o._num = num
+	o.handleTouch = handleTouch
+	o.onTouchDown = Switch_handleTouchDown
+	o.onTouchUp = Switch_handleTouchUp
 	o.onClick = Switch_handleClick
-	o.isOn = true
-	o._onUp = onUp
-	o._onDown = onDown
-	o._offUp = offUp
-	o._offDown = offDown
-	o.turnOn = Switch.turnOn
+	o.turn = Switch.turn
+	o:turn(1)
 	return o
 end
 
-function Switch:turnOn(on)
-	self.isOn = on
-	if on then
-		self._up:setImage(self._onUp)
-		self._down:setImage(self._onDown)
-	else
-		self._up:setImage(self._offUp)
-		self._down:setImage(self._offDown)
-	end
+function Switch:turn(status)
+	self._status = status
+	self:showPage(status * 2 - 1)
 end
 
 DropList = {}
