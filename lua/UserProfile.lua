@@ -1,7 +1,7 @@
 
 local ship = {
-	icon = "ship001-icon.png?rot=-90&scl=0.9",
-	model = "ship001.png",
+	icon = "ship000.png?rot=-90&scl=0.4",
+	model = "ship000.png",
 	bodyGfx="attacker.png",
 	level = 1,
 	upgradeCurve = {

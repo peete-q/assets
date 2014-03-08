@@ -610,16 +610,16 @@ function treeCheck(x, y, elem)
 	return false
 end
 
-function removeLayer(layer)
-	local i = table.find(layers, layer)
+function removeLayer(o)
+	local i = table.find(layers, o)
 	if i then
 		table.remove(layers, i)
 	end
 end
 
-function insertLayer(layer, ...)
-	removeLayer(layer)
-	table.insert(layers, ...)
+function insertLayer(o, ...)
+	removeLayer(o)
+	table.insert(layers, o, ...)
 end
 
 new = ui_new

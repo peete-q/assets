@@ -26,16 +26,3 @@ function MOAIEnvironment.getDocumentDirectory()
 	return "myApp"
 end
 
-function print(...)
-	local s = ""
-	for k, v in ipairs{...} do
-		s = s..tostring(v).." "
-	end
-	MOAILogMgr.log(s.."\n")
-end
-
-function printf(...)
-	print(string.format ( ... ))
-end
-
-undefined = false
