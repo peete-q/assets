@@ -36,20 +36,16 @@ viewport:setSize(0, 0, device.width, device.height)
 
 deepLayer = layer.new(viewport)
 deepLayer:setSortMode(MOAILayer2D.SORT_PRIORITY_ASCENDING)
-deepLayer:setPriority(0)
 
 sceneLayer = layer.new(viewport)
 sceneLayer:setSortMode(MOAILayer2D.SORT_PRIORITY_ASCENDING)
-sceneLayer:setPriority(0)
 
 uiLayer = ui.Layer.new(viewport)
 uiLayer:setSortMode(MOAILayer2D.SORT_PRIORITY_ASCENDING)
-uiLayer:setPriority(0)
 uiLayer._uiname = "uiLayer"
 
 popupLayer = ui.Layer.new(viewport)
 popupLayer:setSortMode(MOAILayer2D.SORT_PRIORITY_ASCENDING)
-popupLayer:setPriority(0)
 popupLayer._uiname = "popupLayer"
 
 local HomeStage = require "HomeStage"

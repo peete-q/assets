@@ -1,6 +1,4 @@
 
-local util = require "moai.util"
-
 local node = {}
 
 local function node_setLayer(self, layer)
@@ -35,8 +33,7 @@ end
 
 function node.setScissorRect(self, rect)
 	self._scissorRect = rect
-	local mt = util.get_moai_mt(self)
-	mt.setScissorRect(self, rect)
+	self._preNodeSetScissorRect(self, rect)
 end
 
 function node.getScissorRect(self)
@@ -52,16 +49,15 @@ function node.add(self, child)
 		end
 		child._parent:remove(child)
 	end
-	local priority = self:getPriority()
-	if priority and not child:getPriority() then
-		child:setPriority(priority + 1)
-	end
+
 	if self._scissorRect then
 		child:setScissorRect(self._scissorRect)
 	end
+	
 	if self._children == nil then
 		self._children = {}
 	end
+	
 	self._children[child] = child
 	child:setParent(self)
 	child._parent = self
@@ -108,20 +104,35 @@ function node.destroy(self)
 		end
 		self._children = nil
 	end
-	if self._olderNodeDestroy then
-		self._olderNodeDestroy(self)
+	if self._preNodeDestroy then
+		self._preNodeDestroy(self)
 	end
+end
+
+function node.setFamilyPriority(self, p)
+	local p1 = self:getPriority() or 0
+	if self._children ~= nil then
+		for k, v in pairs(self._children) do
+			local p2 = v:getPriority()
+			if p2 then
+				v:setFamilyPriority(p2 - p1 + p)
+			end
+		end
+	end
+	self:setPriority(p)
 end
 
 function node.new(o)
 	o = o or MOAIProp2D.new()
-	o._olderNodeDestroy = o.destroy
+	o._preNodeDestroy = o.destroy
 	o.destroy = node.destroy
 	o.add = node.add
 	o.remove = node.remove
 	o.removeAll = node.removeAll
+	o._preNodeSetScissorRect = o.setScissorRect
 	o.setScissorRect = node.setScissorRect
 	o.getScissorRect = node.getScissorRect
+	o.setFamilyPriority = node.setFamilyPriority
 	return o
 end
 

@@ -7,7 +7,7 @@ local device = require "device"
 
 local blockOn = MOAIThread.blockOnAction
 local SpaceStage = {}
-local self = HomeStage
+local self = SpaceStage
 
 function SpaceStage:init(homeStgae, gameStage)
 	self._homeStage = homeStage
@@ -43,8 +43,6 @@ end
 function SpaceStage:load()
 	self._uiRoot = ui.new()
 	self:initStageBG()
-	
-	self._motherShip = self._sceneRoot:add(profile.motherShip)
 end
 
 function SpaceStage:startFighting(o)
@@ -76,7 +74,7 @@ function SpaceStage:loadSpace(data)
 end
 
 local draging, lastX, lastY, downX, downY
-function HomeStage.onTouchDown(touchIdx, x, y, tapCount)
+function SpaceStage.onTouchDown(touchIdx, x, y, tapCount)
 	downX = x
 	downY = y
 	lastX = x
@@ -84,7 +82,7 @@ function HomeStage.onTouchDown(touchIdx, x, y, tapCount)
 	draging = true
 end
 
-function HomeStage.onTouchMove(touchIdx, x, y, tapCount)
+function SpaceStage.onTouchMove(touchIdx, x, y, tapCount)
 	local diffX = x - lastX
 	local diffY = y - lastY
 	lastX = x
@@ -95,7 +93,7 @@ function HomeStage.onTouchMove(touchIdx, x, y, tapCount)
 	self._sceneRoot:setLoc(x, y)
 end
 
-function HomeStage.onTouchUp(touchIdx, x, y, tapCount)
+function SpaceStage.onTouchUp(touchIdx, x, y, tapCount)
 	local absX = math.abs(x - downX)
 	local absY = math.abs(y - downY)
 	if absX < 3 and absY < 3 then

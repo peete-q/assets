@@ -72,8 +72,8 @@ local function Sprite_destroy(self)
 		self:onDestroy()
 	end
 	
-	if self._olderSpriteDestroy then
-		self._olderSpriteDestroy(self)
+	if self._preSpriteDestroy then
+		self._preSpriteDestroy(self)
 	end
 end
 
@@ -174,16 +174,16 @@ end
 
 local function Sprite_setDeck(self, deck)
 	self._deck = deck
-	self._olderSpriteSetDeck(self, deck)
+	self._preSpriteSetDeck(self, deck)
 end
 
 function Sprite.new(data)
 	assert(data, "need 'userdata' or url")
 	
 	local o = node.new(MOAIProp2D.new())
-	o._olderSpriteSetDeck = o.setDeck
+	o._preSpriteSetDeck = o.setDeck
 	o.setDeck = Sprite_setDeck
-	o._olderSpriteDestroy = o.destroy
+	o._preSpriteDestroy = o.destroy
 	o.destroy = Sprite_destroy
 	o.getSize = Sprite_getSize
 	o.parse = Sprite_parse

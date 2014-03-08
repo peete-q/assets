@@ -204,6 +204,14 @@ function Unit:setLayer(layer)
 	self._root:setLayer(layer)
 end
 
+function Unit:setParent(parent)
+	self._root:setParent(parent)
+end
+
+function Unit:setScissorRect(rect)
+	self._root:setScissorRect(rect)
+end
+
 function Unit:add(fx)
 	self._root:add(fx)
 end

@@ -52,17 +52,13 @@ function HomeStage:init(spaceStage, gameStage)
 	self._gameStage = gameStage
 end
 
-function HomeStage:makePlanetOrbit(planet, x, y, t, s1, s2, s3, p, children)
-	children = children or {}
+function HomeStage:makePlanetOrbit(planet, x, y, t, s1, s2, s3, p)
 	planet:setScl(s2, s2)
 	local thread = MOAIThread.new()
 	thread:run(function(planet, x, y, t)
 		while true do
 			planet:setLoc(-x, -y)
-			planet:setPriority(p + self._basePriority)
-			for i, v in ipairs(children) do
-				v:setPriority(p + self._basePriority)
-			end
+			planet:setFamilyPriority(p + self._centerPriority)
 			local e = planet:seekScl(s1, s1, t / 2, MOAIEaseType.LINEAR)
 			e:setListener(MOAIAction.EVENT_STOP, function()
 				planet:seekScl(s2, s2, t / 2, MOAIEaseType.LINEAR)
@@ -70,10 +66,7 @@ function HomeStage:makePlanetOrbit(planet, x, y, t, s1, s2, s3, p, children)
 			blockOn(planet:seekLoc(x, y, t, MOAIEaseType.SOFT_SMOOTH))
 			
 			planet:setLoc(x, y)
-			planet:setPriority(p)
-			for i, v in ipairs(children) do
-				v:setPriority(p)
-			end
+			planet:setFamilyPriority(p)
 			local e = planet:seekScl(s3, s3, t / 2, MOAIEaseType.LINEAR)
 			e:setListener(MOAIAction.EVENT_STOP, function()
 				planet:seekScl(s2, s2, t / 2, MOAIEaseType.LINEAR)
@@ -92,6 +85,7 @@ function HomeStage:initStageBG()
 	self._sceneRoot = node.new()
 	
 	local bg = self._sceneRoot:add(node.new())
+	bg:setPriority(1)
 	local deck = MOAITileDeck2D.new()
 	local tex = resource.texture("starfield.jpg")
 	deck:setTexture(tex)
@@ -114,13 +108,12 @@ function HomeStage:initStageBG()
 end
 
 function HomeStage:initMotherPlanet()
-	self._basePriority = 1000
-	local motherPlanet = node.new()
+	self._centerPriority = 1000
+	local motherPlanet = self._sceneRoot:add(node.new())
 	local deck = resource.deck("earth.png")
 	motherPlanet:setDeck(deck)
-	motherPlanet:setPriority(self._basePriority)
+	motherPlanet:setPriority(self._centerPriority)
 	motherPlanet:setScl(0.9, 0.9)
-	self._sceneRoot:add(motherPlanet)
 	
 	local taxWindow = ui.Image.new("window.png")
 	taxWindow:setPriority(1)
@@ -316,7 +309,7 @@ function HomeStage:initMillPlanet()
 		fleetWindow:seekColor(1, 1, 1, 1, 0.5)
 	end
 	
-	self:makePlanetOrbit(millPlanet, 300, 100, 60, 0.6, 0.4, 0.2, 3)
+	self:makePlanetOrbit(millPlanet, 300, 100, 15, 0.6, 0.4, 0.2, 4)
 end
 
 function HomeStage:initTechPlanet()
@@ -324,26 +317,23 @@ function HomeStage:initTechPlanet()
 	local deck = resource.deck("planet03.png")
 	techPlanet:setDeck(deck)
 	self._sceneRoot:add(techPlanet)
-	self:makePlanetOrbit(techPlanet, 350, -100, 55, 0.5, 0.3, 0.1, 2)
+	self:makePlanetOrbit(techPlanet, 350, -100, 20, 0.5, 0.3, 0.1, 3)
 end
 
 function HomeStage:initPortal()
 	local portal = node.new()
 	local deck = resource.deck("star-portal.png")
 	portal:setDeck(deck)
-	local children = {}
 	local portal02 = portal:add(node.new())
 	local deck = resource.deck("star-portal-02.png")
 	portal02:setDeck(deck)
-	table.insert(children, portal02)
 	for i = 1, 7 do
 		local o = portal02:add(node.new())
 		o:setDeck(deck)
 		o:setRot(45 * i)
-		table.insert(children, o)
 	end
 	self._sceneRoot:add(portal)
-	self:makePlanetOrbit(portal, 150, -200, 10, 0.5, 0.3, 0.1, 1, children)
+	self:makePlanetOrbit(portal, 150, -200, 10, 0.5, 0.3, 0.1, 2)
 	self._portalRotating = MOAIThread.new()
 	self._portalRotating:run(function()
 		while true do

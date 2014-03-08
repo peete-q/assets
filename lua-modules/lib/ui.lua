@@ -157,10 +157,6 @@ local function ui_add(self, child)
 	if self._children == nil then
 		self._children = {}
 	end
-	local priority = self:getPriority()
-	if priority and not child:getPriority() then
-		child:setPriority(priority + 1)
-	end
 	if self._scissorRect then
 		child:setScissorRect(self._scissorRect)
 	end
