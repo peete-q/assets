@@ -59,7 +59,7 @@ function Scene:addUnit(props, force, x, y)
 	o._scene = self
 	o._ticks = self.ticks
 	o:setLayer(self._spaceLayer)
-	o:setWorldLoc(x, y)
+	o:setLoc(x, y)
 	self._units[o] = o
 	return o
 end
@@ -163,11 +163,11 @@ function Scene:simulateAI(ticks)
 end
 
 function Scene:getPlayerLoc()
-	return self._playerMotherShip:getWorldLoc()
+	return self._playerMotherShip:getLoc()
 end
 
 function Scene:getEnemyLoc()
-	return self._enemyMotherShip:getWorldLoc()
+	return self._enemyMotherShip:getLoc()
 end
 
 function Scene:getUnits()

@@ -212,11 +212,11 @@ function Unit:remove(fx)
 	self._root:remove(fx)
 end
 
-function Unit:setWorldLoc(x, y)
+function Unit:setLoc(x, y)
 	self._root:setLoc(x, y)
 end
 
-function Unit:getWorldLoc()
+function Unit:getLoc()
 	return self._root:getLoc()
 end
 
@@ -230,7 +230,7 @@ end
 
 function Unit:moveTo(x, y, speed)
 	self:stop()
-	local sx, sy = self:getWorldLoc()
+	local sx, sy = self:getLoc()
 	local dist = distance(sx, sy, x, y)
 	local dir = math2d.dir(sx - x, sy - y)
 	self:setDir(dir)
@@ -240,6 +240,10 @@ function Unit:moveTo(x, y, speed)
 	self._dy = y
 	self:_eraseRigid()
 	self:log("Unit:moveTo", sx, sy, x, y, self._moveSpeed, dist)
+end
+
+function Unit:whenArrive(cb)
+	self._motionDriver:setListener(MOAIAction.EVENT_STOP, cb)
 end
 
 function Unit:correctMoveSpeed()
@@ -268,7 +272,7 @@ end
 function Unit:_insertRigid()
 	self:_eraseRigid()
 	self._rigid = world:addBody(MOAIBox2DBody.DYNAMIC)
-	local x, y = self:getWorldLoc()
+	local x, y = self:getLoc()
 	self._rigid:addCircle(x, y, self.bodySize)
 	self._root:setParent(self._rigid)
 end
@@ -373,7 +377,7 @@ function Unit:stateChase(ticks)
 		return
 	end
 	
-	local x, y = self._target:getWorldLoc()
+	local x, y = self._target:getLoc()
 	if distance(self._tx, self._ty, x, y) > _LOCK_DIST then
 		self:chase(self._target)
 	end
@@ -413,7 +417,7 @@ function Unit:move()
 		return
 	end
 
-	local x, y = self:getWorldLoc()
+	local x, y = self:getLoc()
 	if self._force.id == Unit.FORCE_PLAYER then
 		local _x, _y = self._scene:getEnemyLoc()
 		y = _y
@@ -436,8 +440,8 @@ function Unit:chase(target)
 		return
 	end
 	
-	local sx, sy = self:getWorldLoc()
-	local x, y = target:getWorldLoc()
+	local sx, sy = self:getLoc()
+	local x, y = target:getLoc()
 	local mx = sx * self.attackRange * 2 / self._scene.WIDTH
 	self._tx = x
 	self._ty = y
@@ -461,8 +465,8 @@ function Unit:fire(target)
 	target._attacker = self
 	self:stop()
 	local targets = self:getAttackTargets()
-	local x, y = self:getWorldLoc()
-	local tx, ty = v:getWorldLoc()
+	local x, y = self:getLoc()
+	local tx, ty = v:getLoc()
 	local dir = math2d.dir(x - tx, y - ty)
 	self:setDir(dir)
 	local n = 0
@@ -559,34 +563,34 @@ function Unit:isInRange(target, range)
 	if target:isDead() then
 		return false
 	end
-	local x, y = target:getWorldLoc()
+	local x, y = target:getLoc()
 	return self:isPtInRange(x, y, range)
 end
 
 function Unit:isPtInRange(x, y, range)
-	local sx, sy = self:getWorldLoc()
+	local sx, sy = self:getLoc()
 	return distanceSq(x, y, sx, sy) < (range ^ 2)
 end
 
 function Unit:distance(other)
-	local x, y = self:getWorldLoc()
-	local tx, ty = other:getWorldLoc()
+	local x, y = self:getLoc()
+	local tx, ty = other:getLoc()
 	return distance(x, y, tx, ty)
 end
 
 function Unit:distanceSq(other)
-	local x, y = self:getWorldLoc()
-	local tx, ty = other:getWorldLoc()
+	local x, y = self:getLoc()
+	local tx, ty = other:getLoc()
 	return distanceSq(x, y, tx, ty)
 end
 
 function Unit:distanceTo(tx, ty)
-	local x, y = self:getWorldLoc()
+	local x, y = self:getLoc()
 	return distance(x, y, tx, ty)
 end
 
 function Unit:distanceSqTo(tx, ty)
-	local x, y = self:getWorldLoc()
+	local x, y = self:getLoc()
 	return distanceSq(x, y, tx, ty)
 end
 

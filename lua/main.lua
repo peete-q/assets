@@ -34,9 +34,9 @@ viewport = MOAIViewport.new()
 viewport:setScale(device.width, device.height)
 viewport:setSize(0, 0, device.width, device.height)
 
-farLayer = layer.new(viewport)
-farLayer:setSortMode(MOAILayer2D.SORT_PRIORITY_ASCENDING)
-farLayer:setPriority(0)
+deepLayer = layer.new(viewport)
+deepLayer:setSortMode(MOAILayer2D.SORT_PRIORITY_ASCENDING)
+deepLayer:setPriority(0)
 
 sceneLayer = layer.new(viewport)
 sceneLayer:setSortMode(MOAILayer2D.SORT_PRIORITY_ASCENDING)

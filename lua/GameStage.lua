@@ -16,15 +16,15 @@ local skills = {
 	end,
 }
 
-function GameStage:init(spaceStage)
+function GameStage:init()
 end
 
 function GameStage:load(onOkay)
-	if self._root then
-		uiLayer:add(self._root)
+	if self._uiRoot then
+		uiLayer:add(self._uiRoot)
 		return
 	end
-	self._root = uiLayer:add(ui.Group.new())
+	self._uiRoot = uiLayer:add(ui.Group.new())
 	self:setupFleet()
 	self:open()
 	if onOkay then
@@ -37,7 +37,7 @@ function GameStage:setupFleet()
 	local y = 11
 	local space = 50
 	for k, v in ipairs(profile.fleet) do
-		local slot = self._root:add(ui.Button.new("slot.png"))
+		local slot = self._uiRoot:add(ui.Button.new("slot.png"))
 		slot:setAnchor("BL", x, y)
 		slot.onClick = function()
 			GameStage:addPreparing(v, slot:getLoc())
@@ -53,7 +53,7 @@ function GameStage:updateProfile()
 end
 
 function GameStage:open()
-	self._scene = Scene.new(self.width, self.height, uiLayer)
+	self._scene = Scene.new(self.width, self.height, sceneLayer)
 	self._preparings = {
 		n = 0,
 		index = 0,
@@ -72,7 +72,7 @@ function GameStage:addPreparing(props, x, y)
 	end
 	
 	self._energy = self._energy - props.cost
-	local unit = self._root:add(ui.Image.new("prepare-bg.png"))
+	local unit = self._uiRoot:add(ui.Image.new("prepare-bg.png"))
 	local prog = unit:add(ui.FillBar.new("prepare-progress.png"))
 	prog:setLoc(0, -30)
 	local e = prog:seekFill(0, 0, 0, 1, props.prepareTime)
@@ -84,7 +84,7 @@ function GameStage:addPreparing(props, x, y)
 		self:removePreparing(index)
 		self._scene:spawnPlayerUnit(props)
 	end)
-	local icon = self._root:add(ui.Image.new(props.icon))
+	local icon = self._uiRoot:add(ui.Image.new(props.icon))
 	unit:setLoc(x, y)
 	unit:seekLoc(tx, ty, 1)
 	self._preparings[index] = unit
@@ -122,8 +122,11 @@ function GameStage:update()
 	end
 end
 
+function GameStage:open(stage, level)
+end
+
 function GameStage:close()
-	uiLayer:remove(self._root)
+	uiLayer:remove(self._uiRoot)
 end
 
 return GameStage

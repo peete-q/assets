@@ -73,7 +73,7 @@ function Bullet.bomb(self, target)
 		self:impact(target)
 	end
 	
-	local x, y = self:getWorldLoc()
+	local x, y = self:getLoc()
 	if self.bombRange > 0 then
 		local force = self.enemy or self._enemy
 		local units = self._scene:getUnitsInRound(force, x, y, self.bombRange)
@@ -103,11 +103,11 @@ function Bullet.bomb(self, target)
 	end
 end
 
-function Bullet.getWorldLoc(self)
+function Bullet.getLoc(self)
 	return self._root:getLoc()
 end
 
-function Bullet.setWorldLoc(self, x, y)
+function Bullet.setLoc(self, x, y)
 	return self._root:setLoc(x, y)
 end
 
@@ -127,8 +127,8 @@ function Bullet.update(self)
 		self:destroy()
 		return
 	end
-	local x, y = self:getWorldLoc()
-	local tx, ty = self._target:getWorldLoc()
+	local x, y = self:getLoc()
+	local tx, ty = self._target:getLoc()
 	local dist = distance(x, y, tx, ty)
 	if dist < self._target.bodySize then
 		self:bomb(self._target)
@@ -138,7 +138,7 @@ function Bullet.update(self)
 	if self._tx and self._ty and distance(self._tx, self._ty, tx, ty) < _LOCK_DIST then
 		return
 	end
-	local x, y = self:getWorldLoc()
+	local x, y = self:getLoc()
 	self:setDir(math2d.dir(x - tx, y - ty))
 	self._tx = tx
 	self._ty = ty
@@ -191,7 +191,7 @@ end
 function Bullet.fireLocked(props, scene, power, enemy, x, y, target)
 	local self = Bullet.new(props)
 	scene:addFX(self)
-	self:setWorldLoc(x, y)
+	self:setLoc(x, y)
 	self._power = power
 	self._enemy = enemy
 	self._target = target
@@ -203,7 +203,7 @@ function Bullet.fireToward(props, scene, power, enemy, x, y, tx, ty)
 	local self = Bullet.new(props)
 	self.update = Bullet.noop
 	scene:addFX(self)
-	self:setWorldLoc(x, y)
+	self:setLoc(x, y)
 	self._power = power
 	self._enemy = enemy
 	self._moving = MOAIThread.new()
@@ -219,7 +219,7 @@ function Bullet.bombAt(props, scene, power, enemy, x, y, target)
 	local self = Bullet.new(props)
 	self.update = Bullet.noop
 	scene:addFX(self)
-	self:setWorldLoc(x, y)
+	self:setLoc(x, y)
 	self._power = power
 	self._enemy = enemy
 	self:bomb(target)
