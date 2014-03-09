@@ -6,7 +6,7 @@ local function node_setLayer(self, layer)
 		return
 	end
 	if layer ~= nil then
-		layer:insertProp(self)
+		self._setLayer(self, layer)
 		self._layer = layer
 		if self._children ~= nil then
 			for k, v in pairs(self._children) do
@@ -29,6 +29,10 @@ local function node_unparentChild(child)
 	child._parent = nil
 	child:setParent(nil)
 	child:setScissorRect(nil)
+end
+
+function node._setLayer(self, layer)
+	layer:insertProp(self)
 end
 
 function node.setScissorRect(self, rect)
@@ -109,13 +113,13 @@ function node.destroy(self)
 	end
 end
 
-function node.setFamilyPriority(self, p)
+function node.setTreePriority(self, p)
 	local p1 = self:getPriority() or 0
 	if self._children ~= nil then
 		for k, v in pairs(self._children) do
 			local p2 = v:getPriority()
 			if p2 then
-				v:setFamilyPriority(p2 - p1 + p)
+				v:setTreePriority(p2 - p1 + p)
 			end
 		end
 	end
@@ -132,7 +136,8 @@ function node.new(o)
 	o._preNodeSetScissorRect = o.setScissorRect
 	o.setScissorRect = node.setScissorRect
 	o.getScissorRect = node.getScissorRect
-	o.setFamilyPriority = node.setFamilyPriority
+	o.setTreePriority = node.setTreePriority
+	o._setLayer = node._setLayer
 	return o
 end
 

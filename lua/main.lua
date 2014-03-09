@@ -30,14 +30,24 @@ end
 MOAISim.openWindow(_("SBC"), device.width, device.height)
 ui.init()
 
+camera = MOAICamera2D.new ()
+
 viewport = MOAIViewport.new()
 viewport:setScale(device.width, device.height)
 viewport:setSize(0, 0, device.width, device.height)
 
-deepLayer = layer.new(viewport)
-deepLayer:setSortMode(MOAILayer2D.SORT_PRIORITY_ASCENDING)
+farLayer = layer.new(viewport)
+farLayer:setCamera(camera)
+farLayer:setParallax(0.1, 0.1)
+farLayer:setSortMode(MOAILayer2D.SORT_PRIORITY_ASCENDING)
+
+nearLayer = layer.new(viewport)
+nearLayer:setCamera(camera)
+nearLayer:setParallax(0.3, 0.3)
+nearLayer:setSortMode(MOAILayer2D.SORT_PRIORITY_ASCENDING)
 
 sceneLayer = layer.new(viewport)
+sceneLayer:setCamera (camera)
 sceneLayer:setSortMode(MOAILayer2D.SORT_PRIORITY_ASCENDING)
 
 uiLayer = ui.Layer.new(viewport)

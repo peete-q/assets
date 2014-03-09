@@ -56,6 +56,39 @@ local _defaultProps = {
 	_ticks = undefined,
 }
 
+local ForceList = {}
+ForceList.__index = ForceList
+
+function ForceList:addForce(id)
+	local o = {
+		id = id,
+		attackSpeedFactor = Factor.new(),
+		moveSpeedFactor = Factor.new(),
+		recoverHpFactor = Factor.new(),
+		attackPowerFactor = Factor.new(),
+	}
+	self[id] = o
+	return o
+end
+
+function ForceList:update(ticks)
+	for k, v in pairs(self._forces) do
+		v.attackSpeedFactor:update(ticks)
+		v.moveSpeedFactor:update(ticks)
+		v.recoverHpFactor:update(ticks)
+		v.attackPowerFactor:update(ticks)
+	end
+end
+
+function Unit.newForceList()
+	local o = {}
+	setmetatable(o, ForceList)
+	o:addForce(Unit.FORCE_PLAYER)
+	o:addForce(Unit.FORCE_ENEMY)
+	o:addForce(Unit.FORCE_ALL)
+	return o
+end
+
 Unit.__index = function(self, key)
 	if self._db[key] ~= nil then
 		return self._db[key]
@@ -78,7 +111,7 @@ Unit.__newindex = function(self, key, value)
 end
 
 function Unit.new(props, force)
-	local self = {
+	local self = node.new {
 		_force = force,
 		_props = props or {},
 		_db = {},
@@ -97,11 +130,12 @@ function Unit.new(props, force)
 	}
 	setmetatable(self, Unit)
 	
+	self._setLayer = Unit._setLayer
 	self._runState = self.stateIdle
 	self._fireRange = self.attackRange
 	self._force.enemy = self:getEnemy()
 	
-	self._root = node.new(MOAIProp2D.new())
+	self._root = self:add(node.new())
 	local body = self._root:add(Sprite.new(self.bodyGfx))
 	if props.propellerGfx then
 		self._propeller = Sprite.new(props.propellerGfx)
@@ -113,9 +147,9 @@ function Unit.new(props, force)
 	self._drifting = MOAIThread.new()
 	self._drifting:run(function()
 		while true do
-			local n = math.random(90, 100) / 100
-			MOAIThread.blockOnAction(self._root:seekScl(n, n, n, MOAIEaseType.SOFT_SMOOTH))
-			MOAIThread.blockOnAction(self._root:seekScl(1, 1, n, MOAIEaseType.SOFT_SMOOTH))
+			local n = math.random(95, 98) / 100
+			MOAIThread.blockOnAction(self._root:seekScl(n, n, n * 2, MOAIEaseType.SOFT_SMOOTH))
+			MOAIThread.blockOnAction(self._root:seekScl(1, 1, n * 2, MOAIEaseType.SOFT_SMOOTH))
 		end
 	end)
 	return self
@@ -200,8 +234,8 @@ function Unit:getAttackPower()
 	return self.attackPower + self._attackPowerFactor:calc() + self._force.attackPowerFactor:calc()
 end
 
-function Unit:setLayer(layer)
-	self._root:setLayer(layer)
+function Unit:_setLayer(layer)
+	layer:insertProp(self._root)
 end
 
 function Unit:setParent(parent)

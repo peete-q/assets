@@ -20,34 +20,19 @@ function Scene.new(w, h, spaceLayer, skyLayer, seed)
 		_FXs = {},
 		_spaceLayer = spaceLayer,
 		_skyLayer = skyLayer,
-		_forces = {},
 		_player = {},
 		_playerOffset = 0,
 		_enemyOffset = 0,
+		_forces = Unit.newForceList(),
 		
 		ticks = 0,
 	}
 	setmetatable(self, Scene)
 	
-	self:addForce(Unit.FORCE_PLAYER)
-	self:addForce(Unit.FORCE_ENEMY)
-	self:addForce(Unit.FORCE_ALL)
 	return self
 end
 
 function Scene:destroy()
-end
-
-function Scene:addForce(id)
-	local force = {
-		id = id,
-		attackSpeedFactor = Factor.new(),
-		moveSpeedFactor = Factor.new(),
-		recoverHpFactor = Factor.new(),
-		attackPowerFactor = Factor.new(),
-	}
-	self._forces[id] = force
-	return force
 end
 
 function Scene:getForce(id)
@@ -217,12 +202,7 @@ end
 function Scene:update()
 	self.ticks = self.ticks + 1
 	
-	for k, v in pairs(self._forces) do
-		v.attackSpeedFactor:update(self.ticks)
-		v.moveSpeedFactor:update(self.ticks)
-		v.recoverHpFactor:update(self.ticks)
-		v.attackPowerFactor:update(self.ticks)
-	end
+	self._forces:update(self.ticks)
 	
 	if self._AI then
 		self:simulateAI(self.ticks)
