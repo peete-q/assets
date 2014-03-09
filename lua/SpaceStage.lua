@@ -31,8 +31,8 @@ function SpaceStage:initStageBG()
 	bg:setDeck(deck)
 	bg:setGrid(grid)
 	
-	self._bgAnimating = MOAIThread.new()
-	self._bgAnimating:run(function()
+	self._bgMoving = MOAIThread.new()
+	self._bgMoving:run(function()
 		while true do
 			blockOn(bg:moveLoc(-w, 0, w / 3, MOAIEaseType.LINEAR))
 		end
@@ -45,6 +45,33 @@ function SpaceStage:load()
 	self._farRoot = node.new()
 	self._nearRoot = node.new()
 	self._unitRoot = self._sceneRoot:add(node.new())
+
+	self._ring = node.new()
+	local ring01 = self._ring:add(Sprite.new("ring.png"))
+	local ring02 = self._ring:add(Sprite.new("ring.png"))
+	ring02:setColor(0, 0, 0, 0)
+	self._ring:setTreePriority(1)
+	local ringing = MOAIThread.new()
+	ringing:run(function()
+		while true do
+			ring01:setScl(0, 0)
+			ring01:setColor(0, 0, 0, 0)
+			ring01:seekScl(0.5, 0.5, 1, MOAIEaseType.SOFT_EASE_IN)
+			blockOn(ring01:seekColor(1, 1, 1, 1, 1, MOAIEaseType.SOFT_EASE_IN))
+			
+			ring02:setScl(0, 0)
+			ring02:setColor(0, 0, 0, 0)
+			ring02:seekScl(0.5, 0.5, 1, MOAIEaseType.SOFT_EASE_IN)
+			ring02:seekColor(1, 1, 1, 1, 1, MOAIEaseType.SOFT_EASE_IN)
+			
+			ring01:seekScl(1, 1, 1, MOAIEaseType.LINEAR)
+			blockOn(ring01:seekColor(0, 0, 0, 0, 1, MOAIEaseType.LINEAR))
+			
+			ring02:seekScl(1, 1, 1, MOAIEaseType.LINEAR)
+			ring02:seekColor(0, 0, 0, 0, 1, MOAIEaseType.LINEAR)
+		end
+	end)
+	
 	self:initStageBG()
 end
 
@@ -92,6 +119,7 @@ function SpaceStage:loadSpace(data)
 	end
 	self._motherShip = self._unitRoot:add(Unit.new(profile.motherShip, player))
 	self._motherShip:setLoc(data.spawnX, data.spawnY)
+	self._motherShip:setPriority(10)
 	camera:setLoc(data.initX, data.initY)
 	self._xMin = (device.width - data.width) / 2
 	self._xMax = (data.width - device.width) / 2
@@ -125,7 +153,11 @@ function SpaceStage.onTouchUp(touchIdx, x, y, tapCount)
 	if absX < 3 and absY < 3 then
 		local wx, wy = sceneLayer:wndToWorld(x, y)
 		self._motherShip:moveTo(wx, wy)
-		self._motherShip:whenArrive(nil)
+		self._sceneRoot:add(self._ring)
+		self._ring:setLoc(wx, wy)
+		self._motherShip:whenArrive(function()
+			self._sceneRoot:remove(self._ring)
+		end)
 	end
 	draging = false
 end

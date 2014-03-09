@@ -120,6 +120,8 @@ function node.setTreePriority(self, p)
 			local p2 = v:getPriority()
 			if p2 then
 				v:setTreePriority(p2 - p1 + p)
+			else
+				v:setTreePriority(p)
 			end
 		end
 	end

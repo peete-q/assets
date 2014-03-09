@@ -99,8 +99,8 @@ function HomeStage:initStageBG()
 	bg:setDeck(deck)
 	bg:setGrid(grid)
 	
-	self._bgAnimating = MOAIThread.new()
-	self._bgAnimating:run(function()
+	self._bgMoving = MOAIThread.new()
+	self._bgMoving:run(function()
 		while true do
 			blockOn(bg:moveLoc(-w, 0, w / 3, MOAIEaseType.LINEAR))
 		end
@@ -529,7 +529,7 @@ function HomeStage:close()
 	sceneLayer:remove(self._sceneRoot)
 	ui.removeLayer(sceneLayer)
 	
-	self._bgAnimating:stop()
+	self._bgMoving:stop()
 	self._portalRotating:stop()
 	if self._menuShowing then
 		self._menuShowing:stop()
