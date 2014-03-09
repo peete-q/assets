@@ -56,6 +56,7 @@ local breakstr = util.breakstr
 local dofile = dofile
 local math = math
 local pcall = pcall
+local unpack = unpack
 local debug_ui = os.getenv("DEBUG_UI") or nil
 module(...)
 local layers = {}
@@ -1794,8 +1795,8 @@ function RadialImage:setArc(startAngle, endAngle)
 	self:forceUpdate()
 end
 
-FillBar = {}
-function FillBar.new(image, colorstr)
+Patch = {}
+function Patch.new(image)
 	local self = ui_new(MOAIProp2D.new())
 	local fmt = MOAIVertexFormat.new()
 	fmt:declareCoord(1, MOAIVertexFormat.GL_FLOAT, 2)
@@ -1824,55 +1825,32 @@ function FillBar.new(image, colorstr)
 	mesh:setPrimType(MOAIMesh.GL_TRIANGLE_STRIP)
 	mesh:setVertexBuffer(vbo)
 	self:setDeck(mesh)
-	if colorstr then
-		self:setShader(ui_parseShader(colorstr))
-	elseif MOAIGfxDevice.isProgrammable() then
-		self:setShader(resource.shader("xyuv"))
-	end
+	self._color = {1, 1, 1, 1}
+	return self
+end
+
+FillBar = {}
+function FillBar.new(image)
+	local self = Patch.new(image)
 	self.setFill = FillBar.setFill
-	self.setColor = FillBar.setColor
 	self.seekFill = FillBar.seekFill
+	self.setSpin = FillBar.setSpin
+	self.seekSpin = FillBar.seekSpin
+	self.setColor = FillBar.setColor
 	self:setFill(0, 1)
 	return self
 end
 
-function FillBar.setColor(self, color)
-	if color ~= nil then
-		self:setShader(ui_parseShader(color))
-	end
+function FillBar:setColor(...)
+	self._color = {...}
+	self:setFill(self._startVal, self._endVal)
 end
 
-function FillBar.seekFill(self, startValLeft, startValRight, endValLeft, endValRight, length, cd)
-	local runtime = 0
-	local leftNum, prevLeftNum, rightNum, prevRightNum, action
-	action = AS:run(function(dt)
-		if runtime < length then
-			runtime = runtime + dt
-			if runtime > length then
-				runtime = length
-			end
-			leftNum = interpolate.lerp(startValLeft, endValLeft, runtime / length)
-			rightNum = interpolate.lerp(startValRight, endValRight, runtime / length)
-			self:setFill(leftNum, rightNum)
-			if prevLeftNum ~= nil and math.floor(prevLeftNum * 100) ~= math.floor(leftNum * 100) or prevRightNum ~= nil and math.floor(prevRightNum * 100) ~= math.floor(rightNum * 100) then
-				if cb then
-					cb()
-				end
-			end
-			prevLeftNum = leftNum
-			prevRightNum = rightNum
-		else
-			action:stop()
-		end
-	end)
-	return action
-end
-
-local cos = math.cos
-local sin = math.sin
 function FillBar:setFill(startVal, endVal)
 	startVal = startVal or 0
 	endVal = endVal or 1
+	self._startVal = startVal
+	self._endVal = endVal
 	local width = self._width
 	local height = self._height
 	local halfHeight = height / 2
@@ -1886,18 +1864,105 @@ function FillBar:setFill(startVal, endVal)
 	local endWidth = endVal - 0.5
 	vbo:writeFloat(width * startWidth, -halfHeight)
 	vbo:writeFloat(startVal, 1)
-	vbo:writeColor32(1, 1, 1)
+	vbo:writeColor32(unpack(self._color))
 	vbo:writeFloat(width * startWidth, halfHeight)
 	vbo:writeFloat(startVal, 0)
-	vbo:writeColor32(1, 1, 1)
+	vbo:writeColor32(unpack(self._color))
 	vbo:writeFloat(width * endWidth, -halfHeight)
 	vbo:writeFloat(endVal, 1)
-	vbo:writeColor32(1, 1, 1)
+	vbo:writeColor32(unpack(self._color))
 	vbo:writeFloat(width * endWidth, halfHeight)
 	vbo:writeFloat(endVal, 0)
-	vbo:writeColor32(1, 1, 1)
+	vbo:writeColor32(unpack(self._color))
 	vbo:bless()
 	self:forceUpdate()
+end
+
+function FillBar:seekFill(startValLeft, startValRight, endValLeft, endValRight, length)
+	local runtime = 0
+	local leftNum, prevLeftNum, rightNum, prevRightNum, action
+	action = AS:run(function(dt)
+		if runtime < length then
+			runtime = runtime + dt
+			if runtime > length then
+				runtime = length
+			end
+			leftNum = interpolate.lerp(startValLeft, endValLeft, runtime / length)
+			rightNum = interpolate.lerp(startValRight, endValRight, runtime / length)
+			self:setFill(leftNum, rightNum)
+			prevLeftNum = leftNum
+			prevRightNum = rightNum
+		else
+			action:stop()
+		end
+	end)
+	return action
+end
+
+SpinPatch = {}
+function SpinPatch.new(image, color)
+	local self = Patch.new(image, color)
+	self.setSpin = SpinPatch.setSpin
+	self.seekSpin = SpinPatch.seekSpin
+	self.setColor = SpinPatch.setColor
+	self:setSpin(0)
+	return self
+end
+
+function SpinPatch:setColor(...)
+	self._color = {...}
+	self:setSpin(self._spinVal)
+end
+
+function SpinPatch:setSpin(val)
+	self._spinVal = val
+	local w = self._width
+	local h = self._height
+	local vbo = self.vbo
+	vbo:reserveVerts(4)
+	vbo:reset()
+	local cosv = math.cos(val)
+	local sinv = math.sin(val)
+	local x = -w / 2
+	local y = -h / 2
+	vbo:writeFloat(x * cosv - y * sinv, y * cosv + x * sinv)
+	vbo:writeFloat(0, 1)
+	vbo:writeColor32(unpack(self._color))
+	local x = -w / 2
+	local y = h / 2
+	vbo:writeFloat(x * cosv - y * sinv, y * cosv + x * sinv)
+	vbo:writeFloat(0, 0)
+	vbo:writeColor32(unpack(self._color))
+	local x = w / 2
+	local y = -h / 2
+	vbo:writeFloat(x * cosv - y * sinv, y * cosv + x * sinv)
+	vbo:writeFloat(1, 1)
+	vbo:writeColor32(unpack(self._color))
+	local x = w / 2
+	local y = h / 2
+	vbo:writeFloat(x * cosv - y * sinv, y * cosv + x * sinv)
+	vbo:writeFloat(1, 0)
+	vbo:writeColor32(unpack(self._color))
+	vbo:bless()
+	self:forceUpdate()
+end
+
+function SpinPatch:seekSpin(startVal, endVal, length)
+	local runtime = 0
+	local val, action
+	action = AS:run(function(dt)
+		if runtime < length then
+			runtime = runtime + dt
+			if runtime > length then
+				runtime = length
+			end
+			val = interpolate.lerp(startVal, endVal, runtime / length)
+			self:setSpin(val)
+		else
+			action:stop()
+		end
+	end)
+	return action
 end
 
 NinePatch = {}

@@ -126,6 +126,23 @@ function HomeStage:initMotherPlanet()
 			popupLayer.popuped = false
 		end)
 	end
+	
+	beam = taxWindow:add(ui.Image.new("beam.png"))
+	beam:setScl(2.8, 2.8)
+	beam:setLoc(200, 0)
+	beam:setColor(0.5, 0.5, 0.5, 0.5)
+	
+	spin = taxWindow:add(ui.SpinPatch.new("spin.png"))
+	spin:setScl(2, 1)
+	spin:setLoc(200, -150)
+	spin:setColor(0.8, 0.8, 0.8, 0.8)
+	local spinning = MOAIThread.new()
+	spinning:run(function()
+		while true do
+			blockOn(spin:seekSpin(0, math.pi * 2, 4))
+		end
+	end)
+	
 	planet = taxWindow:add(ui.Image.new("earth.png"))
 	planet:setScl(0.6)
 	planet:setLoc(200, 0)
