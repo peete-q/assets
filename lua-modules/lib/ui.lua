@@ -1,5 +1,6 @@
 require("moai.compat")
 require("base_ext")
+
 local resource = require("resource")
 local util = require("util")
 local device = require("device")
@@ -10,75 +11,36 @@ local actionset = require("actionset")
 local interpolate = require("interpolate")
 local node = require("node")
 local gfxutil = require("gfxutil")
-local MOAIIndexBuffer = MOAIIndexBuffer
-local MOAIScissorRect = MOAIScissorRect
-local MOAIEaseType = MOAIEaseType
-local MOAITextBox = MOAITextBox
-local MOAIFont = MOAIFont
-local MOAIProp2D = MOAIProp2D
-local MOAIAnim = MOAIAnim
-local MOAITimer = MOAITimer
-local MOAISimpleShader = MOAISimpleShader
-local MOAIGfxQuad2D = MOAIGfxQuad2D
-local MOAILayer2D = MOAILayer2D
-local MOAIViewport = MOAIViewport
-local MOAIPartition = MOAIPartition
-local MOAIInputMgr = MOAIInputMgr
-local MOAITouchSensor = MOAITouchSensor
-local MOAIGfxDevice = MOAIGfxDevice
-local MOAIColor = MOAIColor
-local MOAISim = MOAISim
-local MOAIMesh = MOAIMesh
-local MOAIVertexBuffer = MOAIVertexBuffer
-local MOAIVertexFormat = MOAIVertexFormat
-local MOAIParticleEmitter = MOAIParticleEmitter
-local MOAIParticleState = MOAIParticleState
-local MOAIParticleSystem = MOAIParticleSystem
-local MOAIParticlePlugin = MOAIParticlePlugin
-local MOAIParticleTimedEmitter = MOAIParticleTimedEmitter
-local MOAIPexPlugin = MOAIPexPlugin
-local MOAI_VERSION = MOAI_VERSION
-local MOAI_VERSION_1_0 = MOAI_VERSION_1_0
+
 local clock = os.clock
-local table = table
-local ipairs = ipairs
-local pairs = pairs
-local error = error
-local type = type
-local assert = assert
-local setmetatable = setmetatable
-local getmetatable = getmetatable
-local tonumber = tonumber
-local tostring = tostring
-local print = print
-local string = string
-local printf = printf
-local getfenv = getfenv
-local breakstr = util.breakstr
-local dofile = dofile
-local math = math
-local pcall = pcall
-local unpack = unpack
-local debug_ui = os.getenv("DEBUG_UI") or true
-module(...)
+
+local ui = {
+	debug_ui = os.getenv("DEBUG_UI"),
+	
+	TOUCH_DOWN = MOAITouchSensor.TOUCH_DOWN,
+	TOUCH_MOVE = MOAITouchSensor.TOUCH_MOVE,
+	TOUCH_UP = MOAITouchSensor.TOUCH_UP,
+	TOUCH_CANCEL = MOAITouchSensor.TOUCH_CANCEL,
+	TOUCH_ONE = 0,
+	DRAG_THRESHOLD = 3,
+	KEY_BACKSPACE = 8,
+	KEY_RETURN = 13,
+}
+
 local layers = {}
 local captureElement, focusElement, touchFilterCallback, defaultTouchCallback, defaultKeyCallback
-local ui_TOUCH_DOWN = MOAITouchSensor.TOUCH_DOWN
-local ui_TOUCH_MOVE = MOAITouchSensor.TOUCH_MOVE
-local ui_TOUCH_UP = MOAITouchSensor.TOUCH_UP
-local ui_TOUCH_CANCEL = MOAITouchSensor.TOUCH_CANCEL
-local ui_TOUCH_ONE = 0
-local AS = actionset.new()
+
+local ui_AS = actionset.new()
 local ui_new = node.new
 
 local function ui_log(...)
-	if debug_ui then
+	if ui.debug_ui then
 		print("UI:", ...)
 	end
 end
 
 local function ui_logf(...)
-	if debug_ui then
+	if ui.debug_ui then
 		print("UI:", string.format(...))
 	end
 end
@@ -110,16 +72,17 @@ local function ui_tostring(o)
 end
 
 local TOUCH_NAME_MAPPING = {
-	[ui_TOUCH_DOWN] = "TOUCH_DOWN",
-	[ui_TOUCH_MOVE] = "TOUCH_MOVE",
-	[ui_TOUCH_UP] = "TOUCH_UP",
-	[ui_TOUCH_CANCEL] = "TOUCH_CANCEL"
+	[ui.TOUCH_DOWN] = "TOUCH_DOWN",
+	[ui.TOUCH_MOVE] = "TOUCH_MOVE",
+	[ui.TOUCH_UP] = "TOUCH_UP",
+	[ui.TOUCH_CANCEL] = "TOUCH_CANCEL"
 }
 local TOUCH_EVENT_MAPPING = {
-	[ui_TOUCH_DOWN] = "onTouchDown",
-	[ui_TOUCH_MOVE] = "onTouchMove",
-	[ui_TOUCH_UP] = "onTouchUp"
+	[ui.TOUCH_DOWN] = "onTouchDown",
+	[ui.TOUCH_MOVE] = "onTouchMove",
+	[ui.TOUCH_UP] = "onTouchUp"
 }
+
 local function doTouch(fn, elem, eventType, touchIdx, x, y, tapCount)
 	local fntype = type(fn)
 	if fntype == "boolean" or fntype == "nil" then
@@ -150,15 +113,15 @@ local function onTouch(eventType, touchIdx, x, y, tapCount)
 			print("ERROR: error in touch filter: " .. tostring(result))
 		end
 	end
-	if eventType == ui_TOUCH_CANCEL then
+	if eventType == ui.TOUCH_CANCEL then
 	else
-		if eventType == ui_TOUCH_MOVE then
+		if eventType == ui.TOUCH_MOVE then
 			if touchLastX == x and touchLastY == y then
 				return handled
 			end
 			touchLastX = x
 			touchLastY = y
-		elseif eventType == ui_TOUCH_UP then
+		elseif eventType == ui.TOUCH_UP then
 			touchLastX = nil
 			touchLastY = nil
 		end
@@ -250,13 +213,13 @@ local function onTouch(eventType, touchIdx, x, y, tapCount)
 	return handled
 end
 
-function dragHappen(x1, y1, x2, y2)
-	return math.abs(x1 - x2) > DRAG_THRESHOLD or math.abs(y1 - y2) > DRAG_THRESHOLD
+local function dragHappen(x1, y1, x2, y2)
+	return math.abs(x1 - x2) > ui.DRAG_THRESHOLD or math.abs(y1 - y2) > ui.DRAG_THRESHOLD
 end
 
-function handleTouch(self, eventType, touchIdx, x, y, tapCount)
-	if eventType == ui_TOUCH_UP then
-		capture(nil)
+function ui.handleTouch(self, eventType, touchIdx, x, y, tapCount)
+	if eventType == ui.TOUCH_UP then
+		ui.capture(nil)
 		if self._isdragging then
 			if self.onDragEnd then
 				self:onDragEnd(touchIdx, x, y, tapCount)
@@ -271,7 +234,7 @@ function handleTouch(self, eventType, touchIdx, x, y, tapCount)
 				self:onClick(touchIdx, x, y, tapCount)
 			end
 		end
-	elseif eventType == ui_TOUCH_DOWN then
+	elseif eventType == ui.TOUCH_DOWN then
 		if not self._isDown then
 			if self.onTouchDown then
 				self:onTouchDown()
@@ -279,9 +242,9 @@ function handleTouch(self, eventType, touchIdx, x, y, tapCount)
 			self._isdown = true
 			self._downX = x
 			self._downY = y
-			capture(self)
+			ui.capture(self)
 		end
-	elseif eventType == ui_TOUCH_MOVE and touchIdx == ui_TOUCH_ONE then
+	elseif eventType == ui.TOUCH_MOVE and touchIdx == ui.TOUCH_ONE then
 		if dragHappen(self._downX, self._downY, x, y) then
 			if self.onDragBegin then
 				self._isdragging = self:onDragBegin(touchIdx, x, y, tapCount)
@@ -292,7 +255,7 @@ function handleTouch(self, eventType, touchIdx, x, y, tapCount)
 				self:onDragMove(touchIdx, x, y, tapCount)
 			end
 		elseif self._isdown then
-			if not treeCheck(x, y, self) then
+			if not ui.treeCheck(x, y, self) then
 				if self.onTouchUp then
 					self:onTouchUp()
 				end
@@ -312,7 +275,7 @@ local function onMouseUpdate(x, y)
 	mouseX = x
 	mouseY = y
 	if mouseIsDown then
-		onTouch(ui_TOUCH_MOVE, ui_TOUCH_ONE, mouseX, mouseY, 1)
+		onTouch(ui.TOUCH_MOVE, ui.TOUCH_ONE, mouseX, mouseY, 1)
 	end
 end
 
@@ -328,10 +291,10 @@ local function onMouseLeft(down)
 				mouseTapCount = mouseTapCount + 1
 			end
 			mouseDownTime = t
-			onTouch(ui_TOUCH_DOWN, ui_TOUCH_ONE, mouseX, mouseY, mouseTapCount)
+			onTouch(ui.TOUCH_DOWN, ui.TOUCH_ONE, mouseX, mouseY, mouseTapCount)
 		end
 	else
-		onTouch(ui_TOUCH_UP, ui_TOUCH_ONE, mouseX, mouseY, mouseTapCount)
+		onTouch(ui.TOUCH_UP, ui.TOUCH_ONE, mouseX, mouseY, mouseTapCount)
 	end
 end
 
@@ -349,7 +312,7 @@ local function onKeyboard(key, down)
 	return handled
 end
 
-function init(defaultInputHandler, defaultKeyHandler)
+function ui.init(defaultInputHandler, defaultKeyHandler)
 	defaultTouchCallback = defaultInputHandler
 	defaultKeyCallback = defaultKeyHandler
 	if MOAIInputMgr.device.pointer ~= nil then
@@ -368,7 +331,7 @@ function init(defaultInputHandler, defaultKeyHandler)
 	captureElement = nil
 end
 
-function resetInput()
+function ui.shutdown()
 	defaultTouchCallback = nil
 	defaultKeyCallback = nil
 	if MOAIInputMgr.device.pointer ~= nil then
@@ -383,33 +346,30 @@ function resetInput()
 	if MOAIInputMgr.device.keyboard ~= nil then
 		MOAIInputMgr.device.keyboard:setCallback(nil)
 	end
-end
-
-function shutdown()
-	resetInput()
+	
 	for i = 1, #layers do
 		layers[i]:clear()
 	end
 	layers = {}
 end
 
-function injectTouch(eventType, touchIdx, x, y, tapCount)
+function ui.injectTouch(eventType, touchIdx, x, y, tapCount)
 	return onTouch(eventType, touchIdx, x, y, tapCount)
 end
 
-function setTouchFilter(touchFilter)
+function ui.setTouchFilter(touchFilter)
 	touchFilterCallback = touchFilter
 end
 
-function setDefaultTouchCallback(defaultInputHandler)
+function ui.setDefaultTouchCallback(defaultInputHandler)
 	defaultTouchCallback = defaultInputHandler
 end
 
-function setDefaultKeyCallback(defaultKeyHandler)
+function ui.setDefaultKeyCallback(defaultKeyHandler)
 	defaultKeyCallback = defaultKeyHandler
 end
 
-function hierarchystring(elem)
+function ui.hierarchystring(elem)
 	local t = {}
 	local e = elem
 	while e do
@@ -419,28 +379,21 @@ function hierarchystring(elem)
 	return table.concat(t, "\n")
 end
 
-function mockTouch(e, eventType, touchIdx, x, y, tapCount)
-	local handler = e[TOUCH_EVENT_MAPPING[eventType]]
-	if handler ~= nil then
-		return handler(e, touchIdx, x, y, tapCount)
-	end
-end
-
-function capture(e, ifEqual)
+function ui.capture(e, ifEqual)
 	if captureElement == ifEqual or ifEqual == nil then
 		captureElement = e
 	end
 end
 
-function getCaptureElement()
+function ui.getCaptureElement()
 	return captureElement
 end
 
-function focus(e)
+function ui.focus(e)
 	focusElement = e
 end
 
-function treeCheck(x, y, elem)
+function ui.treeCheck(x, y, elem)
 	local layer = elem._layer
 	if layer == nil then
 		return false
@@ -460,36 +413,26 @@ function treeCheck(x, y, elem)
 	return false
 end
 
-function removeLayer(o)
+function ui.removeLayer(o)
 	local i = table.find(layers, o)
 	if i then
 		table.remove(layers, i)
 	end
 end
 
-function insertLayer(o, pos)
-	removeLayer(o)
+function ui.insertLayer(o, pos)
+	ui.removeLayer(o)
 	pos = pos or #layers + 1
 	table.insert(layers, pos, o)
 end
 
-new = ui_new
-TOUCH_DOWN = ui_TOUCH_DOWN
-TOUCH_MOVE = ui_TOUCH_MOVE
-TOUCH_UP = ui_TOUCH_UP
-TOUCH_CANCEL = ui_TOUCH_CANCEL
-TOUCH_ONE = ui_TOUCH_ONE
-DRAG_THRESHOLD = 8
-KEY_BACKSPACE = 8
-KEY_RETURN = 13
-
-Group = {}
+local Group = {}
 function Group.new()
 	local o = ui_new(MOAIProp2D.new())
 	return o
 end
 
-PageView = {}
+local PageView = {}
 local function PageView_showPage(self, page)
 	if self.currPage == page then
 		return
@@ -543,13 +486,13 @@ function PageView.new(pages)
 	return o
 end
 
-Button = {}
+local Button = {}
 local function Button_handleTouch(self, eventType, touchIdx, x, y, tapCount)
 	if self._isDisable then
 		return true
 	end
 	
-	return handleTouch(self, eventType, touchIdx, x, y, tapCount)
+	return ui.handleTouch(self, eventType, touchIdx, x, y, tapCount)
 end
 
 local function _MakePage(o)
@@ -607,7 +550,7 @@ function Button:disable(on)
 			self:showPage("disable")
 		end
 	else
-		capture(nil, self)
+		ui.capture(nil, self)
 		if self._disableAlpha then
 			self:setColor(1, 1, 1, 1)
 		else
@@ -624,7 +567,7 @@ function Button:setPriority(priority)
 	self._disable:setPriority(priority)
 end
 
-Switch = {}
+local Switch = {}
 local function Switch_handleClick(self)
 	self._status = self._status + 1
 	if self._status > self._num then
@@ -661,7 +604,7 @@ function Switch.new(num, ...)
 		end
 	end
 	o._num = num
-	o.handleTouch = handleTouch
+	o.handleTouch = ui.handleTouch
 	o.onTouchDown = Switch_handleTouchDown
 	o.onTouchUp = Switch_handleTouchUp
 	o.onClick = Switch_handleClick
@@ -675,13 +618,13 @@ function Switch:turn(status)
 	self:showPage(status * 2 - 1)
 end
 
-DropList = {}
+local DropList = {}
 DropList.VERTICAL = "vertical"
 DropList.HORIZONTAL = "horizontal"
 function DropList.handleTouchV(self, eventType, touchIdx, x, y, tapCount)
 	local this = self._parent._parent
-	if eventType == ui_TOUCH_UP then
-		capture(nil)
+	if eventType == ui.TOUCH_UP then
+		ui.capture(nil)
 		if not this._scrolling then
 			if self.onClick then
 				self:onClick(touchIdx, x, y, tapCount)
@@ -693,7 +636,7 @@ function DropList.handleTouchV(self, eventType, touchIdx, x, y, tapCount)
 				this._velocityV = this._diffV
 			end
 			if not this._scrollAction then
-				this._scrollAction = AS:wrap(function(dt)
+				this._scrollAction = ui_AS:wrap(function(dt)
 					local x, y = this._root:getLoc()
 					y = y + this._velocityV
 					if 0 <= y and y <= (this:getItemCount() - 1) * this._space then
@@ -710,11 +653,11 @@ function DropList.handleTouchV(self, eventType, touchIdx, x, y, tapCount)
 			end
 		end
 		this._scrolling = nil
-	elseif eventType == ui_TOUCH_DOWN then
-		capture(self)
+	elseif eventType == ui.TOUCH_DOWN then
+		ui.capture(self)
 		this._lastV = y
 		this._diffV = 0
-	elseif eventType == ui_TOUCH_MOVE and touchIdx == ui_TOUCH_ONE then
+	elseif eventType == ui.TOUCH_MOVE and touchIdx == ui.TOUCH_ONE then
 		this._scrolling = true
 		this._diffV = y - this._lastV
 		this._lastV = y
@@ -731,8 +674,8 @@ end
 
 function DropList.handleTouchH(self, eventType, touchIdx, x, y, tapCount)
 	local this = self._parent._parent
-	if eventType == ui_TOUCH_UP then
-		capture(nil)
+	if eventType == ui.TOUCH_UP then
+		ui.capture(nil)
 		if not this._scrolling then
 			if self.onClick then
 				self:onClick(touchIdx, x, y, tapCount)
@@ -744,7 +687,7 @@ function DropList.handleTouchH(self, eventType, touchIdx, x, y, tapCount)
 				this._velocityV = this._diffV
 			end
 			if not this._scrollAction then
-				this._scrollAction = AS:wrap(function(dt)
+				this._scrollAction = ui_AS:wrap(function(dt)
 					local x, y = this._root:getLoc()
 					x = x + this._velocityV
 					if 0 <= x and x <= (this:getItemCount() - 1) * this._space then
@@ -761,11 +704,11 @@ function DropList.handleTouchH(self, eventType, touchIdx, x, y, tapCount)
 			end
 		end
 		this._scrolling = nil
-	elseif eventType == ui_TOUCH_DOWN then
-		capture(self)
+	elseif eventType == ui.TOUCH_DOWN then
+		ui.capture(self)
 		this._lastV = x
 		this._diffV = 0
-	elseif eventType == ui_TOUCH_MOVE and touchIdx == ui_TOUCH_ONE then
+	elseif eventType == ui.TOUCH_MOVE and touchIdx == ui.TOUCH_ONE then
 		this._scrolling = true
 		this._diffV = x - this._lastV
 		this._lastV = x
@@ -862,22 +805,22 @@ function DropList:getItemCount()
 	return #self._root:getChildrenCount()
 end
 
-PickBox = {}
+local PickBox = {}
 
-local function PickBox_handleTouch(self, eventType, touchIdx, x, y, tapCount)
-	if eventType == ui_TOUCH_UP then
-		capture(nil)
+function PickBox.handleTouch(self, eventType, touchIdx, x, y, tapCount)
+	if eventType == ui.TOUCH_UP then
+		ui.capture(nil)
 		if self._isdown and self._inside then
 			self:onClick(touchIdx, x, y, tapCount)
 		end
 		self._isdown = nil
 		self._inside = nil
-	elseif eventType == ui_TOUCH_DOWN then
+	elseif eventType == ui.TOUCH_DOWN then
 		self._inside = true
 		self._isdown = true
-		capture(self)
-	elseif eventType == ui_TOUCH_MOVE and touchIdx == ui_TOUCH_ONE and self._isdown then
-		self._inside = treeCheck(x, y, self)
+		ui.capture(self)
+	elseif eventType == ui.TOUCH_MOVE and touchIdx == ui.TOUCH_ONE and self._isdown then
+		self._inside = ui.treeCheck(x, y, self)
 	end
 	return true
 end
@@ -887,6 +830,14 @@ function PickBox.new(width, height)
 	local d = MOAIGfxQuad2D.new()
 	d:setRect(-width / 2, -height / 2, width / 2, height / 2)
 	o:setDeck(d)
-	o.handleTouch = PickBox_handleTouch
+	o.handleTouch = PickBox.handleTouch
 	return o
 end
+
+ui.Group = Group
+ui.PageView = PageView
+ui.Button = Button
+ui.Switch = Switch
+ui.DropList = DropList
+
+return ui
