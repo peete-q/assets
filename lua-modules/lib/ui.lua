@@ -8,6 +8,8 @@ local color = require("color")
 local url = require("url")
 local actionset = require("actionset")
 local interpolate = require("interpolate")
+local node = require("node")
+local gfxutil = require("gfxutil")
 local MOAIIndexBuffer = MOAIIndexBuffer
 local MOAIScissorRect = MOAIScissorRect
 local MOAIEaseType = MOAIEaseType
@@ -57,7 +59,7 @@ local dofile = dofile
 local math = math
 local pcall = pcall
 local unpack = unpack
-local debug_ui = os.getenv("DEBUG_UI") or nil
+local debug_ui = os.getenv("DEBUG_UI") or true
 module(...)
 local layers = {}
 local captureElement, focusElement, touchFilterCallback, defaultTouchCallback, defaultKeyCallback
@@ -67,6 +69,7 @@ local ui_TOUCH_UP = MOAITouchSensor.TOUCH_UP
 local ui_TOUCH_CANCEL = MOAITouchSensor.TOUCH_CANCEL
 local ui_TOUCH_ONE = 0
 local AS = actionset.new()
+local ui_new = node.new
 
 local function ui_log(...)
 	if debug_ui then
@@ -78,205 +81,6 @@ local function ui_logf(...)
 	if debug_ui then
 		print("UI:", string.format(...))
 	end
-end
-
-local function ui_get_moai_mt(o)
-	return getmetatable(getmetatable(o)).__index
-end
-
-local function ui_getLayoutSize(self)
-	local parent = self
-	while parent ~= nil do
-		if parent._layoutsize ~= nil then
-			return parent._layoutsize
-		end
-		parent = parent._parent
-	end
-end
-
-local function ui_fireEvent(self, eventName, ...)
-	local fn = self[eventName]
-	if fn ~= nil then
-		fn(self, ...)
-	end
-end
-
-local function ui_setLayer(self, layer)
-	if self._layer == layer then
-		return
-	end
-	if layer ~= nil then
-		layer:insertProp(self)
-		if self._layer ~= self then
-			self._layer = layer
-		end
-		if self._children ~= nil then
-			for k, v in pairs(self._children) do
-				ui_setLayer(v, layer)
-			end
-		end
-		ui_fireEvent(self, "onLayerChanged", layer)
-	elseif self._layer ~= nil then
-		self._layer:removeProp(self)
-		if captureElement == self then
-			captureElement = nil
-		end
-		if self._layer ~= self then
-			self._layer = nil
-		end
-		if self._children ~= nil then
-			for k, v in pairs(self._children) do
-				ui_setLayer(v, nil)
-			end
-		end
-		ui_fireEvent(self, "onLayerChanged", nil)
-	end
-end
-
-local function ui_unparentChild(child)
-	ui_setLayer(child, nil)
-	child._parent = nil
-	child:setParent(nil)
-	child:setScissorRect(nil)
-end
-
-local function ui_setScissorRect(self, rect)
-	self._scissorRect = rect
-	local mt = ui_get_moai_mt(self)
-	mt.setScissorRect(self, rect)
-end
-
-local function ui_add(self, child)
-	assert(child ~= nil, "Child must not be null")
-	assert(child._layer == nil or child._layer ~= child, "Nested viewports not supported")
-	if child._parent ~= nil then
-		if child._parent == self then
-			return
-		end
-		child._parent:remove(child)
-	end
-	if self._children == nil then
-		self._children = {}
-	end
-	if self._scissorRect then
-		child:setScissorRect(self._scissorRect)
-	end
-	table.insert(self._children, child)
-	child:setParent(self)
-	child._parent = self
-	ui_setLayer(child, self._layer)
-	if child._layoutsize ~= nil then
-		local layoutsize = ui_getLayoutSize(self)
-		if layoutsize ~= nil then
-			child:setLayoutSize(layoutsize.width, layoutsize.height)
-		else
-			error("No parent layout size")
-		end
-	end
-	return child
-end
-
-local function ui_removeAll(self, recursion)
-	if self._children ~= nil then
-		for k, v in pairs(self._children) do
-			ui_unparentChild(v)
-			if recursion then
-				ui_removeAll(v, recursion)
-			end
-			self._children[k] = nil
-		end
-		self._children = nil
-	end
-end
-
-local function ui_remove(self, child)
-	if child == nil then
-		if self._parent ~= nil then
-			return ui_remove(self._parent, self)
-		end
-		return nil
-	end
-	if child._parent ~= self then
-		return nil
-	end
-	if self._children ~= nil then
-		for k, v in pairs(self._children) do
-			if v == child then
-				ui_unparentChild(child)
-				table.remove(self._children, k)
-				if #self._children == 0 then
-					self._children = nil
-				end
-				return k
-			end
-		end
-	end
-	return nil
-end
-
-local function ui_setAnchor(self, dir, x, y)
-	self._anchor = dir
-	local layoutsize = self._layer:getLayoutSize()
-	local diffX = math.floor(layoutsize.width / 2)
-	local diffY = math.floor(layoutsize.height / 2)
-	if dir[1] == "L" then
-		x = x - diffX
-	elseif dir[1] == "R" then
-		x = x + diffX
-	end
-	if dir[2] == "T" then
-		y = y + diffY
-	elseif dir[2] == "B" then
-		y = y - diffY
-	end
-	self:setLoc(x, y)
-end
-
-local function ui_setLayoutSize(self, w, h)
-	assert(not w or not nil, "Bad layout size")
-	local layoutsize = self._layoutsize or {width = 0, height = 0}
-	if self._children and (layoutsize.width ~= w or layoutsize.height ~= h) then
-		local diffX = math.floor((w - layoutsize.width) / 2)
-		local diffY = math.floor((h - layoutsize.height) / 2)
-		for i, e in pairs(self._children) do
-			local uianchor = e._anchor
-			if uianchor ~= nil then
-				local x, y = e:getLoc()
-				if uianchor:find("T") then
-					y = y + diffY
-				elseif uianchor:find("B") then
-					y = y - diffY
-				end
-				if uianchor:find("L") then
-					x = x - diffX
-				elseif uianchor:find("R") then
-					x = x + diffX
-				end
-				e:setLoc(x, y)
-			end
-		end
-	end
-	self._layoutsize = {width = w, height = h}
-end
-
-local function ui_new(o)
-	o = o or MOAIProp2D.new()
-	o.add = ui_add
-	o.setLayer = ui_setLayer
-	o.remove = ui_remove
-	o.removeAll = ui_removeAll
-	o.setAnchor = ui_setAnchor
-	o.setScissorRect = ui_setScissorRect
-	return o
-end
-
-local function ui_parseShader(colorstr)
-	if colorstr ~= nil and type(colorstr) == "string" then
-		return resource.shader(colorstr)
-	elseif colorstr ~= nil and type(colorstr) == "userdata" then
-		return colorstr
-	end
-	return nil
 end
 
 local function ui_tostring(o)
@@ -316,7 +120,7 @@ local TOUCH_EVENT_MAPPING = {
 	[ui_TOUCH_MOVE] = "onTouchMove",
 	[ui_TOUCH_UP] = "onTouchUp"
 }
-local function invokeTouch(fn, elem, eventType, touchIdx, x, y, tapCount)
+local function doTouch(fn, elem, eventType, touchIdx, x, y, tapCount)
 	local fntype = type(fn)
 	if fntype == "boolean" or fntype == "nil" then
 		return fn
@@ -367,7 +171,7 @@ local function onTouch(eventType, touchIdx, x, y, tapCount)
 					local fn = elem.handleTouch
 					if fn ~= nil then
 						local wx, wy = elem._layer:wndToWorld(x, y)
-						local success, result = pcall(invokeTouch, fn, elem, eventType, touchIdx, wx, wy, tapCount)
+						local success, result = pcall(doTouch, fn, elem, eventType, touchIdx, wx, wy, tapCount)
 						if success then
 							if result then
 								handled = true
@@ -384,6 +188,7 @@ local function onTouch(eventType, touchIdx, x, y, tapCount)
 			end
 		else
 			for i = #layers, 1, -1 do
+				ui_logf("pick layer %q", tostring(layers[i]._uiname))
 				local layer = layers[i]
 				local wx, wy = layer:wndToWorld(x, y)
 				local partition = layer:getPartition()
@@ -412,7 +217,7 @@ local function onTouch(eventType, touchIdx, x, y, tapCount)
 							if fn == nil then
 								break
 							end
-							local success, result = pcall(invokeTouch, fn, fnElem, eventType, touchIdx, wx, wy, tapCount)
+							local success, result = pcall(doTouch, fn, fnElem, eventType, touchIdx, wx, wy, tapCount)
 							if success then
 								if result then
 									handled = true
@@ -445,9 +250,8 @@ local function onTouch(eventType, touchIdx, x, y, tapCount)
 	return handled
 end
 
-local dragDelta = 3
 function dragHappen(x1, y1, x2, y2)
-	return math.abs(x1 - x2) > dragDelta or math.abs(y1 - y2) > dragDelta
+	return math.abs(x1 - x2) > DRAG_THRESHOLD or math.abs(y1 - y2) > DRAG_THRESHOLD
 end
 
 function handleTouch(self, eventType, touchIdx, x, y, tapCount)
@@ -531,8 +335,6 @@ local function onMouseLeft(down)
 	end
 end
 
-KEY_BACKSPACE = 8
-KEY_RETURN = 13
 local function onKeyboard(key, down)
 	local handled = false
 	if focusElement ~= nil then
@@ -566,7 +368,7 @@ function init(defaultInputHandler, defaultKeyHandler)
 	captureElement = nil
 end
 
-function inputShutdown()
+function resetInput()
 	defaultTouchCallback = nil
 	defaultKeyCallback = nil
 	if MOAIInputMgr.device.pointer ~= nil then
@@ -584,7 +386,7 @@ function inputShutdown()
 end
 
 function shutdown()
-	inputShutdown()
+	resetInput()
 	for i = 1, #layers do
 		layers[i]:clear()
 	end
@@ -617,7 +419,7 @@ function hierarchystring(elem)
 	return table.concat(t, "\n")
 end
 
-function dispatchTouch(e, eventType, touchIdx, x, y, tapCount)
+function mockTouch(e, eventType, touchIdx, x, y, tapCount)
 	local handler = e[TOUCH_EVENT_MAPPING[eventType]]
 	if handler ~= nil then
 		return handler(e, touchIdx, x, y, tapCount)
@@ -667,7 +469,7 @@ end
 
 function insertLayer(o, pos)
 	removeLayer(o)
-	pos = pos or #layers
+	pos = pos or #layers + 1
 	table.insert(layers, pos, o)
 end
 
@@ -678,496 +480,12 @@ TOUCH_UP = ui_TOUCH_UP
 TOUCH_CANCEL = ui_TOUCH_CANCEL
 TOUCH_ONE = ui_TOUCH_ONE
 DRAG_THRESHOLD = 8
-
-Layer = {}
-local function ui_Layer_clear(self)
-	ui_removeAll(self)
-	local mt = ui_get_moai_mt(self)
-	mt.clear(self)
-end
-
-local function ui_Layer_setViewport(self, vp)
-	self._viewport = vp
-	local mt = ui_get_moai_mt(self)
-	mt.setViewport(self, vp)
-end
-
-local ui_Layer_getViewport = function(self)
-	return self._viewport
-end
-
-function Layer.new(viewport, scale)
-	if viewport == nil or type(viewport) == "table" then
-		do
-			local left = 0
-			local top = 0
-			local right = device.width
-			local bottom = device.height
-			if viewport ~= nil then
-				if viewport.left ~= nil then
-					left = viewport.left
-				end
-				if viewport.top ~= nil then
-					top = viewport.top
-				end
-				if viewport.right ~= nil then
-					right = viewport.right
-				end
-				if viewport.bottom ~= nil then
-					bottom = viewport.bottom
-				end
-			end
-			viewport = MOAIViewport.new()
-			viewport:setSize(left, top, right, bottom)
-			if scale then
-				viewport:setScale(right - left, bottom - top)
-			else
-				viewport:setScale(0, 0)
-			end
-		end
-	elseif type(viewport) ~= "userdata" then
-		error("Invalid viewport: " .. tostring(viewport))
-	end
-	local o = ui_new(MOAILayer2D.new())
-	o._layer = o
-	o.clear = ui_Layer_clear
-	o.setViewport = ui_Layer_setViewport
-	o.getViewport = ui_Layer_getViewport
-	o.getLayoutSize = ui_getLayoutSize
-	o.setLayoutSize = ui_setLayoutSize
-	o:setViewport(viewport)
-	o:setLayoutSize(device.width, device.height)
-	table.insert(layers, o)
-	MOAISim.pushRenderPass(o)
-	return o
-end
+KEY_BACKSPACE = 8
+KEY_RETURN = 13
 
 Group = {}
 function Group.new()
 	local o = ui_new(MOAIProp2D.new())
-	o.getLayoutSize = ui_getLayoutSize
-	o.setLayoutSize = ui_setLayoutSize
-	return o
-end
-
-TextBox = {}
-local function TextBox_setColorVerPreMOAI1(self, color)
-	if color ~= nil then
-		self._textbox:setShader(ui_parseShader(color))
-	end
-end
-
-local TextBox_seekColor = function(self, r, g, b, a, t, easetype)
-	local action, shadowAction
-	action = self._textbox:seekColor(r, g, b, a, t, easetype)
-	if self._shadow ~= nil then
-		shadowAction = self._shadow:seekColor(0, 0, 0, 0.5 * (a or 1), t, easetype)
-		action:addChild(shadowAction)
-	end
-	return action
-end
-
-local TextBox_setColor = function(self, r, g, b, a)
-	if self._shadow ~= nil then
-		self._shadow:setColor(0, 0, 0, 0.5 * (a or 1))
-	end
-	self._textbox:setColor(r, g, b, a)
-end
-
-local TextBox_getSize = function(self)
-	if not self or not self._width or not self._height then
-		return nil
-	end
-	return self._width, self._height
-end
-
-local TextBox_setShadowOffset = function(self, xOffset, yOffset)
-	self._shadow:setLoc(xOffset, yOffset)
-end
-
-local function TextBox_setString(self, str, recalcBounds)
-	self._textbox:setString(str)
-	if self._shadow ~= nil then
-		self._shadow:setString(str)
-	end
-	if recalcBounds then
-		local dw = self._fixedWidth or device.ui_width
-		local dh = self._fixedHeight or device.ui_height
-		self._textbox:setRect(-dw / 2, -dh / 2, dw / 2, dh / 2)
-		local xmin, ymin, xmax, ymax = self._textbox:getStringBounds(1, str:len())
-		local width = self._fixedWidth or xmax - xmin + 5
-		local height = self._fixedHeight or ymax - ymin + 5
-		self._textbox:setRect(-width / 2, -height / 2, width / 2, height / 2)
-		if self._shadow ~= nil then
-			self._shadow:setRect(-width / 2, -height / 2, width / 2, height / 2)
-		end
-		self._width = width
-		self._height = height
-	end
-end
-
-local function TextBox_getStringBounds(self, index, size)
-	return self._textbox:getStringBounds(index, size)
-end
-
-local function TextBox_setLineSpacing(self, height)
-	self._textbox:setLineSpacing(height)
-end
-
-local function TextBox_rollNumber(self, start, goal, length, prefix, suffix, cb)
-	prefix = prefix or ""
-	suffix = suffix or ""
-	local runtime = 0
-	local num, prevNum, action
-	action = AS:run(function(dt)
-		if runtime < length then
-			runtime = runtime + dt
-			if runtime > length then
-				runtime = length
-			end
-			num = interpolate.lerp(start, goal, runtime / length)
-			self:setString(prefix .. util.commasInNumbers(math.floor(num)) .. suffix)
-			if prevNum ~= nil and math.floor(prevNum) ~= math.floor(num) then
-				action.rollingNumber = num
-				if cb then
-					cb()
-				end
-			end
-			prevNum = num
-		else
-			action:stop()
-		end
-	end)
-	return action
-end
-
-local function TextBox_setTime(self, secs)
-	local s = math.fmod(secs, 60)
-	local m = math.fmod(math.floor(secs / 60), 60)
-	local h = math.floor(math.floor(secs / 60) / 60)
-	local str = string.format("%02d:%02d:%02d", h, m, s)
-	self:setString(str)
-end
-
-local function TextBox_setSize(self, width, height)
-	self._textbox:setRect(-width / 2, -height / 2, width / 2, height / 2)
-	if self._shadow then
-		self._shadow:setRect(-width / 2, -height / 2, width / 2, height / 2)
-	end
-end
-
-function TextBox.new(str, font, color, justify, width, height, shadow)
-	local o = ui_new(MOAIProp2D.new())
-	local face, size
-	if type(font) == "table" then
-		if font.face ~= nil then
-			face = font.face
-			size = tonumber(font.size)
-		else
-			face = font[1]
-			size = tonumber(font[2])
-		end
-	elseif type(font) == "string" then
-		face, size = font:match("([^@]+)@(%d+)$")
-		if face == nil then
-			face = "Arial"
-		end
-		if size == nil then
-			size = 12
-		else
-			size = tonumber(size)
-		end
-	else
-		face = "Arial"
-		size = 12
-	end
-	font = resource.font(face, size)
-	justify = justify or "MM"
-	local textbox = ui_new(MOAITextBox.new())
-	textbox:setFont(font)
-	local h, v
-	if justify[1] == "L" then
-		h = MOAITextBox.LEFT_JUSTIFY
-	elseif justify[1] == "R" then
-		h = MOAITextBox.RIGHT_JUSTIFY
-	elseif justify[1] == "M" then
-		h = MOAITextBox.CENTER_JUSTIFY
-	end
-	if justify[2] == "T" then
-		v = MOAITextBox.LEFT_JUSTIFY
-	elseif justify[2] == "B" then
-		v = MOAITextBox.RIGHT_JUSTIFY
-	elseif justify[2] == "M" then
-		v = MOAITextBox.CENTER_JUSTIFY
-	end
-	textbox:setAlignment(h, v)
-	if device.ui_assetrez == device.ASSET_MODE_HI then
-		textbox:setTextSize(size)
-	elseif device.ui_assetrez == device.ASSET_MODE_LO then
-		textbox:setTextSize(size * 2)
-	elseif device.ui_assetrez == device.ASSET_MODE_X_HI then
-		textbox:setTextSize(size * 0.5)
-	end
-	textbox:setString(str)
-	if width ~= nil then
-		o._fixedWidth = width
-	end
-	if height ~= nil then
-		o._fixedHeight = height
-	end
-	if width == nil or height == nil then
-		local dw = width or device.ui_width
-		local dh = height or device.ui_height
-		textbox:setRect(-dw / 2, -dh / 2, dw / 2, dh / 2)
-		local xmin, ymin, xmax, ymax = textbox:getStringBounds(1, str:len())
-		if width == nil then
-			width = xmax - xmin + 5
-		end
-		if height == nil then
-			if ymax == nil or ymin == nil then
-				height = 5
-			else
-				height = ymax - ymin + 5
-			end
-		end
-	end
-	textbox:setRect(-width / 2, -height / 2, width / 2, height / 2)
-	o._width = width
-	o._height = height
-	o.getSize = TextBox_getSize
-	textbox:setScl(1, -1)
-	if color ~= nil then
-		textbox:setShader(ui_parseShader(color))
-	end
-	if shadow then
-		local shadow = ui_new(MOAITextBox.new())
-		shadow:setFont(font)
-		shadow:setAlignment(h, v)
-		if device.ui_assetrez == device.ASSET_MODE_HI then
-			shadow:setTextSize(size)
-		elseif device.ui_assetrez == device.ASSET_MODE_LO then
-			shadow:setTextSize(size * 2)
-		elseif device.ui_assetrez == device.ASSET_MODE_X_HI then
-			shadow:setTextSize(size * 0.5)
-		end
-		shadow:setString(str)
-		shadow:setRect(-width / 2, -height / 2, width / 2, height / 2)
-		shadow:setScl(1, -1)
-		shadow:setColor(0, 0, 0, 0.5)
-		shadow:setLoc(2, -2)
-		o:add(shadow)
-		o._shadow = shadow
-	end
-	o:add(textbox)
-	o._textbox = textbox
-	if MOAI_VERSION < MOAI_VERSION_1_0 then
-		o.setColor = TextBox_setColorVerPreMOAI1
-	else
-		o.setColor = TextBox_setColor
-	end
-	o.seekColor = TextBox_seekColor
-	o.getStringBounds = TextBox_getStringBounds
-	o.setString = TextBox_setString
-	o.setShadowOffset = TextBox_setShadowOffset
-	o.setLineSpacing = TextBox_setLineSpacing
-	o.rollNumber = TextBox_rollNumber
-	o.setTime = TextBox_setTime
-	o.setSize = TextBox_setSize
-	return o
-end
-
-Image = {}
-local Image_getSize = function(self)
-	if not self or not self._deck or not self._deck.getSize then
-		return nil
-	end
-	local w, h = self._deck:getSize(self.deckLayer)
-	local x, y = self:getScl()
-	return w * x, h * y
-end
-
-local function Image_setImage(self, imageName)
-	if not imageName then
-		self:setDeck(nil)
-		self._deck = nil
-		return
-	end
-	local imageName, queryStr = breakstr(imageName, "?")
-	local deckName, layerName = breakstr(imageName, "#")
-	local deck = resource.deck(deckName)
-	self:setDeck(deck)
-	if layerName ~= nil then
-		self:setIndex(deck:indexOf(layerName))
-		self.deckLayer = layerName
-	end
-	self.deckIndex = deck:indexOf(layerName)
-	self:setScl(1, 1)
-	self:setRot(0)
-	self:setLoc(0, 0)
-	self:setColor(1, 1, 1, 1)
-	if queryStr ~= nil then
-		local q = url.parse_query(queryStr)
-		if q.scl ~= nil then
-			local x, y = breakstr(q.scl, ",")
-			self:setScl(tonumber(x), tonumber(y or x))
-		end
-		if q.rot ~= nil then
-			local rot = tonumber(q.rot)
-			self:setRot(rot)
-		end
-		if q.pri ~= nil then
-			local pri = tonumber(q.pri)
-			self:setPriority(pri)
-		end
-		if q.loc ~= nil then
-			local x, y = breakstr(q.loc, ",")
-			self:setLoc(tonumber(x), tonumber(y))
-		end
-		if q.alpha ~= nil then
-			self:setColor(1, 1, 1, tonumber(q.alpha))
-		end
-	end
-	self._deck = deck
-end
-
-function Image.new(imageName)
-	local o = ui_new(MOAIProp2D.new())
-	o.getSize = Image_getSize
-	o.setImage = Image_setImage
-	
-	if type(imageName) == "userdata" then
-		local tex = imageName
-		local deck = MOAIGfxQuad2D.new()
-		deck:setTexture(tex)
-		local w, h = tex:getSize()
-		deck:setRect(-w / 2, -h / 2, w / 2, h / 2)
-		o:setDeck(deck)
-		o._deck = deck
-	else
-		o:setImage(imageName)
-	end
-	return o
-end
-
-Anim = {}
-local Anim_defaultCallback = function(self)
-	if self._parent then
-		self._parent:remove(self)
-		if self._anim ~= nil then
-			self._anim:stop()
-			self._anim = nil
-		end
-		if self._animProp ~= nil then
-			self.remove(self._animProp)
-			self._animProp = nil
-		end
-	end
-end
-
-local function Anim_play(self, animName, callback, looping)
-	if self._anim ~= nil then
-		self._anim:stop()
-		self._anim:clear()
-		self._anim = nil
-	end
-	if self._animProp ~= nil then
-		self.remove(self._animProp)
-		self._animProp = nil
-	end
-	if not looping and callback == nil then
-		callback = Anim_defaultCallback
-	end
-	if not animName or not self._deck or not self._deck._animCurves then
-		return nil
-	end
-	local curve = self._deck._animCurves[animName]
-	if not curve then
-		return nil
-	end
-	local anim = MOAIAnim.new()
-	if self._deck.type == "tweendeck" then
-		do
-			local consts = self._deck._animConsts[animName]
-			local curLink = 1
-			self._animProp = ui_new(MOAIProp2D.new())
-			self._animProp:setDeck(self._deck)
-			self:add(self._animProp)
-			anim:reserveLinks(self._deck._numCurves[animName])
-			for animType, entry in pairs(curve) do
-				anim:setLink(curLink, entry, self._animProp, animType)
-				if animType == MOAIColor.ATTR_A_COL then
-					anim:setLink(curLink + 1, entry, self._animProp, MOAIColor.ATTR_R_COL)
-					anim:setLink(curLink + 2, entry, self._animProp, MOAIColor.ATTR_G_COL)
-					anim:setLink(curLink + 3, entry, self._animProp, MOAIColor.ATTR_B_COL)
-					curLink = curLink + 3
-				end
-				curLink = curLink + 1
-			end
-			for animType, entry in pairs(consts) do
-				if animType == "id" then
-					self._animProp:setIndex(entry)
-				elseif animType == "x" then
-					do
-						local x, y = self:getLoc()
-						self._animProp:setLoc(entry, y)
-					end
-				elseif animType == "y" then
-					do
-						local x = self:getLoc()
-						self._animProp:setLoc(x, entry)
-					end
-				elseif animType == "r" then
-					self._animProp:setRot(entry)
-				elseif animType == "xs" then
-					do
-						local x, y = self:getScl()
-						self._animProp:setScl(entry, y)
-					end
-				elseif animType == "ys" then
-					do
-						local x = self:getScl()
-						self._animProp:setScl(x, entry)
-					end
-				elseif animType == "a" then
-					self._animProp:setColor(entry, entry, entry, entry)
-				end
-			end
-		end
-	else
-		anim:reserveLinks(1)
-		anim:setLink(1, curve, self, MOAIProp2D.ATTR_INDEX)
-	end
-	if looping then
-		anim:setMode(MOAITimer.LOOP)
-	else
-		anim:setListener(MOAITimer.EVENT_TIMER_LOOP, function()
-			callback(self)
-		end)
-	end
-	self._anim = anim
-	return anim:start()
-end
-
-local function Anim_loop(self, animName)
-	return Anim_play(self, animName, nil, true)
-end
-
-local Anim_stop = function(self)
-	if self._anim ~= nil then
-		self._anim:stop()
-		self._anim = nil
-	end
-	if self._animProp ~= nil then
-		self.remove(self._animProp)
-		self._animProp = nil
-	end
-end
-
-function Anim.new(imageName)
-	local o = Image.new(imageName)
-	o.play = Anim_play
-	o.loop = Anim_loop
-	o.stop = Anim_stop
 	return o
 end
 
@@ -1235,12 +553,7 @@ local function Button_handleTouch(self, eventType, touchIdx, x, y, tapCount)
 end
 
 local function _MakePage(o)
-	if type(o) == "string" then
-		return Image.new(o)
-	elseif type(o) == "userdata" then
-		return o
-	end
-	return o
+	return gfxutil.parse(o)
 end
 
 local function Button_showPageUp(self)
@@ -1365,7 +678,6 @@ end
 DropList = {}
 DropList.VERTICAL = "vertical"
 DropList.HORIZONTAL = "horizontal"
-
 function DropList.handleTouchV(self, eventType, touchIdx, x, y, tapCount)
 	local this = self._parent._parent
 	if eventType == ui_TOUCH_UP then
@@ -1547,18 +859,10 @@ function DropList:removeItemH(o, span, mode)
 end
 
 function DropList:getItemCount()
-	if not self._root._children then
-		return 0
-	end
-	return #self._root._children
+	return #self._root:getChildrenCount()
 end
 
 PickBox = {}
-local function PickBox_setColor(self, color)
-	if color ~= nil then
-		self:setShader(ui_parseShader(color))
-	end
-end
 
 local function PickBox_handleTouch(self, eventType, touchIdx, x, y, tapCount)
 	if eventType == ui_TOUCH_UP then
@@ -1578,494 +882,11 @@ local function PickBox_handleTouch(self, eventType, touchIdx, x, y, tapCount)
 	return true
 end
 
-function PickBox.new(width, height, colorstr)
+function PickBox.new(width, height)
 	local o = ui_new(MOAIProp2D.new())
-	if colorstr == nil then
-		do
-			local d = MOAIGfxQuad2D.new()
-			d:setRect(-width / 2, -height / 2, width / 2, height / 2)
-			o:setDeck(d)
-		end
-	else
-		local fmt = MOAIVertexFormat.new()
-		if MOAI_VERSION >= MOAI_VERSION_1_0 then
-			fmt:declareCoord(1, MOAIVertexFormat.GL_FLOAT, 2)
-		else
-			fmt:declareCoord(MOAIVertexFormat.GL_FLOAT, 2)
-		end
-		local vbo = MOAIVertexBuffer.new()
-		vbo:setPenWidth(1)
-		vbo:setFormat(fmt)
-		vbo:reserveVerts(5)
-		vbo:setPrimType(MOAIVertexBuffer.GL_TRIANGLE_FAN)
-		local w2 = width / 2
-		local h2 = height / 2
-		vbo:writeFloat(-w2, -h2)
-		vbo:writeFloat(-w2, h2)
-		vbo:writeFloat(w2, h2)
-		vbo:writeFloat(w2, -h2)
-		vbo:writeFloat(-w2, -h2)
-		vbo:bless()
-		local mesh = MOAIMesh.new()
-		mesh:setVertexBuffer(vbo)
-		o:setDeck(mesh)
-		o:setShader(ui_parseShader(colorstr))
-		o.setColor = PickBox_setColor
-	end
+	local d = MOAIGfxQuad2D.new()
+	d:setRect(-width / 2, -height / 2, width / 2, height / 2)
+	o:setDeck(d)
 	o.handleTouch = PickBox_handleTouch
 	return o
 end
-
-ParticleSystem = {}
-function ParticleSystem.new(particleName)
-	local o
-	if string.find(particleName, ".pex") ~= nil then
-		do
-			local texture, emitter
-			if MOAIPexPlugin then
-				do
-					local plugin = resource.pexparticle(particleName)
-					local maxParticles = plugin:getMaxParticles()
-					local blendsrc, blenddst = plugin:getBlendMode()
-					local minLifespan, maxLifespan = plugin:getLifespan()
-					local duration = plugin:getDuration()
-					local xMin, yMin, xMax, yMax = plugin:getRect()
-					o = ui_new(MOAIParticleSystem.new())
-					o._duration = duration
-					o._lifespan = maxLifespan
-					o:reserveParticles(maxParticles, plugin:getSize())
-					o:reserveSprites(maxParticles)
-					o:reserveStates(1)
-					o:setBlendMode(blendsrc, blenddst)
-					local state = MOAIParticleState.new()
-					state:setTerm(minLifespan, maxLifespan)
-					state:setPexPlugin(plugin)
-					o:setState(1, state)
-					texture = plugin:getTextureName()
-					emitter = MOAIParticleTimedEmitter.new()
-					emitter:setLoc(0, 0)
-					emitter:setSystem(o)
-					emitter:setEmission(plugin:getEmission())
-					emitter:setFrequency(plugin:getFrequency())
-					emitter:setRect(xMin, yMin, xMax, yMax)
-				end
-			else
-				o, emitter, texture = MOAIParticlePlugin.loadExternal(particleName)
-				o = ui_new(o)
-			end
-			local tex = resource.deck(texture)
-			tex:setRect(-0.5, -0.5, 0.5, 0.5)
-			o:setDeck(tex)
-			emitter = ui_new(emitter)
-			o:add(emitter)
-			local emitters = {}
-			emitters[1] = emitter
-			o.emitters = emitters
-		end
-	else
-		o = dofile(resource.path.resolvepath(particleName))
-	end
-	o:setIgnoreLocalTransform(true)
-	o.startSystem = ParticleSystem.startSystem
-	o.stopEmitters = ParticleSystem.stopEmitters
-	o.stopSystem = ParticleSystem.stopSystem
-	o.surgeSystem = ParticleSystem.surgeSystem
-	o.updateSystem = ParticleSystem.updateSystem
-	o.handleTouch = false
-	return o
-end
-
-function ParticleSystem:startSystem(noEmitters)
-	self:start()
-	if not noEmitters then
-		for k, v in pairs(self.emitters) do
-			v:start()
-		end
-	end
-end
-
-function ParticleSystem:stopEmitters()
-	for k, v in pairs(self.emitters) do
-		v:stop()
-	end
-end
-
-function ParticleSystem:stopSystem()
-	self:stop()
-	self:stopEmitters()
-end
-
-function ParticleSystem:surgeSystem(val)
-	for k, v in pairs(self.emitters) do
-		v:surge(val)
-	end
-end
-
-function ParticleSystem:updateSystem()
-	self:forceUpdate()
-	for k, v in pairs(self.emitters) do
-		v:forceUpdate()
-	end
-end
-
-RadialImage = {}
-function RadialImage.new(imageName)
-	local self = ui_new(MOAIProp2D.new())
-	local fmt = MOAIVertexFormat.new()
-	fmt:declareCoord(1, MOAIVertexFormat.GL_FLOAT, 2)
-	fmt:declareUV(2, MOAIVertexFormat.GL_FLOAT, 2)
-	fmt:declareColor(3, MOAIVertexFormat.GL_UNSIGNED_BYTE)
-	
-	local vbo = MOAIVertexBuffer.new()
-	vbo:setFormat(fmt)
-	self.vbo = vbo
-	local tex = resource.texture(imageName)
-	local w, h = tex:getSize()
-	self._xRadius = w / 2
-	self._yRadius = h / 2
-	local mesh = MOAIMesh.new()
-	mesh:setTexture(tex)
-	mesh:setPrimType(MOAIMesh.GL_TRIANGLE_FAN)
-	mesh:setVertexBuffer(vbo)
-	self:setDeck(mesh)
-	if MOAIGfxDevice.isProgrammable() then
-		self:setShader(resource.shader("xyuv"))
-	end
-	self.angleIncrement = math.pi / 8
-	self.setArc = RadialImage.setArc
-	self.seekArc = RadialImage.seekArc
-	self:setArc(0, math.pi * 2)
-	return self
-end
-
-function RadialImage.seekArc(self, startValLeft, startValRight, endValLeft, endValRight, length)
-	local runtime = 0
-	local leftNum, rightNum, action
-	action = AS:run(function(dt)
-		if runtime < length then
-			runtime = runtime + dt
-			if runtime > length then
-				runtime = length
-			end
-			leftNum = interpolate.lerp(startValLeft, endValLeft, runtime / length)
-			rightNum = interpolate.lerp(startValRight, endValRight, runtime / length)
-			self:setArc(leftNum, rightNum)
-		else
-			action:stop()
-		end
-	end)
-	return action
-end
-
-local cos = math.cos
-local sin = math.sin
-function RadialImage:setArc(startAngle, endAngle)
-	local xRad = self._xRadius
-	local yRad = self._yRadius
-	if endAngle < startAngle then
-		startAngle, endAngle = endAngle, startAngle
-	end
-	local span = endAngle - startAngle
-	local inc = self.angleIncrement
-	local dx, dy
-	local n = math.floor(span / inc) + 1
-	local vbo = self.vbo
-	vbo:reserveVerts(n + 2)
-	vbo:reset()
-	vbo:writeFloat(0, 0)
-	vbo:writeFloat(0.5, 0.5)
-	vbo:writeColor32(1, 1, 1)
-	local uRad = 0.5
-	local vRad = -0.5
-	local a = startAngle
-	for i = 1, n do
-		dx = cos(a)
-		dy = sin(a)
-		vbo:writeFloat(dx * xRad, dy * yRad)
-		vbo:writeFloat(0.5 + dx * uRad, 0.5 + dy * vRad)
-		vbo:writeColor32(1, 1, 1)
-		a = a + inc
-	end
-	dx = cos(endAngle)
-	dy = sin(endAngle)
-	vbo:writeFloat(dx * xRad, dy * yRad)
-	vbo:writeFloat(0.5 + dx * uRad, 0.5 + dy * vRad)
-	vbo:writeColor32(1, 1, 1)
-	vbo:bless()
-	self:forceUpdate()
-end
-
-Patch = {}
-function Patch.new(image)
-	local self = ui_new(MOAIProp2D.new())
-	local fmt = MOAIVertexFormat.new()
-	fmt:declareCoord(1, MOAIVertexFormat.GL_FLOAT, 2)
-	fmt:declareUV(2, MOAIVertexFormat.GL_FLOAT, 2)
-	fmt:declareColor(3, MOAIVertexFormat.GL_UNSIGNED_BYTE)
-		
-	local vbo = MOAIVertexBuffer.new()
-	vbo:setFormat(fmt)
-	self.vbo = vbo
-	local tex
-	if type(image) == "string" then
-		tex = resource.texture(image)
-		do
-			local w, h = tex:getSize()
-			self._width = w
-			self._height = h
-		end
-	elseif type(image) == "table" then
-		self._width = image[1]
-		self._height = image[2]
-	end
-	local mesh = MOAIMesh.new()
-	if tex then
-		mesh:setTexture(tex)
-	end
-	mesh:setPrimType(MOAIMesh.GL_TRIANGLE_STRIP)
-	mesh:setVertexBuffer(vbo)
-	self:setDeck(mesh)
-	self._color = {1, 1, 1, 1}
-	return self
-end
-
-FillBar = {}
-function FillBar.new(image)
-	local self = Patch.new(image)
-	self.setFill = FillBar.setFill
-	self.seekFill = FillBar.seekFill
-	self.setSpin = FillBar.setSpin
-	self.seekSpin = FillBar.seekSpin
-	self.setColor = FillBar.setColor
-	self:setFill(0, 1)
-	return self
-end
-
-function FillBar:setColor(...)
-	self._color = {...}
-	self:setFill(self._startVal, self._endVal)
-end
-
-function FillBar:setFill(startVal, endVal)
-	startVal = startVal or 0
-	endVal = endVal or 1
-	self._startVal = startVal
-	self._endVal = endVal
-	local width = self._width
-	local height = self._height
-	local halfHeight = height / 2
-	if startVal > endVal then
-		startVal, endVal = endVal, startVal
-	end
-	local vbo = self.vbo
-	vbo:reserveVerts(4)
-	vbo:reset()
-	local startWidth = startVal - 0.5
-	local endWidth = endVal - 0.5
-	vbo:writeFloat(width * startWidth, -halfHeight)
-	vbo:writeFloat(startVal, 1)
-	vbo:writeColor32(unpack(self._color))
-	vbo:writeFloat(width * startWidth, halfHeight)
-	vbo:writeFloat(startVal, 0)
-	vbo:writeColor32(unpack(self._color))
-	vbo:writeFloat(width * endWidth, -halfHeight)
-	vbo:writeFloat(endVal, 1)
-	vbo:writeColor32(unpack(self._color))
-	vbo:writeFloat(width * endWidth, halfHeight)
-	vbo:writeFloat(endVal, 0)
-	vbo:writeColor32(unpack(self._color))
-	vbo:bless()
-	self:forceUpdate()
-end
-
-function FillBar:seekFill(startValLeft, startValRight, endValLeft, endValRight, length)
-	local runtime = 0
-	local leftNum, prevLeftNum, rightNum, prevRightNum, action
-	action = AS:run(function(dt)
-		if runtime < length then
-			runtime = runtime + dt
-			if runtime > length then
-				runtime = length
-			end
-			leftNum = interpolate.lerp(startValLeft, endValLeft, runtime / length)
-			rightNum = interpolate.lerp(startValRight, endValRight, runtime / length)
-			self:setFill(leftNum, rightNum)
-			prevLeftNum = leftNum
-			prevRightNum = rightNum
-		else
-			action:stop()
-		end
-	end)
-	return action
-end
-
-SpinPatch = {}
-function SpinPatch.new(image, color)
-	local self = Patch.new(image, color)
-	self.setSpin = SpinPatch.setSpin
-	self.seekSpin = SpinPatch.seekSpin
-	self.setColor = SpinPatch.setColor
-	self:setSpin(0)
-	return self
-end
-
-function SpinPatch:setColor(...)
-	self._color = {...}
-	self:setSpin(self._spinVal)
-end
-
-function SpinPatch:setSpin(val)
-	self._spinVal = val
-	local w = self._width
-	local h = self._height
-	local vbo = self.vbo
-	vbo:reserveVerts(4)
-	vbo:reset()
-	local cosv = math.cos(val)
-	local sinv = math.sin(val)
-	local x = -w / 2
-	local y = -h / 2
-	vbo:writeFloat(x * cosv - y * sinv, y * cosv + x * sinv)
-	vbo:writeFloat(0, 1)
-	vbo:writeColor32(unpack(self._color))
-	local x = -w / 2
-	local y = h / 2
-	vbo:writeFloat(x * cosv - y * sinv, y * cosv + x * sinv)
-	vbo:writeFloat(0, 0)
-	vbo:writeColor32(unpack(self._color))
-	local x = w / 2
-	local y = -h / 2
-	vbo:writeFloat(x * cosv - y * sinv, y * cosv + x * sinv)
-	vbo:writeFloat(1, 1)
-	vbo:writeColor32(unpack(self._color))
-	local x = w / 2
-	local y = h / 2
-	vbo:writeFloat(x * cosv - y * sinv, y * cosv + x * sinv)
-	vbo:writeFloat(1, 0)
-	vbo:writeColor32(unpack(self._color))
-	vbo:bless()
-	self:forceUpdate()
-end
-
-function SpinPatch:seekSpin(startVal, endVal, length)
-	local runtime = 0
-	local val, action
-	action = AS:run(function(dt)
-		if runtime < length then
-			runtime = runtime + dt
-			if runtime > length then
-				runtime = length
-			end
-			val = interpolate.lerp(startVal, endVal, runtime / length)
-			self:setSpin(val)
-		else
-			action:stop()
-		end
-	end)
-	return action
-end
-
-NinePatch = {}
-local NinePatch_setSize = function(self, w, h)
-	local halfW = w / 2
-	local halfH = h / 2
-	local x0 = -halfW
-	local x3 = halfW
-	local x1 = x0 + self._borderL
-	local x2 = x3 - self._borderR
-	local y0 = halfH
-	local y3 = -halfH
-	local y1 = y0 - self._borderT
-	local y2 = y3 + self._borderB
-	local u0 = self._u0
-	local u1 = self._u1
-	local u2 = self._u2
-	local u3 = self._u3
-	local v0 = self._v0
-	local v1 = self._v1
-	local v2 = self._v2
-	local v3 = self._v3
-	local vbo = self.vbo
-	vbo:reserveVerts(24)
-	vbo:reset()
-	vbo:writeFloat(x0, y0, u0, v0)
-	vbo:writeFloat(x1, y0, u1, v0)
-	vbo:writeFloat(x0, y1, u0, v1)
-	vbo:writeFloat(x1, y1, u1, v1)
-	vbo:writeFloat(x0, y2, u0, v2)
-	vbo:writeFloat(x1, y2, u1, v2)
-	vbo:writeFloat(x0, y3, u0, v3)
-	vbo:writeFloat(x1, y3, u1, v3)
-	vbo:writeFloat(x1, y3, u1, v3)
-	vbo:writeFloat(x2, y3, u2, v3)
-	vbo:writeFloat(x1, y2, u1, v2)
-	vbo:writeFloat(x2, y2, u2, v2)
-	vbo:writeFloat(x1, y1, u1, v1)
-	vbo:writeFloat(x2, y1, u2, v1)
-	vbo:writeFloat(x1, y0, u1, v0)
-	vbo:writeFloat(x2, y0, u2, v0)
-	vbo:writeFloat(x2, y0, u2, v0)
-	vbo:writeFloat(x3, y0, u3, v0)
-	vbo:writeFloat(x2, y1, u2, v1)
-	vbo:writeFloat(x3, y1, u3, v1)
-	vbo:writeFloat(x2, y2, u2, v2)
-	vbo:writeFloat(x3, y2, u3, v2)
-	vbo:writeFloat(x2, y3, u2, v3)
-	vbo:writeFloat(x3, y3, u3, v3)
-	vbo:bless()
-	self:forceUpdate()
-end
-
-function NinePatch.new(opts, w, h)
-	if type(opts) == "string" then
-		local f = resource.path.resolvepath(opts)
-		opts = dofile(f)
-	end
-	if type(opts) ~= "table" then
-		error("invalid options for ninepatch: " .. tostring(opts))
-	end
-	local self = ui_new(MOAIProp2D.new())
-	local fmt = MOAIVertexFormat.new()
-	if MOAI_VERSION >= MOAI_VERSION_1_0 then
-		fmt:declareCoord(1, MOAIVertexFormat.GL_FLOAT, 2)
-		fmt:declareUV(2, MOAIVertexFormat.GL_FLOAT, 2)
-	else
-		fmt:declareCoord(MOAIVertexFormat.GL_FLOAT, 2)
-		fmt:declareUV(MOAIVertexFormat.GL_FLOAT, 2)
-	end
-	local vbo = MOAIVertexBuffer.new()
-	vbo:setFormat(fmt)
-	vbo:setPrimType(MOAIVertexBuffer.GL_TRIANGLE_STRIP)
-	self.vbo = vbo
-	local tex = resource.texture(opts.texture)
-	local tw, th = tex:getSize()
-	self._texWidth = tw
-	self._texHeight = th
-	self._borderL = opts.borderL
-	self._borderR = opts.borderR
-	self._borderT = opts.borderT
-	self._borderB = opts.borderB
-	self._u0 = 0
-	self._u1 = self._borderL / tw
-	self._u2 = (tw - self._borderR) / tw
-	self._u3 = 1
-	self._v0 = 0
-	self._v1 = self._borderT / th
-	self._v2 = (th - self._borderB) / th
-	self._v3 = 1
-	local mesh = MOAIMesh.new()
-	mesh:setTexture(tex)
-	mesh:setVertexBuffer(vbo)
-	self:setDeck(mesh)
-	if MOAIGfxDevice.isProgrammable() then
-		self:setShader(resource.shader("xyuv"))
-	end
-	self.setSize = NinePatch_setSize
-	if w ~= nil and h ~= nil then
-		self:setSize(w, h)
-	else
-		self:setSize(tw, th)
-	end
-	return self
-end
-

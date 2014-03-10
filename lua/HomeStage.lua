@@ -1,9 +1,14 @@
 
 local timer = require "timer"
 local resource = require "resource"
+local device = require "device"
 local ui = require "ui"
 local node = require "node"
 local profile = require "UserProfile"
+local Image = require "gfx.Image"
+local TextBox = require "gfx.TextBox"
+local FillBar = require "gfx.FillBar"
+local SpinPatch = require "gfx.SpinPatch"
 
 local blockOn = MOAIThread.blockOnAction
 local HomeStage = {}
@@ -115,7 +120,7 @@ function HomeStage:initMotherPlanet()
 	motherPlanet:setPriority(self._centerPriority)
 	motherPlanet:setScl(0.9, 0.9)
 	
-	local taxWindow = ui.Image.new("window.png")
+	local taxWindow = Image.new("window.png")
 	taxWindow:setPriority(1)
 	local closeButton = taxWindow:add(ui.Button.new("back.png", "back.png?scl=1.2"))
 	closeButton:setLoc(435, 228)
@@ -127,12 +132,12 @@ function HomeStage:initMotherPlanet()
 		end)
 	end
 	
-	beam = taxWindow:add(ui.Image.new("beam.png"))
+	beam = taxWindow:add(Image.new("beam.png"))
 	beam:setScl(2.8, 2.8)
 	beam:setLoc(200, 0)
 	beam:setColor(0.5, 0.5, 0.5, 0.5)
 	
-	spin = taxWindow:add(ui.SpinPatch.new("spin.png"))
+	spin = taxWindow:add(SpinPatch.new("spin.png"))
 	spin:setScl(2, 1)
 	spin:setLoc(200, -150)
 	spin:setColor(0.8, 0.8, 0.8, 0.8)
@@ -143,20 +148,20 @@ function HomeStage:initMotherPlanet()
 		end
 	end)
 	
-	planet = taxWindow:add(ui.Image.new("earth.png"))
+	planet = taxWindow:add(Image.new("earth.png"))
 	planet:setScl(0.6)
 	planet:setLoc(200, 0)
 	planet:setColor(1, 1, 1, 0.8)
 	
-	timerIcon = taxWindow:add(ui.Image.new("timer-icon.png"))
+	timerIcon = taxWindow:add(Image.new("timer-icon.png"))
 	timerIcon:setLoc(-300, 20)
 	
-	taxRoot = taxWindow:add(ui.new(MOAIProp2D.new()))
+	taxRoot = taxWindow:add(node.new())
 	taxRoot:setLoc(-350, 80)
 	local taxboxlist = {}
 	local x, y, w = 0, 0, 25
 	for i = 1, profile.taxMax do
-		local taxbox = taxRoot:add(ui.Image.new("tax-box.png"))
+		local taxbox = taxRoot:add(Image.new("tax-box.png"))
 		taxbox:setLoc(x, y)
 		taxboxlist[i] = taxbox
 		x = x + w
@@ -165,13 +170,13 @@ function HomeStage:initMotherPlanet()
 	local filltax = function()
 		for i = 1, profile.taxCount do
 			if not taxlist[i] then
-				local tax = taxboxlist[i]:add(ui.Image.new("tax.png"))
+				local tax = taxboxlist[i]:add(Image.new("tax.png"))
 				taxlist[i] = tax
 			end
 		end
 	end
 	filltax()
-	collectCD = taxWindow:add(ui.TextBox.new("00:00:00", FONT_SMALL, nil, "LM", 100, 50))
+	collectCD = taxWindow:add(TextBox.new("00:00:00", FONT_SMALL, nil, "LM", 100, 50))
 	collectCD.cooldown = function(secs)
 		profile.currCCD = secs
 		local cd = timer.new()
@@ -190,11 +195,11 @@ function HomeStage:initMotherPlanet()
 		collectCD.cooldown(profile.currCCD)
 	end
 	
-	collectCountLabel = taxWindow:add(ui.TextBox.new("collect count", FONT_MIDDLE, nil, "MM", 200, 50))
+	collectCountLabel = taxWindow:add(TextBox.new("collect count", FONT_MIDDLE, nil, "MM", 200, 50))
 	collectCountLabel:setColor(unpack(FONT_COLOR_LIGHT))
 	collectCountLabel:setLoc(-300, 140)
 	
-	collectCount = taxWindow:add(ui.TextBox.new("", FONT_SMALL, nil, "LM", 100, 50))
+	collectCount = taxWindow:add(TextBox.new("", FONT_SMALL, nil, "LM", 100, 50))
 	collectCount.setCount = function(self, numerator, denominator)
 		local str = string.format("%d/%d", numerator, denominator)
 		self:setString(str)
@@ -203,14 +208,14 @@ function HomeStage:initMotherPlanet()
 	collectCount:setColor(unpack(FONT_COLOR_GOLD))
 	collectCount:setLoc(-140, 137)
 	
-	coinText = taxWindow:add(ui.TextBox.new("coins", FONT_MIDDLE, nil, "MM", 100, 50))
+	coinText = taxWindow:add(TextBox.new("coins", FONT_MIDDLE, nil, "MM", 100, 50))
 	coinText:setColor(unpack(FONT_COLOR_LIGHT))
 	coinText:setLoc(-320, -100)
 	
-	coinIcon = taxWindow:add(ui.Image.new("coin.png"))
+	coinIcon = taxWindow:add(Image.new("coin.png"))
 	coinIcon:setLoc(-180, -100)
 	
-	coinNum = taxWindow:add(ui.TextBox.new("", FONT_SMALL, nil, "MM", 100, 50))
+	coinNum = taxWindow:add(TextBox.new("", FONT_SMALL, nil, "MM", 100, 50))
 	coinNum.setNum = function(self, num)
 		local str = string.format("%d", num)
 		self:setString(str)
@@ -252,7 +257,7 @@ function HomeStage:initMotherPlanet()
 		end
 	end
 	
-	collectText = collectTax:add(ui.TextBox.new("collect", FONT_MIDDLE, nil, "MM", 100, 50))
+	collectText = collectTax:add(TextBox.new("collect", FONT_MIDDLE, nil, "MM", 100, 50))
 	collectText:setColor(unpack(FONT_COLOR_LIGHT))
 	
 	motherPlanet.handleTouch = ui.handleTouch
@@ -267,7 +272,7 @@ function HomeStage:initMotherPlanet()
 end
 
 function HomeStage:initMillPlanet()
-	local fleetWindow = ui.Image.new("window.png")
+	local fleetWindow = Image.new("window.png")
 	fleetWindow:setPriority(1)
 	local closeButton = fleetWindow:add(ui.Button.new("back.png", "back.png?scl=1.2"))
 	closeButton:setLoc(435, 228)
@@ -280,20 +285,20 @@ function HomeStage:initMillPlanet()
 	end
 	local upgrade = fleetWindow:add(ui.Button.new(unpack(BUTTON_IMAGE)))
 	upgrade:setLoc(50, -50)
-	local currInfo = fleetWindow:add(ui.TextBox.new("", FONT_SMALL, nil, "MM", 100, 50))
+	local currInfo = fleetWindow:add(TextBox.new("", FONT_SMALL, nil, "MM", 100, 50))
 	currInfo:setLoc(80, 0)
 	currInfo:setLineSpacing(20)
-	local nextInfo = fleetWindow:add(ui.TextBox.new("", FONT_SMALL, nil, "MM", 100, 50))
+	local nextInfo = fleetWindow:add(TextBox.new("", FONT_SMALL, nil, "MM", 100, 50))
 	nextInfo:setLoc(180, 0)
 	nextInfo:setLineSpacing(20)
-	-- local shipModel = fleetWindow:add(ui.Image.new(""))
+	-- local shipModel = fleetWindow:add(Image.new(""))
 	-- shipModel:setLoc(50, 0)
 	local shipList = fleetWindow:add(ui.DropList.new(150, 500, 150, "vertical"))
 	fleetWindow.updateFleet = function()
 		shipList:clearItems()
 		for i, v in ipairs(profile.fleet) do
-			local frame = shipList:addItem(ui.Image.new("frame_icon.png"))
-			local item = frame:add(ui.Image.new(v.icon))
+			local frame = shipList:addItem(Image.new("frame_icon.png"))
+			local item = frame:add(Image.new(v.icon))
 			-- item.onClick = function()
 				-- shipModel:setImage(v.model)
 				-- currInfo:setString(table.concat(v.upgradeCurve[v.level].info, "\n"))
@@ -361,14 +366,14 @@ function HomeStage:initPortal()
 end
 
 function HomeStage:initUserPanel()
-	self._userPanel = self._uiRoot:add(ui.Image.new ("user-panel.png"))
+	self._userPanel = self._uiRoot:add(Image.new ("user-panel.png"))
 	local w, h = self._userPanel:getSize()
 	self._userPanel:setAnchor("LT", w / 2, -h / 2)
-	self._coinsNum = self._userPanel:add(ui.TextBox.new("0", FONT_SMALL, nil, "MM", 60, 60))
+	self._coinsNum = self._userPanel:add(TextBox.new("0", FONT_SMALL, nil, "MM", 60, 60))
     self._coinsNum:setLoc(0, 0)
-	self._diamondsNum = self._userPanel:add(ui.TextBox.new("0", FONT_SMALL, nil, "MM", 60, 60))
+	self._diamondsNum = self._userPanel:add(TextBox.new("0", FONT_SMALL, nil, "MM", 60, 60))
     self._diamondsNum:setLoc(0, 0)
-	self._expBar = self._userPanel:add(ui.FillBar.new("exp-bar.png"))
+	self._expBar = self._userPanel:add(FillBar.new("exp-bar.png"))
 	self._expBar:setLoc(0, 0)
 end
 
@@ -382,7 +387,7 @@ end
 function HomeStage:initMenu()
 	self._menuRoot = self._uiRoot:add(ui.Group.new())
 	self._menuRoot:setAnchor("RB", 0, 0)
-	menuPanel = self._menuRoot:add(ui.Image.new("menu-panel.png"))
+	menuPanel = self._menuRoot:add(Image.new("menu-panel.png"))
 	local w, h = menuPanel:getSize()
 	menuPanel:setLoc(-w / 2, h / 2)
 	menuPanel:setPriority(1)
@@ -405,9 +410,9 @@ function HomeStage:initMenu()
 	scanButton.onClick = function()
 		self:enterSpace()
 	end
-	local scanCenter = scanButton:add(ui.new(MOAIProp2D.new()))
-	local enemy = scanButton:add(ui.Image.new("scan-btn-03.png"))
-	local scan = scanCenter:add(ui.Image.new("scan-btn-02.png"))
+	local scanRoot = scanButton:add(node.new())
+	local enemy = scanButton:add(Image.new("scan-btn-03.png"))
+	local scan = scanRoot:add(Image.new("scan-btn-02.png"))
 	scanButton:setPriority(0)
 	enemy:setPriority(1)
 	scan:setPriority(2)
@@ -415,7 +420,7 @@ function HomeStage:initMenu()
 	local scanThread = MOAIThread.new()
 	scanThread:run(function()
 		while true do
-			blockOn(scanCenter:moveRot(-180, 2, MOAIEaseType.LINEAR))
+			blockOn(scanRoot:moveRot(-180, 2, MOAIEaseType.LINEAR))
 		end
 	end)
 	local enemyThread = MOAIThread.new()
@@ -438,7 +443,7 @@ function HomeStage:initMenu()
 	local space = -100
 	self._menus = {}
 	for k, v in ipairs(menus) do
-		local m = ui.Image.new("menu-bg.png")
+		local m = Image.new("menu-bg.png")
 		m:setLoc(x, y)
 		x = x + space
 		m._icon = m:add(ui.Button.new(v.icon))
@@ -457,7 +462,8 @@ function HomeStage:load(onOkay)
 -- MOAIDebugLines.setStyle ( MOAIDebugLines.TEXT_BOX_BASELINES, 1, 0, 1, 1 )
 -- MOAIDebugLines.setStyle ( MOAIDebugLines.TEXT_BOX_LAYOUT, 1, 1, 1, 1 )
 
-	self._uiRoot = uiLayer:add(ui.Group.new())
+	self._uiRoot = uiLayer:add(node.new())
+	self._uiRoot:setLayoutSize(device.width, device.height)
 	self:initUserPanel()
 	self:initMenu()
 	self:initStageBG()

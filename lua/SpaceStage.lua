@@ -4,12 +4,11 @@ local node = require "node"
 local Unit = require "Unit"
 local profile = require "UserProfile"
 local device = require "device"
-local Sprite = require "Sprite"
+local Sprite = require "gfx.Sprite"
 
 local blockOn = MOAIThread.blockOnAction
 local SpaceStage = {}
 local self = SpaceStage
-local VISTA_PARALLAX = 0.2
 
 function SpaceStage:init(homeStgae, gameStage)
 	self._homeStage = homeStage
@@ -40,7 +39,7 @@ function SpaceStage:initStageBG()
 end
 
 function SpaceStage:load()
-	self._uiRoot = ui.new()
+	self._uiRoot = node.new()
 	self._sceneRoot = node.new()
 	self._farRoot = node.new()
 	self._nearRoot = node.new()

@@ -2,7 +2,7 @@
 local math2d = require "math2d"
 local resource = require "resource"
 local node = require "node"
-local Sprite = require "Sprite"
+local Sprite = require "gfx.Sprite"
 
 local distance = math2d.distance
 local distanceSq = math2d.distanceSq

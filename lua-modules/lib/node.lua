@@ -47,6 +47,7 @@ end
 function node.add(self, child)
 	assert(child ~= nil, "Child must not be null")
 	assert(child._layer == nil or child._layer ~= child, "Nested viewports not supported")
+	
 	if child._parent ~= nil then
 		if child._parent == self then
 			return
@@ -63,6 +64,7 @@ function node.add(self, child)
 	end
 	
 	self._children[child] = child
+	self._childrenCount = self._childrenCount + 1
 	child:setParent(self)
 	child._parent = self
 	node_setLayer(child, self._layer)
@@ -95,6 +97,7 @@ function node.remove(self, child)
 		if self._children[child] ~= nil then
 			node_unparentChild(child)
 			self._children[child] = nil
+			self._childrenCount = self._childrenCount - 1
 		end
 	end
 	return false
@@ -128,6 +131,65 @@ function node.setTreePriority(self, p)
 	self:setPriority(p)
 end
 
+function node.setAnchor(self, anchor, x, y)
+	self._anchor = anchor
+	local layoutsize = self._parent:getLayoutSize()
+	local diffX = math.floor(layoutsize.width / 2)
+	local diffY = math.floor(layoutsize.height / 2)
+	if anchor[1] == "L" then
+		x = x - diffX
+	elseif anchor[1] == "R" then
+		x = x + diffX
+	end
+	if anchor[2] == "T" then
+		y = y + diffY
+	elseif anchor[2] == "B" then
+		y = y - diffY
+	end
+	self:setLoc(x, y)
+end
+
+function node.setLayoutSize(self, w, h)
+	assert(w and h, "Bad layout size")
+	
+	local layoutsize = self._layoutsize or {width = 0, height = 0}
+	if self._children and (layoutsize.width ~= w or layoutsize.height ~= h) then
+		local diffX = math.floor((w - layoutsize.width) / 2)
+		local diffY = math.floor((h - layoutsize.height) / 2)
+		for i, e in pairs(self._children) do
+			local anchor = e._anchor
+			if anchor ~= nil then
+				if anchor[1] == "L" then
+					x = x - diffX
+				elseif anchor[1] == "R" then
+					x = x + diffX
+				end
+				if anchor[2] == "T" then
+					y = y + diffY
+				elseif anchor[2] == "B" then
+					y = y - diffY
+				end
+				e:setLoc(x, y)
+			end
+		end
+	end
+	self._layoutsize = {width = w, height = h}
+end
+
+function node.getLayoutSize(self)
+	local parent = self
+	while parent ~= nil do
+		if parent._layoutsize ~= nil then
+			return parent._layoutsize
+		end
+		parent = parent._parent
+	end
+end
+
+function node.getChildrenCount(self)
+	return self._childrenCount
+end
+
 function node.new(o)
 	o = o or MOAIProp2D.new()
 	o._preNodeDestroy = o.destroy
@@ -140,6 +202,10 @@ function node.new(o)
 	o.getScissorRect = node.getScissorRect
 	o.setTreePriority = node.setTreePriority
 	o._setLayer = node._setLayer
+	o.setAnchor = node.setAnchor
+	o.setLayoutSize = node.setLayoutSize
+	o.getLayoutSize = node.getLayoutSize
+	o._childrenCount = 0
 	return o
 end
 

@@ -3,6 +3,8 @@ local ui = require "ui"
 local Unit = require "Unit"
 local Scene = require "Scene"
 local profile = require "UserProfile"
+local Image = require "gfx.Image"
+local FillBar = require "gfx.FillBar"
 
 local blockOn = MOAIThread.blockOnAction
 
@@ -72,8 +74,8 @@ function GameStage:addPreparing(props, x, y)
 	end
 	
 	self._energy = self._energy - props.cost
-	local unit = self._uiRoot:add(ui.Image.new("prepare-bg.png"))
-	local prog = unit:add(ui.FillBar.new("prepare-progress.png"))
+	local unit = self._uiRoot:add(Image.new("prepare-bg.png"))
+	local prog = unit:add(FillBar.new("prepare-progress.png"))
 	prog:setLoc(0, -30)
 	local e = prog:seekFill(0, 0, 0, 1, props.prepareTime)
 	self._preparings.index = self._preparings.index + 1
@@ -84,7 +86,7 @@ function GameStage:addPreparing(props, x, y)
 		self:removePreparing(index)
 		self._scene:spawnPlayerUnit(props)
 	end)
-	local icon = self._uiRoot:add(ui.Image.new(props.icon))
+	local icon = self._uiRoot:add(Image.new(props.icon))
 	unit:setLoc(x, y)
 	unit:seekLoc(tx, ty, 1)
 	self._preparings[index] = unit
