@@ -54,6 +54,11 @@ function node.add(self, child)
 		end
 		child._parent:remove(child)
 	end
+	
+	local p = self:getPriority()
+	if p and not child:getPriority() then
+		child:setPriority(p + 1)
+	end
 
 	if self._scissorRect then
 		child:setScissorRect(self._scissorRect)
@@ -122,9 +127,9 @@ function node.setTreePriority(self, p)
 		for k, v in pairs(self._children) do
 			local p2 = v:getPriority()
 			if p2 then
-				v:setTreePriority(p2 - p1 + p)
+				v:setTreePriority(p - p1 + p2)
 			else
-				v:setTreePriority(p)
+				v:setTreePriority(p + 1)
 			end
 		end
 	end

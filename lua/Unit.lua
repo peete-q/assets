@@ -199,6 +199,12 @@ function Unit:setPriority(value)
 	self._root:setPriority(value)
 end
 
+function Unit:getPriority()
+	if self._root then
+		self._root:getPriority()
+	end
+end
+
 function Unit:addAttackSpeedFactor(value, duration)
 	self._attackSpeedFactor:add(value, self._scene.ticks + duration)
 end
