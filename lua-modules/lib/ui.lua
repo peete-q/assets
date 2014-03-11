@@ -220,46 +220,46 @@ end
 function ui.handleTouch(self, eventType, touchIdx, x, y, tapCount)
 	if eventType == ui.TOUCH_UP then
 		ui.capture(nil)
-		if self._isdragging then
+		if self._isDragging then
 			if self.onDragEnd then
 				self:onDragEnd(touchIdx, x, y, tapCount)
 			end
-			self._isdragging = nil
-		elseif self._isdown then
-			if self.onTouchUp then
-				self:onTouchUp()
-			end
-			self._isdown = nil
+			self._isDragging = nil
+		elseif self._isDown then
 			if self.onClick then
 				self:onClick(touchIdx, x, y, tapCount)
 			end
+			self._isDown = nil
+		end
+		if self.onTouchUp then
+			self:onTouchUp()
 		end
 	elseif eventType == ui.TOUCH_DOWN then
 		if not self._isDown then
 			if self.onTouchDown then
 				self:onTouchDown()
 			end
-			self._isdown = true
+			self._isDown = true
 			self._downX = x
 			self._downY = y
 			ui.capture(self)
 		end
 	elseif eventType == ui.TOUCH_MOVE and touchIdx == ui.TOUCH_ONE then
-		if not self._isdragging and dragHappen(self._downX, self._downY, x, y) then
+		if not self._isDragging and dragHappen(self._downX, self._downY, x, y) then
 			if self.onDragBegin then
-				self._isdragging = self:onDragBegin(touchIdx, x, y, tapCount)
+				self._isDragging = self:onDragBegin(touchIdx, x, y, tapCount)
 			end
 		end
-		if self._isdragging then
+		if self._isDragging then
 			if self.onDragMove then
 				self:onDragMove(touchIdx, x, y, tapCount)
 			end
-		elseif self._isdown then
+		elseif self._isDown then
 			if not ui.treeCheck(x, y, self) then
 				if self.onTouchUp then
 					self:onTouchUp()
 				end
-				self._isdown = nil
+				self._isDown = nil
 			end
 		end
 	end
@@ -267,51 +267,51 @@ function ui.handleTouch(self, eventType, touchIdx, x, y, tapCount)
 end
 
 function ui.defaultHandleTouch(eventType, touchIdx, x, y, tapCount)
-	local self = ui.default
+	local self = ui.defaultTouchHandler
 	if not self then
 		return false
 	end
 	
 	if eventType == ui.TOUCH_UP then
-		if self._isdragging then
+		if self._isDragging then
 			if self.onDragEnd then
 				self:onDragEnd(touchIdx, x, y, tapCount)
 			end
-			self._isdragging = nil
-		elseif self._isdown then
-			if self.onTouchUp then
-				self:onTouchUp()
-			end
-			self._isdown = nil
+			self._isDragging = nil
+		elseif self._isDown then
 			if self.onClick then
 				self:onClick(touchIdx, x, y, tapCount)
 			end
+			self._isDown = nil
+		end
+		if self.onTouchUp then
+			self:onTouchUp()
 		end
 	elseif eventType == ui.TOUCH_DOWN then
 		if not self._isDown then
 			if self.onTouchDown then
 				self:onTouchDown()
 			end
-			self._isdown = true
+			self._isDown = true
 			self._downX = x
 			self._downY = y
 		end
 	elseif eventType == ui.TOUCH_MOVE and touchIdx == ui.TOUCH_ONE then
-		if not self._isdragging and dragHappen(self._downX, self._downY, x, y) then
+		if not self._isDragging and dragHappen(self._downX, self._downY, x, y) then
 			if self.onDragBegin then
-				self._isdragging = self:onDragBegin(touchIdx, x, y, tapCount)
+				self._isDragging = self:onDragBegin(touchIdx, x, y, tapCount)
 			end
 		end
-		if self._isdragging then
+		if self._isDragging then
 			if self.onDragMove then
 				self:onDragMove(touchIdx, x, y, tapCount)
 			end
-		elseif self._isdown then
+		elseif self._isDown then
 			if not ui.treeCheck(x, y, self) then
 				if self.onTouchUp then
 					self:onTouchUp()
 				end
-				self._isdown = nil
+				self._isDown = nil
 			end
 		end
 	end
@@ -608,7 +608,7 @@ function Button:disable(on)
 		else
 			self:showPage("up")
 		end
-		self._isdown = nil
+		self._isDown = nil
 	end
 	self._isDisable = on
 end
@@ -861,16 +861,16 @@ local PickBox = {}
 function PickBox.handleTouch(self, eventType, touchIdx, x, y, tapCount)
 	if eventType == ui.TOUCH_UP then
 		ui.capture(nil)
-		if self._isdown and self._inside then
+		if self._isDown and self._inside then
 			self:onClick(touchIdx, x, y, tapCount)
 		end
-		self._isdown = nil
+		self._isDown = nil
 		self._inside = nil
 	elseif eventType == ui.TOUCH_DOWN then
 		self._inside = true
-		self._isdown = true
+		self._isDown = true
 		ui.capture(self)
-	elseif eventType == ui.TOUCH_MOVE and touchIdx == ui.TOUCH_ONE and self._isdown then
+	elseif eventType == ui.TOUCH_MOVE and touchIdx == ui.TOUCH_ONE and self._isDown then
 		self._inside = ui.treeCheck(x, y, self)
 	end
 	return true

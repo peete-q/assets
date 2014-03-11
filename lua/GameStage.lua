@@ -127,7 +127,7 @@ function GameStage:open(stage, level)
 	sceneLayer:add(self._sceneRoot)
 	uiLayer:add(self._uiRoot)
 	
-	ui.default = self
+	ui.defaultTouchHandler = self
 end
 
 function GameStage:close()
@@ -139,7 +139,7 @@ function GameStage:close()
 	sceneLayer:remove(self._sceneRoot)
 	uiLayer:remove(self._uiRoot)
 	
-	ui.default = nil
+	ui.defaultTouchHandler = nil
 end
 
 return GameStage

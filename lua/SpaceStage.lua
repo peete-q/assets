@@ -176,7 +176,7 @@ function SpaceStage:open()
 	uiLayer:add(self._uiRoot)
 	
 	ui.insertLayer(sceneLayer, 1)
-	ui.default = self
+	ui.defaultTouchHandler = self
 end
 
 function SpaceStage:close()
@@ -186,7 +186,7 @@ function SpaceStage:close()
 	uiLayer:remove(self._uiRoot)
 	
 	ui.removeLayer(sceneLayer)
-	ui.default = nil
+	ui.defaultTouchHandler = nil
 end
 
 return SpaceStage
