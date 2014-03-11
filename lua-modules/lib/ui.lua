@@ -15,7 +15,7 @@ local gfxutil = require("gfxutil")
 local clock = os.clock
 
 local ui = {
-	debug_ui = os.getenv("DEBUG_UI"),
+	_writelog = os.getenv("DEBUG_UI"),
 	
 	TOUCH_DOWN = MOAITouchSensor.TOUCH_DOWN,
 	TOUCH_MOVE = MOAITouchSensor.TOUCH_MOVE,
@@ -34,13 +34,13 @@ local ui_AS = actionset.new()
 local ui_new = node.new
 
 local function ui_log(...)
-	if ui.debug_ui then
+	if ui._writelog then
 		print("UI:", ...)
 	end
 end
 
 local function ui_logf(...)
-	if ui.debug_ui then
+	if ui._writelog then
 		print("UI:", string.format(...))
 	end
 end
@@ -245,7 +245,59 @@ function ui.handleTouch(self, eventType, touchIdx, x, y, tapCount)
 			ui.capture(self)
 		end
 	elseif eventType == ui.TOUCH_MOVE and touchIdx == ui.TOUCH_ONE then
-		if dragHappen(self._downX, self._downY, x, y) then
+		if not self._isdragging and dragHappen(self._downX, self._downY, x, y) then
+			if self.onDragBegin then
+				self._isdragging = self:onDragBegin(touchIdx, x, y, tapCount)
+			end
+		end
+		if self._isdragging then
+			if self.onDragMove then
+				self:onDragMove(touchIdx, x, y, tapCount)
+			end
+		elseif self._isdown then
+			if not ui.treeCheck(x, y, self) then
+				if self.onTouchUp then
+					self:onTouchUp()
+				end
+				self._isdown = nil
+			end
+		end
+	end
+	return true
+end
+
+function ui.defaultHandleTouch(eventType, touchIdx, x, y, tapCount)
+	local self = ui.default
+	if not self then
+		return false
+	end
+	
+	if eventType == ui.TOUCH_UP then
+		if self._isdragging then
+			if self.onDragEnd then
+				self:onDragEnd(touchIdx, x, y, tapCount)
+			end
+			self._isdragging = nil
+		elseif self._isdown then
+			if self.onTouchUp then
+				self:onTouchUp()
+			end
+			self._isdown = nil
+			if self.onClick then
+				self:onClick(touchIdx, x, y, tapCount)
+			end
+		end
+	elseif eventType == ui.TOUCH_DOWN then
+		if not self._isDown then
+			if self.onTouchDown then
+				self:onTouchDown()
+			end
+			self._isdown = true
+			self._downX = x
+			self._downY = y
+		end
+	elseif eventType == ui.TOUCH_MOVE and touchIdx == ui.TOUCH_ONE then
+		if not self._isdragging and dragHappen(self._downX, self._downY, x, y) then
 			if self.onDragBegin then
 				self._isdragging = self:onDragBegin(touchIdx, x, y, tapCount)
 			end
@@ -312,8 +364,8 @@ local function onKeyboard(key, down)
 	return handled
 end
 
-function ui.init(defaultInputHandler, defaultKeyHandler)
-	defaultTouchCallback = defaultInputHandler
+function ui.init(defaultTouchHandler, defaultKeyHandler)
+	defaultTouchCallback = defaultTouchHandler or ui.defaultHandleTouch
 	defaultKeyCallback = defaultKeyHandler
 	if MOAIInputMgr.device.pointer ~= nil then
 		MOAIInputMgr.device.pointer:setCallback(onMouseUpdate)

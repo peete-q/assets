@@ -3,15 +3,13 @@ local ui = require "ui"
 local Unit = require "Unit"
 local Scene = require "Scene"
 local profile = require "UserProfile"
+local node = require "node"
 local Image = require "gfx.Image"
 local FillBar = require "gfx.FillBar"
 
 local blockOn = MOAIThread.blockOnAction
 
-local GameStage = {
-	width = 400,
-	height = 400,
-}
+local GameStage = {}
 local preparingSpace = 22
 local skills = {
 	light = function()
@@ -21,17 +19,11 @@ local skills = {
 function GameStage:init()
 end
 
-function GameStage:load(onOkay)
-	if self._uiRoot then
-		uiLayer:add(self._uiRoot)
-		return
-	end
-	self._uiRoot = uiLayer:add(ui.Group.new())
-	self:setupFleet()
-	self:open()
-	if onOkay then
-		onOkay(GameStage)
-	end
+function GameStage:load()
+	self._uiRoot = node.new()
+	self._sceneRoot = node.new()
+	self._farRoot = node.new()
+	self._nearRoot = node.new()
 end
 
 function GameStage:setupFleet()
@@ -52,16 +44,6 @@ function GameStage:setupSpells()
 end
 
 function GameStage:updateProfile()
-end
-
-function GameStage:open()
-	self._scene = Scene.new(self.width, self.height, sceneLayer)
-	self._preparings = {
-		n = 0,
-		index = 0,
-	}
-	self._energy = profile.energyInitial
-	self._ticks = 0
 end
 
 function GameStage:addPreparing(props, x, y)
@@ -125,10 +107,39 @@ function GameStage:update()
 end
 
 function GameStage:open(stage, level)
+	self._width = level.width
+	self._height = level.height
+	self._scene = Scene.new(sceneLayer)
+	self._preparings = {
+		n = 0,
+		index = 0,
+	}
+	self._energy = profile.energyInitial
+	self._ticks = 0
+	
+	if not self._loaded then
+		self:load()
+		self._loaded = true
+	end
+	
+	farLayer:add(self._farRoot)
+	nearLayer:add(self._nearRoot)
+	sceneLayer:add(self._sceneRoot)
+	uiLayer:add(self._uiRoot)
+	
+	ui.default = self
 end
 
 function GameStage:close()
+	self._scene:destroy()
+	self._scene = nil
+	
+	farLayer:remove(self._farRoot)
+	nearLayer:remove(self._nearRoot)
+	sceneLayer:remove(self._sceneRoot)
 	uiLayer:remove(self._uiRoot)
+	
+	ui.default = nil
 end
 
 return GameStage

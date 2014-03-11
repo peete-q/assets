@@ -46,6 +46,8 @@ local Profile = {
 	},
 	spells = {
 	},
+	colonies = {
+	},
 	motherShip = ship,
 	prepareMax = 5,
 	energyRecover = 5,

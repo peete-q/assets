@@ -353,7 +353,7 @@ function HomeStage:initTechPlanet()
 	local deck = resource.deck("planet03.png")
 	techPlanet:setDeck(deck)
 	self._sceneRoot:add(techPlanet)
-	self:makePlanetOrbit(techPlanet, 0, 0, 300, 100, 0.1, 0.5, 20, 3, math.pi/4, 0)
+	self:makePlanetOrbit(techPlanet, 0, 0, 300, 100, 0.1, 0.5, 20, 3, math.pi, 0)
 end
 
 function HomeStage:initPortal()
@@ -398,7 +398,7 @@ function HomeStage:updateUserPanel()
 end
 
 function HomeStage:initMenu()
-	self._menuRoot = self._uiRoot:add(ui.Group.new())
+	self._menuRoot = self._uiRoot:add(node.new())
 	self._menuRoot:setAnchor("RB", 0, 0)
 	menuPanel = self._menuRoot:add(Image.new("menu-panel.png"))
 	local w, h = menuPanel:getSize()
@@ -480,20 +480,23 @@ function HomeStage:load(onOkay)
 	
 	self._sceneRoot = node.new()
 	
-	-- self:initUserPanel()
-	-- self:initMenu()
-	-- self:initStageBG()
+	self:initUserPanel()
+	self:initMenu()
+	self:initStageBG()
 	self:initMotherPlanet()
 	self:initMillPlanet()
 	self:initTechPlanet()
 	self:initPortal()
 	
+	local theta0 = math.pi * 2 / #profile.colonies
+	for k, v in ipairs(profile.colonies) do
+		local colony = self._sceneRoot:add(Image.new(v.icon))
+		self:makePlanetOrbit(colony, 0, 0, 600, 200, 0.1, 0.5, 20, 2, theta0)
+	end
+	
 	if onOkay then
 		onOkay(HomeStage)
 	end
-end
-
-function HomeStage.handleTouch(eventType, touchIdx, x, y, tapCount)
 end
 
 function HomeStage:update()
@@ -558,7 +561,6 @@ function HomeStage:open()
 	uiLayer:add(self._uiRoot)
 	sceneLayer:add(self._sceneRoot)
 	ui.insertLayer(sceneLayer, 1)
-	ui.setDefaultTouchCallback(self.handleTouch)
 	
 	-- self:updateUserPanel()
 end

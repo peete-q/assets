@@ -1,25 +1,20 @@
 
 local Unit = require "Unit"
 local Factor = require "Factor"
+local device = require "device"
 
-local Scene = {
-	SPACE = 1,
-	SKY = 2,
-}
+local Scene = {}
 
-local LANE_SIZE = 20
+local LANE_WIDTH = 20
+local LANE_COUNT = math.floor(device.width / 2 / LANE_WIDTH)
 
 Scene.__index = Scene
 
-function Scene.new(w, h, spaceLayer, skyLayer, seed)
+function Scene.new(root, seed)
 	local self = {
-		WIDTH = w,
-		HEIGHT = h,
-		
 		_units = {},
 		_FXs = {},
-		_spaceLayer = spaceLayer,
-		_skyLayer = skyLayer,
+		_root = root,
 		_player = {},
 		_playerOffset = 0,
 		_enemyOffset = 0,
@@ -43,7 +38,7 @@ function Scene:addUnit(props, force, x, y)
 	local o = Unit.new(props, self._forces[force])
 	o._scene = self
 	o._ticks = self.ticks
-	o:setLayer(self._spaceLayer)
+	self._root:add(o)
 	o:setLoc(x, y)
 	self._units[o] = o
 	return o
@@ -71,7 +66,7 @@ end
 
 function Scene:addFX(o)
 	o._scene = self
-	o:setLayer(self._spaceLayer)
+	self._root:add(o)
 	self._FXs[o] = o
 	return o
 end
@@ -83,21 +78,19 @@ function Scene:remove(o)
 end
 
 function Scene:spawnPlayerUnit(props)
-	local n = (self.WIDTH / 2) / LANE_SIZE
-	local x = math.random(-n, n) * LANE_SIZE
+	local x = math.random(-LANE_COUNT, LANE_COUNT) * LANE_WIDTH
 	local _, y = self._playerMotherShip:getLoc()
-	local u = self:addUnit(props, Unit.FORCE_PLAYER, x, self._playerOffset + y)
-	u:move()
-	return u
+	local o = self:addUnit(props, Unit.FORCE_PLAYER, x, self._playerOffset + y)
+	o:move()
+	return o
 end
 
 function Scene:spawnEnemyUnit(props)
-	local n = (self.WIDTH / 2) / LANE_SIZE
-	local x = math.random(-n, n) * LANE_SIZE
+	local x = math.random(-LANE_COUNT, LANE_COUNT) * LANE_WIDTH
 	local _, y = self._enemyMotherShip:getLoc()
-	local u = self:addUnit(props, Unit.FORCE_ENEMY, x, self._enemyOffset + y)
-	u:move()
-	return u
+	local o = self:addUnit(props, Unit.FORCE_ENEMY, x, self._enemyOffset + y)
+	o:move()
+	return o
 end
 
 local playerInfo = {
@@ -265,7 +258,7 @@ end
 
 function Scene:getBestTarget(force, r)
 	local n = 0
-	local u
+	local o
 	for k, v in pairs(self._units) do
 		local i = 0
 		for k, v2 in pairs(self._units) do
@@ -275,10 +268,10 @@ function Scene:getBestTarget(force, r)
 		end
 		if i > n then
 			n = i
-			u = v
+			o = v
 		end
 	end
-	return u
+	return o
 end
 
 return Scene

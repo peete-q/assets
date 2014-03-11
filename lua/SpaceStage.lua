@@ -8,7 +8,6 @@ local Sprite = require "gfx.Sprite"
 
 local blockOn = MOAIThread.blockOnAction
 local SpaceStage = {}
-local self = SpaceStage
 
 function SpaceStage:init(homeStgae, gameStage)
 	self._homeStage = homeStage
@@ -36,6 +35,15 @@ function SpaceStage:initStageBG()
 			blockOn(bg:moveLoc(-w, 0, w / 3, MOAIEaseType.LINEAR))
 		end
 	end)
+end
+
+function SpaceStage:initMenu()
+	local menuPanel = self._menuRoot:add(Image.new("menu-panel.png"))
+	local w, h = menuPanel:getSize()
+	menuPanel:setAnchor("RB", -w / 2, h / 2)
+	menuPanel:setPriority(1)
+	menuBack = self._menuRoot:add(ui.Button.new("menu-icon.png?scl=-1,1", "menu-icon.png?scl=-1.1,1.1"))
+	menuBack:setPriority(2)
 end
 
 function SpaceStage:load()
@@ -79,13 +87,6 @@ function SpaceStage:startFighting(o)
 	self._gameStage:open(self, o._level)
 end
 
-function SpaceStage.onClickUnit(o, touchIdx, x, y, tapCount)
-	self._motherShip:moveTo(x, y)
-	self._motherShip:whenArrive(function()
-		self:startFighting(o)
-	end)
-end
-
 local space = {
 	units = {},
 	width = device.width * 2,
@@ -96,7 +97,7 @@ local space = {
 	initY = 0,
 }
 
-function SpaceStage:loadSpace(data)
+function SpaceStage:loadStarfield(data)
 	local planet = self._nearRoot:add(Sprite.new("mars.png"))
 	planet:setLoc(-500, 0)
 	
@@ -126,16 +127,22 @@ function SpaceStage:loadSpace(data)
 	self._yMax = (data.height - device.height) / 2
 end
 
-local draging, lastX, lastY, downX, downY
-function SpaceStage.onTouchDown(touchIdx, x, y, tapCount)
-	downX = x
-	downY = y
-	lastX = x
-	lastY = y
-	draging = true
+local self = SpaceStage
+function SpaceStage.onClickUnit(o, touchIdx, x, y, tapCount)
+	self._motherShip:moveTo(x, y)
+	self._motherShip:whenArrive(function()
+		self:startFighting(o)
+	end)
 end
 
-function SpaceStage.onTouchMove(touchIdx, x, y, tapCount)
+local lastX, lastY
+function SpaceStage:onDragBegin(touchIdx, x, y, tapCount)
+	lastX = x
+	lastY = y
+	return true
+end
+
+function SpaceStage:onDragMove(touchIdx, x, y, tapCount)
 	local diffX = x - lastX
 	local diffY = y - lastY
 	lastX = x
@@ -146,19 +153,14 @@ function SpaceStage.onTouchMove(touchIdx, x, y, tapCount)
 	camera:setLoc(x, y)
 end
 
-function SpaceStage.onTouchUp(touchIdx, x, y, tapCount)
-	local absX = math.abs(x - downX)
-	local absY = math.abs(y - downY)
-	if absX < 3 and absY < 3 then
-		local wx, wy = sceneLayer:wndToWorld(x, y)
-		self._motherShip:moveTo(wx, wy)
-		self._sceneRoot:add(self._ring)
-		self._ring:setLoc(wx, wy)
-		self._motherShip:whenArrive(function()
-			self._sceneRoot:remove(self._ring)
-		end)
-	end
-	draging = false
+function SpaceStage:onClick(touchIdx, x, y, tapCount)
+	local wx, wy = sceneLayer:wndToWorld(x, y)
+	self._motherShip:moveTo(wx, wy)
+	self._sceneRoot:add(self._ring)
+	self._ring:setLoc(wx, wy)
+	self._motherShip:whenArrive(function()
+		self._sceneRoot:remove(self._ring)
+	end)
 end
 
 function SpaceStage:open()
@@ -166,18 +168,15 @@ function SpaceStage:open()
 		self:load()
 		self._loaded = true
 	end
-	self:loadSpace(space)
+	self:loadStarfield(space)
 	
 	farLayer:add(self._farRoot)
 	nearLayer:add(self._nearRoot)
 	sceneLayer:add(self._sceneRoot)
 	uiLayer:add(self._uiRoot)
 	
-	ui.insertLayer(farLayer, 1)
-	ui.insertLayer(nearLayer, 2)
-	ui.insertLayer(sceneLayer, 3)
-	
-	ui.setDefaultTouchCallback(self)
+	ui.insertLayer(sceneLayer, 1)
+	ui.default = self
 end
 
 function SpaceStage:close()
@@ -186,9 +185,8 @@ function SpaceStage:close()
 	sceneLayer:remove(self._sceneRoot)
 	uiLayer:remove(self._uiRoot)
 	
-	ui.removeLayer(farLayer)
-	ui.removeLayer(nearLayer)
 	ui.removeLayer(sceneLayer)
+	ui.default = nil
 end
 
 return SpaceStage

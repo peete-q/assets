@@ -122,7 +122,7 @@ function Unit.new(props, force)
 		_attackPowerFactor = Factor.new(),
 		_lastRecoverTicks = 0,
 		_moveSpeed = 0,
-		_logging = true,
+		_writelog = true,
 		_scene = nil,
 		_motionDriver = nil,
 		_target = nil,
@@ -180,13 +180,13 @@ function Unit:destroy()
 end
 
 function Unit:log(...)
-	if self._logging then
+	if self._writelog then
 		print(concat("[", self, "]"), ...)
 	end
 end
 
 function Unit:logIf(cond, ...)
-	if self._logging and cond then
+	if self._writelog and cond then
 		print(concat("[", self, "]"), ...)
 	end
 end
@@ -490,7 +490,7 @@ function Unit:chase(target)
 	
 	local sx, sy = self:getLoc()
 	local x, y = target:getLoc()
-	local mx = sx * self.attackRange * 2 / self._scene.WIDTH
+	local mx = sx * self.attackRange * 2 / device.width
 	self._tx = x
 	self._ty = y
 	x = math.random(mx - self.bodySize, mx + self.bodySize)
