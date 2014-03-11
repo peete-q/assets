@@ -92,7 +92,7 @@ function HomeStage:makePlanetOrbit(planet, x, y, a, b, s1, s2, t, p, theta0, phi
 			x1 = a * math.cos(theta) * cosphi - b * math.sin(theta) * sinphi
 			y1 = a * math.cos(theta) * sinphi + b * math.sin(theta) * cosphi
 			planet:setLoc(x1, y1)
-			planet:setScl(s1 + (b - y1) / b2 * (s2 - s1))
+			planet:setScl(s1 + (1 - math.sin(theta)) * (s2 - s1) / 2)
 			coroutine.yield()
 		end
 	end)
