@@ -86,6 +86,7 @@ function node.removeAll(self, recursion)
 		end
 		self._children = nil
 	end
+	self._childrenCount = 0
 end
 
 function node.remove(self, child)
@@ -210,6 +211,7 @@ function node.new(o)
 	o.setAnchor = node.setAnchor
 	o.setLayoutSize = node.setLayoutSize
 	o.getLayoutSize = node.getLayoutSize
+	o.getChildrenCount = node.getChildrenCount
 	o._childrenCount = 0
 	return o
 end

@@ -22,7 +22,7 @@ local ui = {
 	TOUCH_UP = MOAITouchSensor.TOUCH_UP,
 	TOUCH_CANCEL = MOAITouchSensor.TOUCH_CANCEL,
 	TOUCH_ONE = 0,
-	DRAG_THRESHOLD = 3,
+	DRAG_THRESHOLD = 5,
 	KEY_BACKSPACE = 8,
 	KEY_RETURN = 13,
 }
@@ -854,7 +854,7 @@ function DropList:removeItemH(o, span, mode)
 end
 
 function DropList:getItemCount()
-	return #self._root:getChildrenCount()
+	return self._root:getChildrenCount()
 end
 
 local PickBox = {}

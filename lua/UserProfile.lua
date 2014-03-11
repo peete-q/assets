@@ -29,6 +29,7 @@ local ship = {
 	},
 	
 	cost = 0,
+	upgradeCost = 0,
 }
 
 local Profile = {

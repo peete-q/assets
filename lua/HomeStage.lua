@@ -58,16 +58,15 @@ function HomeStage:init(spaceStage, gameStage)
 	self._gameStage = gameStage
 end
 
-function HomeStage:makePlanetOrbit(planet, x, y, a, b, s1, s2, t, p, theta0, phi)
+function HomeStage:makePlanetOrbit(planet, x, y, a, b, s1, s2, t, p, offset, phi)
 	local thread = MOAIThread.new()
 	local timer = timer.new()
 	timer:setSpan(1.0E37)
 	timer:start()
-	local s1, s2 = 1, 2
 	local length = t / 2
 	local sinphi = math.sin(phi)
 	local cosphi = math.cos(phi)
-	local runtime, t0 = 0, 0
+	local runtime, t0 = 0, -offset
 	local theta1, theta2 = -math.pi, 0
 	local p2 = p + self._centerPriority
 	local b2 = b * 2
@@ -88,9 +87,9 @@ function HomeStage:makePlanetOrbit(planet, x, y, a, b, s1, s2, t, p, theta0, phi
 				end
 				planet:setTreePriority(p2)
 			end
-			theta = theta0 + interpolate.lerp(theta1, theta2, runtime / length)
-			x1 = a * math.cos(theta) * cosphi - b * math.sin(theta) * sinphi
-			y1 = a * math.cos(theta) * sinphi + b * math.sin(theta) * cosphi
+			theta = interpolate.lerp(theta1, theta2, runtime / length)
+			x1 = x + a * math.cos(theta) * cosphi - b * math.sin(theta) * sinphi
+			y1 = y + a * math.cos(theta) * sinphi + b * math.sin(theta) * cosphi
 			planet:setLoc(x1, y1)
 			planet:setScl(s1 + (1 - math.sin(theta)) * (s2 - s1) / 2)
 			coroutine.yield()
@@ -128,7 +127,8 @@ function HomeStage:initMotherPlanet()
 	local deck = resource.deck("earth.png")
 	motherPlanet:setDeck(deck)
 	motherPlanet:setPriority(self._centerPriority)
-	motherPlanet:setScl(0.9, 0.9)
+	motherPlanet:setScl(0.8, 0.8)
+	motherPlanet:setLoc(0, -50)
 	
 	local taxWindow = Image.new("window.png")
 	taxWindow:setPriority(1)
@@ -141,12 +141,6 @@ function HomeStage:initMotherPlanet()
 			popupLayer.popuped = false
 		end)
 	end
-	
-	beam = taxWindow:add(Image.new("beam.png"))
-	beam:setScl(2.8, 2.8)
-	beam:setLoc(200, 0)
-	beam:setColor(0.5, 0.5, 0.5, 0.5)
-	beam:setPriority(2)
 	
 	spin = taxWindow:add(SpinPatch.new("spin.png"))
 	spin:setScl(2, 1)
@@ -161,7 +155,7 @@ function HomeStage:initMotherPlanet()
 	end)
 	
 	planet = taxWindow:add(Image.new("earth.png"))
-	planet:setScl(0.6)
+	planet:setScl(0.5)
 	planet:setLoc(200, 0)
 	planet:setColor(1, 1, 1, 0.9)
 	planet:setPriority(3)
@@ -208,9 +202,10 @@ function HomeStage:initMotherPlanet()
 		collectCD.cooldown(profile.currCCD)
 	end
 	
-	collectCountLabel = taxWindow:add(TextBox.new("collect count", FONT_MIDDLE, nil, "MM", 200, 50))
-	collectCountLabel:setColor(unpack(FONT_COLOR_LIGHT))
-	collectCountLabel:setLoc(-300, 140)
+	collectLabel = taxWindow:add(TextBox.new("collect count", FONT_MIDDLE, nil, "MM", 200, 50))
+	collectLabel:setColor(unpack(FONT_COLOR_LIGHT))
+	collectLabel:setLoc(-300, 140)
+	collectLabel:setPriority(2)
 	
 	collectCount = taxWindow:add(TextBox.new("", FONT_SMALL, nil, "LM", 100, 50))
 	collectCount.setCount = function(self, numerator, denominator)
@@ -220,13 +215,16 @@ function HomeStage:initMotherPlanet()
 	collectCount:setCount(profile.taxCount, profile.taxMax)
 	collectCount:setColor(unpack(FONT_COLOR_GOLD))
 	collectCount:setLoc(-140, 137)
+	collectCount:setPriority(2)
 	
 	coinText = taxWindow:add(TextBox.new("coins", FONT_MIDDLE, nil, "MM", 100, 50))
 	coinText:setColor(unpack(FONT_COLOR_LIGHT))
 	coinText:setLoc(-320, -100)
+	coinText:setPriority(2)
 	
 	coinIcon = taxWindow:add(Image.new("coin.png"))
 	coinIcon:setLoc(-180, -100)
+	coinIcon:setPriority(2)
 	
 	coinNum = taxWindow:add(TextBox.new("", FONT_SMALL, nil, "MM", 100, 50))
 	coinNum.setNum = function(self, num)
@@ -236,6 +234,7 @@ function HomeStage:initMotherPlanet()
 	coinNum:setNum(profile.coins)
 	coinNum:setColor(unpack(FONT_COLOR_GOLD))
 	coinNum:setLoc(-130, -100)
+	coinNum:setPriority(2)
 	
 	collectTax = taxWindow:add(ui.Button.new(unpack(BUTTON_IMAGE)))
 	collectTax:setLoc(-250, -180)
@@ -292,49 +291,56 @@ function HomeStage:initMillPlanet()
 	closeButton.onClick = function()
 		local ease = fleetWindow:seekScl(1, 0, 0.5, MOAIEaseType.EASE_OUT)
 		ease:setListener(MOAIAction.EVENT_STOP, function()
-			-- popupLayer:remove(fleetWindow)
+			popupLayer:remove(fleetWindow)
 			popupLayer.popuped = false
 		end)
 	end
-	local upgrade = fleetWindow:add(ui.Button.new(unpack(BUTTON_IMAGE)))
-	upgrade:setLoc(50, -50)
-	local currInfo = fleetWindow:add(TextBox.new("", FONT_SMALL, nil, "MM", 100, 50))
-	currInfo:setLoc(80, 0)
-	currInfo:setLineSpacing(20)
-	local nextInfo = fleetWindow:add(TextBox.new("", FONT_SMALL, nil, "MM", 100, 50))
-	nextInfo:setLoc(180, 0)
-	nextInfo:setLineSpacing(20)
-	-- local shipModel = fleetWindow:add(Image.new(""))
-	-- shipModel:setLoc(50, 0)
-	local shipList = fleetWindow:add(ui.DropList.new(150, 500, 150, "vertical"))
+	upgradeButton = fleetWindow:add(ui.Button.new(unpack(BUTTON_IMAGE)))
+	upgradeButton:setLoc(300, -200)
+	upgradeText = upgradeButton:add(TextBox.new("upgrade", FONT_MIDDLE, nil, "MM", 100, 50))
+	upgradeText:setColor(unpack(FONT_COLOR_LIGHT))
+	
+	thisLv = fleetWindow:add(TextBox.new("", FONT_SMALL, nil, "LT", 180, 300))
+	thisLv:setLoc(180, 0)
+	thisLv:setPriority(2)
+	nextLv = fleetWindow:add(TextBox.new("", FONT_SMALL, nil, "LT", 180, 300))
+	nextLv:setLoc(360, 0)
+	nextLv:setPriority(2)
+	
+	shipView = fleetWindow:add(node.new())
+	shipView:setLoc(-50, 0)
+	shipList = fleetWindow:add(ui.DropList.new(150, 450, 120, "vertical"))
+	shipList:setLoc(-300, -25)
 	fleetWindow.updateFleet = function()
 		shipList:clearItems()
 		for i, v in ipairs(profile.fleet) do
-			local frame = shipList:addItem(Image.new("frame_icon.png"))
+			local frame = shipList:addItem(Image.new("frame.png"))
 			local item = frame:add(Image.new(v.icon))
-			-- item.onClick = function()
-				-- shipModel:setImage(v.model)
-				-- currInfo:setString(table.concat(v.upgradeCurve[v.level].info, "\n"))
-				-- local lvl = v.level + 1
-				-- if lvl <= #v.upgradeCurve then
-					-- nextInfo:setString(table.concat(v.upgradeCurve[lvl].info, "\n"))
-					-- local ok = profile.coins >= v.upgradeCost
-					-- upgrade:disable(not ok)
-					-- if ok then
-						-- upgrade.onClick = function()
-							-- v.level = v.level + 1
-						-- end
-					-- end
-				-- end
-			-- end
+			frame.onClick = function()
+				shipView:removeAll()
+				shipView:add(Image.new(v.model))
+				thisLv:setString(table.concat(v.upgradeCurve[v.level].info, "\n"))
+				local lvl = v.level + 1
+				if lvl <= #v.upgradeCurve then
+					nextLv:setString(table.concat(v.upgradeCurve[lvl].info, "\n"))
+					local ok = profile.coins >= v.upgradeCost
+					upgradeButton:disable(not ok)
+					if ok then
+						upgradeButton.onClick = function()
+							v.level = v.level + 1
+						end
+					end
+				end
+			end
 		end
 	end
 	
 	local millPlanet = node.new()
-	local deck = resource.deck("planet01.png")
+	local deck = resource.deck("planet02.png")
 	millPlanet:setDeck(deck)
 	self._sceneRoot:add(millPlanet)
 	millPlanet:setLoc(0, -100)
+	millPlanet.handleTouch = ui.handleTouch
 	millPlanet.onClick = function()
 		popupLayer.popuped = true
 		popupLayer:add(fleetWindow)
@@ -345,7 +351,7 @@ function HomeStage:initMillPlanet()
 		fleetWindow:seekColor(1, 1, 1, 1, 0.5)
 	end
 	
-	self:makePlanetOrbit(millPlanet, 0, 0, 300, 100, 0.2, 0.6, 20, 4, math.pi/2, 0)
+	self:makePlanetOrbit(millPlanet, 0, -100, 400, 100, 0.2, 0.6, 20, 10, 2, 0)
 end
 
 function HomeStage:initTechPlanet()
@@ -353,7 +359,7 @@ function HomeStage:initTechPlanet()
 	local deck = resource.deck("planet03.png")
 	techPlanet:setDeck(deck)
 	self._sceneRoot:add(techPlanet)
-	self:makePlanetOrbit(techPlanet, 0, 0, 300, 100, 0.1, 0.5, 20, 3, math.pi, 0)
+	self:makePlanetOrbit(techPlanet, 0, -100, 400, 100, 0.2, 0.6, 20, 10, 4, 0)
 end
 
 function HomeStage:initPortal()
@@ -369,7 +375,7 @@ function HomeStage:initPortal()
 		o:setRot(45 * i)
 	end
 	self._sceneRoot:add(portal)
-	self:makePlanetOrbit(portal, 0, 0, 200, 50, 0.1, 0.5, 20, 2, 0, math.pi/4)
+	self:makePlanetOrbit(portal, 0, -50, 240, 80, 0.2, 0.6, 10, 2, 0, math.pi/4)
 	self._portalRotating = MOAIThread.new()
 	self._portalRotating:run(function()
 		while true do
@@ -488,10 +494,14 @@ function HomeStage:load(onOkay)
 	self:initTechPlanet()
 	self:initPortal()
 	
-	local theta0 = math.pi * 2 / #profile.colonies
-	for k, v in ipairs(profile.colonies) do
+	profile.colonies = {}
+	for i = 1, 8 do
+		profile.colonies[i] = {icon = "planet-wrap.png"}
+	end
+	
+	for i, v in ipairs(profile.colonies) do
 		local colony = self._sceneRoot:add(Image.new(v.icon))
-		self:makePlanetOrbit(colony, 0, 0, 600, 200, 0.1, 0.5, 20, 2, theta0)
+		self:makePlanetOrbit(colony, 0, -100, 400, 100, 0.2, 0.6, 20, 10, 4 + 2 * i, 0)
 	end
 	
 	if onOkay then
