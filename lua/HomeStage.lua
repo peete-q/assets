@@ -9,6 +9,7 @@ local Image = require "gfx.Image"
 local TextBox = require "gfx.TextBox"
 local FillBar = require "gfx.FillBar"
 local SpinPatch = require "gfx.SpinPatch"
+local interpolate = require "interpolate"
 
 local blockOn = MOAIThread.blockOnAction
 local HomeStage = {}
@@ -57,38 +58,47 @@ function HomeStage:init(spaceStage, gameStage)
 	self._gameStage = gameStage
 end
 
-function HomeStage:makePlanetOrbit(planet, x, y, t, s1, s2, s3, p)
-	planet:setScl(s2, s2)
+function HomeStage:makePlanetOrbit(planet, x, y, a, b, s1, s2, t, p, theta0, phi)
 	local thread = MOAIThread.new()
-	thread:run(function(planet, x, y, t)
+	local timer = timer.new()
+	timer:setSpan(1.0E37)
+	timer:start()
+	local s1, s2 = 1, 2
+	local length = t / 2
+	local sinphi = math.sin(phi)
+	local cosphi = math.cos(phi)
+	local runtime, t0 = 0, 0
+	local theta1, theta2 = -math.pi, 0
+	local p2 = p + self._centerPriority
+	local b2 = b * 2
+	local x1, y1, theta
+	planet:setTreePriority(p2)
+	thread:run(function()
 		while true do
-			planet:setLoc(-x, -y)
-			planet:setTreePriority(p + self._centerPriority)
-			local e = planet:seekScl(s1, s1, t / 2, MOAIEaseType.LINEAR)
-			e:setListener(MOAIAction.EVENT_STOP, function()
-				planet:seekScl(s2, s2, t / 2, MOAIEaseType.LINEAR)
-			end)
-			blockOn(planet:seekLoc(x, y, t, MOAIEaseType.SOFT_SMOOTH))
-			
-			planet:setLoc(x, y)
-			planet:setTreePriority(p)
-			local e = planet:seekScl(s3, s3, t / 2, MOAIEaseType.LINEAR)
-			e:setListener(MOAIAction.EVENT_STOP, function()
-				planet:seekScl(s2, s2, t / 2, MOAIEaseType.LINEAR)
-			end)
-			blockOn(planet:seekLoc(-x, -y, t, MOAIEaseType.SOFT_SMOOTH))
+			runtime = timer:getTime() - t0
+			if runtime >= length then
+				t0 = t0 + length
+				runtime = runtime - length
+				theta1 = theta1 + math.pi
+				theta2 = theta2 + math.pi
+				if p2 == p then
+					p2 = p + self._centerPriority
+				else
+					p2 = p
+				end
+				planet:setTreePriority(p2)
+			end
+			theta = theta0 + interpolate.lerp(theta1, theta2, runtime / length)
+			x1 = a * math.cos(theta) * cosphi - b * math.sin(theta) * sinphi
+			y1 = a * math.cos(theta) * sinphi + b * math.sin(theta) * cosphi
+			planet:setLoc(x1, y1)
+			planet:setScl(s1 + (b - y1) / b2 * (s2 - s1))
+			coroutine.yield()
 		end
-	end, planet, x, y, t)
-	
-	if not self._orbits then
-		self._orbits = {}
-	end
-	table.insert(self._orbits, thread)
+	end)
 end
 
 function HomeStage:initStageBG()
-	self._sceneRoot = node.new()
-	
 	local bg = self._sceneRoot:add(node.new())
 	bg:setPriority(1)
 	local deck = MOAITileDeck2D.new()
@@ -335,7 +345,7 @@ function HomeStage:initMillPlanet()
 		fleetWindow:seekColor(1, 1, 1, 1, 0.5)
 	end
 	
-	self:makePlanetOrbit(millPlanet, 300, 100, 15, 0.6, 0.4, 0.2, 4)
+	self:makePlanetOrbit(millPlanet, 0, 0, 300, 100, 0.2, 0.6, 20, 4, math.pi/2, 0)
 end
 
 function HomeStage:initTechPlanet()
@@ -343,7 +353,7 @@ function HomeStage:initTechPlanet()
 	local deck = resource.deck("planet03.png")
 	techPlanet:setDeck(deck)
 	self._sceneRoot:add(techPlanet)
-	self:makePlanetOrbit(techPlanet, 350, -100, 20, 0.5, 0.3, 0.1, 3)
+	self:makePlanetOrbit(techPlanet, 0, 0, 300, 100, 0.1, 0.5, 20, 3, math.pi/4, 0)
 end
 
 function HomeStage:initPortal()
@@ -359,7 +369,7 @@ function HomeStage:initPortal()
 		o:setRot(45 * i)
 	end
 	self._sceneRoot:add(portal)
-	self:makePlanetOrbit(portal, 150, -200, 10, 0.5, 0.3, 0.1, 2)
+	self:makePlanetOrbit(portal, 0, 0, 200, 50, 0.1, 0.5, 20, 2, 0, math.pi/4)
 	self._portalRotating = MOAIThread.new()
 	self._portalRotating:run(function()
 		while true do
@@ -467,9 +477,12 @@ function HomeStage:load(onOkay)
 
 	self._uiRoot = uiLayer:add(node.new())
 	self._uiRoot:setLayoutSize(device.width, device.height)
-	self:initUserPanel()
-	self:initMenu()
-	self:initStageBG()
+	
+	self._sceneRoot = node.new()
+	
+	-- self:initUserPanel()
+	-- self:initMenu()
+	-- self:initStageBG()
 	self:initMotherPlanet()
 	self:initMillPlanet()
 	self:initTechPlanet()
@@ -547,7 +560,7 @@ function HomeStage:open()
 	ui.insertLayer(sceneLayer, 1)
 	ui.setDefaultTouchCallback(self.handleTouch)
 	
-	self:updateUserPanel()
+	-- self:updateUserPanel()
 end
 
 function HomeStage:close()

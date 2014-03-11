@@ -806,7 +806,6 @@ function DropList:getItemCount()
 end
 
 local PickBox = {}
-
 function PickBox.handleTouch(self, eventType, touchIdx, x, y, tapCount)
 	if eventType == ui.TOUCH_UP then
 		ui.capture(nil)
