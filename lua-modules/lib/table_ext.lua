@@ -97,9 +97,10 @@ function table.copy (t)
 end
 
 local function _keystr(v)
-	if type(v) == "number" then
+	local tname = type(v)
+	if tname == "number" then
 		return string.format("[%d]", v)
-	elseif type(v) == "string" then
+	elseif tname == "string" then
 		return string.format("[%q]", v)
 	end
 	return string.format("[%s]", tostring(v))
@@ -118,11 +119,15 @@ function table.tostring(v, sep, tab, _pre, _loc, _ref)
 	for k, v in pairs(v) do
 		str = str..comma
 		comma = ","
-		str = str..sep..tab.._pre.._keystr(k).."="
+		str = str..sep..tab.._pre.._keystr(k)..tab.."="
 		if not _ref[v] then
-			local _loc = _loc.._keystr(k)
-			str = str..table.tostring(v, sep, tab, _pre..tab, _loc, _ref)
-			_ref[v] = _loc
+			if type(v) == "table" then
+				local _loc = _loc.._keystr(k)
+				str = str..tab..table.tostring(v, sep, tab, _pre..tab, _loc, _ref)
+				_ref[v] = _loc
+			else
+				str = str..tab..tostring(v)
+			end
 		else
 			str = str..tab.._ref[v]
 		end
