@@ -76,7 +76,7 @@ function Bullet.bomb(self, target)
 	local x, y = self:getLoc()
 	if self.bombRange > 0 then
 		local force = self.enemy or self._enemy
-		local units = self._scene:getUnitsInRound(force, x, y, self.bombRange)
+		local units = self._battlefield:getUnitsInRound(force, x, y, self.bombRange)
 		for k, v in pairs(units) do
 			if v ~= target then
 				self:impact(v)
@@ -85,7 +85,7 @@ function Bullet.bomb(self, target)
 	end
 	
 	if self.bombRun then
-		self.bombRun(self._scene, x, y, self._power, self._enemy, target, unpack(self.bombCmd))
+		self.bombRun(self._battlefield, x, y, self._power, self._enemy, target, unpack(self.bombCmd))
 	end
 	
 	if self.bombGfx then
@@ -93,11 +93,11 @@ function Bullet.bomb(self, target)
 		bomb.update = Bullet.noop
 		bomb.onDestroy = function()
 			self:destroy()
-			bomb._scene:remove(bomb)
+			bomb._battlefield:remove(bomb)
 		end
 		bomb:setLoc(x, y)
 		bomb:setPriority(self._root:getPriority())
-		self._scene:addFX(bomb)
+		self._battlefield:addFX(bomb)
 	else
 		self:destroy()
 	end
@@ -152,7 +152,7 @@ function Bullet.noop(self)
 end
 
 function Bullet.destroy(self)
-	self._scene:remove(self)
+	self._battlefield:remove(self)
 	
 	if self._root then
 		self._root:destroy()

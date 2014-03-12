@@ -3,14 +3,14 @@ local Unit = require "Unit"
 local Factor = require "Factor"
 local device = require "device"
 
-local Scene = {}
+local Battlefield = {}
 
 local LANE_WIDTH = 20
 local LANE_COUNT = math.floor(device.width / 2 / LANE_WIDTH)
 
-Scene.__index = Scene
+Battlefield.__index = Battlefield
 
-function Scene.new(root, seed)
+function Battlefield.new(root, seed)
 	local self = {
 		_units = {},
 		_FXs = {},
@@ -22,21 +22,21 @@ function Scene.new(root, seed)
 		
 		ticks = 0,
 	}
-	setmetatable(self, Scene)
+	setmetatable(self, Battlefield)
 	
 	return self
 end
 
-function Scene:destroy()
+function Battlefield:destroy()
 end
 
-function Scene:getForce(id)
+function Battlefield:getForce(id)
 	return self._forces[id]
 end
 
-function Scene:addUnit(props, force, x, y)
+function Battlefield:addUnit(props, force, x, y)
 	local o = Unit.new(props, self._forces[force])
-	o._scene = self
+	o._battlefield = self
 	o._ticks = self.ticks
 	self._root:add(o)
 	o:setLoc(x, y)
@@ -44,40 +44,40 @@ function Scene:addUnit(props, force, x, y)
 	return o
 end
 
-function Scene:addPlayerUnit(props, x, y)
+function Battlefield:addPlayerUnit(props, x, y)
 	return self:addUnit(props, Unit.FORCE_PLAYER, x, y)
 end
 
-function Scene:addEnemyUnit(props, x, y)
+function Battlefield:addEnemyUnit(props, x, y)
 	return self:addUnit(props, Unit.FORCE_ENEMY, x, y)
 end
 
-function Scene:addPlayerMontherShip(props, x, y)
+function Battlefield:addPlayerMontherShip(props, x, y)
 	local o = self:addUnit(props, Unit.FORCE_PLAYER, x, y)
 	self._playerMotherShip = o
 	return o
 end
 
-function Scene:addEnemyMotherShip(props, x, y)
+function Battlefield:addEnemyMotherShip(props, x, y)
 	local o = self:addUnit(props, Unit.FORCE_ENEMY, x, y)
 	self._enemyMotherShip = o
 	return o
 end
 
-function Scene:addFX(o)
-	o._scene = self
+function Battlefield:addFX(o)
+	o._battlefield = self
 	self._root:add(o)
 	self._FXs[o] = o
 	return o
 end
 
-function Scene:remove(o)
+function Battlefield:remove(o)
 	o:setLayer(nil)
 	self._units[o] = nil
 	self._FXs[o] = nil
 end
 
-function Scene:spawnPlayerUnit(props)
+function Battlefield:spawnPlayerUnit(props)
 	local x = math.random(-LANE_COUNT, LANE_COUNT) * LANE_WIDTH
 	local _, y = self._playerMotherShip:getLoc()
 	local o = self:addUnit(props, Unit.FORCE_PLAYER, x, self._playerOffset + y)
@@ -85,7 +85,7 @@ function Scene:spawnPlayerUnit(props)
 	return o
 end
 
-function Scene:spawnEnemyUnit(props)
+function Battlefield:spawnEnemyUnit(props)
 	local x = math.random(-LANE_COUNT, LANE_COUNT) * LANE_WIDTH
 	local _, y = self._enemyMotherShip:getLoc()
 	local o = self:addUnit(props, Unit.FORCE_ENEMY, x, self._enemyOffset + y)
@@ -97,7 +97,7 @@ local playerInfo = {
 	[1] = {run = nil, cmd = nil, spend = 1, cd = 10, nb = 3}
 }
 
-function Scene:loadPlayer(playerInfo)
+function Battlefield:loadPlayer(playerInfo)
 	self._player = playerInfo
 	for k, v in pairs(self._player) do
 		v._nb = v.nb
@@ -112,7 +112,7 @@ local aiInfo = {
 	[60] = {props, 3, 5},
 }
 
-function Scene:loadAI(aiInfo)
+function Battlefield:loadAI(aiInfo)
 	self._AI = aiInfo
 end
 
@@ -124,10 +124,10 @@ local playerAI = {
 	},
 }
 
-function Scene:loadPlayerAI()
+function Battlefield:loadPlayerAI()
 end
 
-function Scene:simulateAI(ticks)
+function Battlefield:simulateAI(ticks)
 	local index = ticks
 	if index > self._AI.loopBegin then
 		index = math.fmod(index, self._AI.loopBegin) + self._AI.loopBegin
@@ -140,19 +140,19 @@ function Scene:simulateAI(ticks)
 	end
 end
 
-function Scene:getPlayerLoc()
+function Battlefield:getPlayerLoc()
 	return self._playerMotherShip:getLoc()
 end
 
-function Scene:getEnemyLoc()
+function Battlefield:getEnemyLoc()
 	return self._enemyMotherShip:getLoc()
 end
 
-function Scene:getUnits()
+function Battlefield:getUnits()
 	return self._units
 end
 
-function Scene:runCommand(slot, x, y)
+function Battlefield:runCommand(slot, x, y)
 	local tb = self._player[slot]
 	if tb._nb > 0 then
 		tb._nb = tb._nb - 1
@@ -160,7 +160,7 @@ function Scene:runCommand(slot, x, y)
 	end
 end
 
-function Scene:emitAttackSpeedAura(x, y, r, force, value, duration)
+function Battlefield:emitAttackSpeedAura(x, y, r, force, value, duration)
 	for k, v in pairs(self._units) do
 		if v:isAlive() and v:isForce(force) and v:isPtInRange(x, y, r) then
 			v:addAttackSpeedFactor(value, duration)
@@ -168,7 +168,7 @@ function Scene:emitAttackSpeedAura(x, y, r, force, value, duration)
 	end
 end
 
-function Scene:emitMoveSpeedAura(x, y, r, force, value, duration)
+function Battlefield:emitMoveSpeedAura(x, y, r, force, value, duration)
 	for k, v in pairs(self._units) do
 		if v:isAlive() and v:isForce(force) and v:isPtInRange(x, y, r) then
 			v:addMoveSpeedFactor(value, duration)
@@ -176,7 +176,7 @@ function Scene:emitMoveSpeedAura(x, y, r, force, value, duration)
 	end
 end
 
-function Scene:emitRecoverHpAura(x, y, r, force, value, duration)
+function Battlefield:emitRecoverHpAura(x, y, r, force, value, duration)
 	for k, v in pairs(self._units) do
 		if v:isAlive() and v:isForce(force) and v:isPtInRange(x, y, r) then
 			v:addRecoverHpFactor(value, duration)
@@ -184,7 +184,7 @@ function Scene:emitRecoverHpAura(x, y, r, force, value, duration)
 	end
 end
 
-function Scene:emitAttackPowerAura(x, y, r, force, value, duration)
+function Battlefield:emitAttackPowerAura(x, y, r, force, value, duration)
 	for k, v in pairs(self._units) do
 		if v:isAlive() and v:isForce(force) and v:isPtInRange(x, y, r) then
 			v:addAttackPowerFactor(value, duration)
@@ -192,7 +192,7 @@ function Scene:emitAttackPowerAura(x, y, r, force, value, duration)
 	end
 end
 
-function Scene:update()
+function Battlefield:update()
 	self.ticks = self.ticks + 1
 	
 	self._forces:update(self.ticks)
@@ -222,7 +222,7 @@ function Scene:update()
 	end
 end
 
-function Scene:getUnitsInRound(force, x, y, r, exclusion)
+function Battlefield:getUnitsInRound(force, x, y, r, exclusion)
 	local units = {}
 	for k, v in pairs(self._units) do
 		if v:isAlive() and v:isForce(force) and (not exclusion or not exclusion[v]) then
@@ -234,7 +234,7 @@ function Scene:getUnitsInRound(force, x, y, r, exclusion)
 	return units
 end
 
-function Scene:getNearestUnit(force, x, y, r, exclusion)
+function Battlefield:getNearestUnit(force, x, y, r, exclusion)
 	local unit = nil
 	local dist = r ^ 2
 	for k, v in pairs(self._units) do
@@ -249,14 +249,14 @@ function Scene:getNearestUnit(force, x, y, r, exclusion)
 	return unit
 end
 
-function Scene:getRandomUnit(force, x, y, r, exclusion)
+function Battlefield:getRandomUnit(force, x, y, r, exclusion)
 	local units = self:getUnitsInRound(force, x, y, r, exclusion)
 	if #units > 0 then
 		return units[math.random(#units)]
 	end
 end
 
-function Scene:getBestTarget(force, r)
+function Battlefield:getBestTarget(force, r)
 	local n = 0
 	local o
 	for k, v in pairs(self._units) do
@@ -274,4 +274,4 @@ function Scene:getBestTarget(force, r)
 	return o
 end
 
-return Scene
+return Battlefield

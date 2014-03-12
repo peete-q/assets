@@ -69,7 +69,7 @@ mainAS = actionset.new()
 local HomeStage = require "HomeStage"
 local GameStage = require "GameStage"
 local SpaceStage = require "SpaceStage"
-local Scene = require "Scene"
+local Battlefield = require "Battlefield"
 local Unit = require "Unit"
 local Bullet = require "Bullet"
 local timer = require "timer"
@@ -95,7 +95,7 @@ if true then return end
 W, H = device.width, device.height
 layer = uiLayer
 
-scene = Scene.new(W, H, layer)
+scene = Battlefield.new(W, H, layer)
 
 local aiProps = {
 	bodyGfx="icon-earth.png",

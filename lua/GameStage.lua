@@ -1,7 +1,7 @@
 
 local ui = require "ui"
 local Unit = require "Unit"
-local Scene = require "Scene"
+local Battlefield = require "Battlefield"
 local profile = require "UserProfile"
 local node = require "node"
 local Image = require "gfx.Image"
@@ -66,7 +66,7 @@ function GameStage:addPreparing(props, x, y)
 	e:setListener(MOAITimer.EVENT_STOP, function()
 		self._preparings.n = self._preparings.n - 1
 		self:removePreparing(index)
-		self._scene:spawnPlayerUnit(props)
+		self._battlefield:spawnPlayerUnit(props)
 	end)
 	local icon = self._uiRoot:add(Image.new(props.icon))
 	unit:setLoc(x, y)
@@ -98,7 +98,7 @@ function GameStage:getFreeLoc()
 end
 
 function GameStage:update()
-	self._scene:update()
+	self._battlefield:update()
 	self._ticks = self._ticks + 1
 	if self._ticks >= 10 then
 		self._ticks = self._ticks - 10
@@ -106,10 +106,35 @@ function GameStage:update()
 	end
 end
 
+local lastX, lastY
+function GameStage:onDragBegin(touchIdx, x, y, tapCount)
+	lastX = x
+	lastY = y
+	return true
+end
+
+function GameStage:onDragMove(touchIdx, x, y, tapCount)
+	local diffX = x - lastX
+	local diffY = y - lastY
+	lastX = x
+	lastY = y
+	local x, y = camera:getLoc()
+	x = math.clamp(x - diffX, self._xMin, self._xMax)
+	y = math.clamp(y + diffY, self._yMin, self._yMax)
+	camera:setLoc(x, y)
+end
+
+function GameStage:loadLevel(data)
+	self._xMin = -data.width / 2
+	self._xMax = data.width / 2
+	self._yMin = -data.height / 2
+	self._yMax = data.height / 2
+	self._battlefield = Battlefield.new(sceneLayer)
+	self._battlefield:addPlayerMontherShip(profile.motherShip, unpack(data.playerLoc))
+	self._battlefield:addEnemy()
+end
+
 function GameStage:open(stage, level)
-	self._width = level.width
-	self._height = level.height
-	self._scene = Scene.new(sceneLayer)
 	self._preparings = {
 		n = 0,
 		index = 0,
@@ -131,8 +156,8 @@ function GameStage:open(stage, level)
 end
 
 function GameStage:close()
-	self._scene:destroy()
-	self._scene = nil
+	self._battlefield:destroy()
+	self._battlefield = nil
 	
 	farLayer:remove(self._farRoot)
 	nearLayer:remove(self._nearRoot)

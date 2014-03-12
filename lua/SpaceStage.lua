@@ -87,7 +87,7 @@ function SpaceStage:startFighting(o)
 	self._gameStage:open(self, o._level)
 end
 
-local space = {
+local starfieldData = {
 	units = {},
 	width = device.width * 2,
 	height = device.height * 2,
@@ -168,7 +168,7 @@ function SpaceStage:open()
 		self:load()
 		self._loaded = true
 	end
-	self:loadStarfield(space)
+	self:loadStarfield(starfieldData)
 	
 	farLayer:add(self._farRoot)
 	nearLayer:add(self._nearRoot)

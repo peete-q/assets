@@ -123,7 +123,7 @@ function Unit.new(props, force)
 		_lastRecoverTicks = 0,
 		_moveSpeed = 0,
 		_writelog = true,
-		_scene = nil,
+		_battlefield = nil,
 		_motionDriver = nil,
 		_target = nil,
 		_rigid = nil,
@@ -156,7 +156,7 @@ function Unit.new(props, force)
 end
 
 function Unit:destroy()
-	self._scene:remove(self)
+	self._battlefield:remove(self)
 	
 	if self._root then
 		self._root:destroy()
@@ -206,19 +206,19 @@ function Unit:getPriority()
 end
 
 function Unit:addAttackSpeedFactor(value, duration)
-	self._attackSpeedFactor:add(value, self._scene.ticks + duration)
+	self._attackSpeedFactor:add(value, self._battlefield.ticks + duration)
 end
 
 function Unit:addMoveSpeedFactor(value, duration)
-	self._moveSpeedFactor:add(value, self._scene.ticks + duration)
+	self._moveSpeedFactor:add(value, self._battlefield.ticks + duration)
 end
 
 function Unit:addRecoverHpFactor(value, duration)
-	self._recoverHpFactor:add(value, self._scene.ticks + duration)
+	self._recoverHpFactor:add(value, self._battlefield.ticks + duration)
 end
 
 function Unit:addAttackPowerFactor(value, duration)
-	self._attackPowerFactor:add(value, self._scene.ticks + duration)
+	self._attackPowerFactor:add(value, self._battlefield.ticks + duration)
 end
 
 function Unit:getAttackSpeed()
@@ -358,7 +358,7 @@ function Unit:update()
 		return
 	end
 	
-	self._accel = math.min(self._scene.ticks - self._ticks, _ACCELERATION_MAX)
+	self._accel = math.min(self._battlefield.ticks - self._ticks, _ACCELERATION_MAX)
 	self._ticks = self._ticks + self._accel
 	
 	self._attackSpeedFactor:update(self._ticks)
@@ -467,10 +467,10 @@ function Unit:move()
 
 	local x, y = self:getLoc()
 	if self._force.id == Unit.FORCE_PLAYER then
-		local _x, _y = self._scene:getEnemyLoc()
+		local _x, _y = self._battlefield:getEnemyLoc()
 		y = _y
 	else
-		local _x, _y = self._scene:getPlayerLoc()
+		local _x, _y = self._battlefield:getPlayerLoc()
 		y = _y
 	end
 	self:moveTo(x, y)
@@ -520,9 +520,9 @@ function Unit:fire(target)
 	local n = 0
 	for k, v in pairs(targets) do
 		if self.lockTarget then
-			Bullet.fireLocked(self.bullet, self._scene, self:getAttackPower(), self:getEnemy(), x, y, v)
+			Bullet.fireLocked(self.bullet, self._battlefield, self:getAttackPower(), self:getEnemy(), x, y, v)
 		else
-			Bullet.fireToward(self.bullet, self._scene, self:getAttackPower(), self:getEnemy(), x, y, tx, ty)
+			Bullet.fireToward(self.bullet, self._battlefield, self:getAttackPower(), self:getEnemy(), x, y, tx, ty)
 		end
 		n = n + 1
 		if n >= self.shots then
@@ -557,7 +557,7 @@ function Unit:getAttackPriority(target)
 end
 
 function Unit:searchTarget(range, exclusion)
-	local units = self._scene:getUnits()
+	local units = self._battlefield:getUnits()
 	local enemy = self:getEnemy()
 	local dist = range ^ 2
 	local priority = 0
@@ -577,7 +577,7 @@ function Unit:searchTarget(range, exclusion)
 end
 
 function Unit:searchNearestTarget(range, exclusion)
-	local units = self._scene:getUnits()
+	local units = self._battlefield:getUnits()
 	local enemy = self:getEnemy()
 	local dist = range ^ 2
 	local target = nil

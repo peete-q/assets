@@ -472,7 +472,7 @@ function HomeStage:initMenu()
 	end
 end
 
-function HomeStage:load(onOkay)
+function HomeStage:load()
 -- MOAIDebugLines.setStyle ( MOAIDebugLines.PARTITION_CELLS, 2, 1, 0, 0 )
 -- MOAIDebugLines.setStyle ( MOAIDebugLines.PARTITION_PADDED_CELLS, 1, 0, 1, 0 )
 -- MOAIDebugLines.setStyle ( MOAIDebugLines.PROP_MODEL_BOUNDS, 2, 0, 0, 1 )
@@ -513,8 +513,9 @@ function HomeStage:update()
 end
 
 function HomeStage:enterSpace()
-	self:close()
-	self._spaceStage:open()
+	self:close(function()
+		self._spaceStage:open()
+	end)
 end
 
 function HomeStage:showMenu()
@@ -572,22 +573,33 @@ function HomeStage:open()
 	sceneLayer:add(self._sceneRoot)
 	ui.insertLayer(sceneLayer, 1)
 	
-	-- self:updateUserPanel()
+	self:updateUserPanel()
 end
 
-function HomeStage:close()
-	uiLayer:remove(self._uiRoot)
-	sceneLayer:remove(self._sceneRoot)
+function HomeStage:close(onEnd)
+	ui.removeLayer(uiLayer)
 	ui.removeLayer(sceneLayer)
 	
-	self._bgMoving:stop()
-	self._portalRotating:stop()
-	if self._menuShowing then
-		self._menuShowing:stop()
-	end
-	if self._menuHiding then
-		self._menuHiding:stop()
-	end
+	uiLayer:seekColor(0, 0, 0, 0, 0.75)
+	local action = sceneLayer:seekColor(0, 0, 0, 0, 0.75)
+	action:setListener(MOAIAction.EVENT_STOP, function()
+		uiLayer:remove(self._uiRoot)
+		sceneLayer:remove(self._sceneRoot)
+	
+		self._bgMoving:stop()
+		self._portalRotating:stop()
+		if self._menuShowing then
+			self._menuShowing:stop()
+		end
+		if self._menuHiding then
+			self._menuHiding:stop()
+		end
+		
+		ui.insertLayer(uiLayer, 1)
+		uiLayer:setColor(1, 1, 1, 1)
+		sceneLayer:setColor(1, 1, 1, 1)
+		onEnd()
+	end)
 end
 
 return HomeStage
