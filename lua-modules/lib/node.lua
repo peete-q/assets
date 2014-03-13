@@ -7,7 +7,6 @@ local function node_setLayer(self, layer)
 	end
 	if layer ~= nil then
 		self._setLayer(self, layer)
-		self._layer = layer
 		if self._children ~= nil then
 			for k, v in pairs(self._children) do
 				node_setLayer(v, layer)
@@ -15,7 +14,6 @@ local function node_setLayer(self, layer)
 		end
 	elseif self._layer ~= nil then
 		self._setLayer(self, nil)
-		self._layer = nil
 		if self._children ~= nil then
 			for k, v in pairs(self._children) do
 				node_setLayer(v, nil)
@@ -35,8 +33,9 @@ function node._setLayer(self, layer)
 	if layer then
 		layer:insertProp(self)
 	else
-		layer:removeProp(self)
+		self._layer:removeProp(self)
 	end
+	self._layer = layer
 end
 
 function node.setScissorRect(self, rect)
