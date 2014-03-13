@@ -38,6 +38,7 @@ function timer.runn(self, span, n, func, parent)
 		func()
 		return nil
 	end
+	self:setSpan(span)
 	self:setMode(MOAITimer.LOOP)
 	self:whenLoop(function()
 		if self:getTimesExecuted() > n then
