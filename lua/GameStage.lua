@@ -131,7 +131,7 @@ function GameStage:loadLevel(data)
 	self._yMax = data.height / 2
 	self._battlefield = Battlefield.new(sceneLayer)
 	self._battlefield:addPlayerMontherShip(profile.motherShip, unpack(data.playerLoc))
-	self._battlefield:addEnemy()
+	self._battlefield:addEnemyMotherShip(data.enemyMotherShip, unpack(data.enemyLoc))
 end
 
 function GameStage:open(stage, level)

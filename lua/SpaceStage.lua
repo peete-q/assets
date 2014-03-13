@@ -5,6 +5,7 @@ local Unit = require "Unit"
 local profile = require "UserProfile"
 local device = require "device"
 local Sprite = require "gfx.Sprite"
+local Image = require "gfx.Image"
 
 local blockOn = MOAIThread.blockOnAction
 local SpaceStage = {}
@@ -38,16 +39,23 @@ function SpaceStage:initStageBG()
 end
 
 function SpaceStage:initMenu()
-	local menuPanel = self._menuRoot:add(Image.new("menu-panel.png"))
+	local menuPanel = self._uiRoot:add(Image.new("menu-panel.png"))
 	local w, h = menuPanel:getSize()
 	menuPanel:setAnchor("RB", -w / 2, h / 2)
 	menuPanel:setPriority(1)
-	menuBack = self._menuRoot:add(ui.Button.new("menu-icon.png?scl=-1,1", "menu-icon.png?scl=-1.1,1.1"))
+	menuBack = menuPanel:add(ui.Button.new("menu-icon.png?scl=-1,1", "menu-icon.png?scl=-1.1,1.1"))
 	menuBack:setPriority(2)
+	menuBack.onClick = function()
+		self:close(function()
+			self._homeStage:open()
+		end)
+	end
 end
 
 function SpaceStage:load()
 	self._uiRoot = node.new()
+	self._uiRoot:setLayoutSize(device.width, device.height)
+	
 	self._sceneRoot = node.new()
 	self._farRoot = node.new()
 	self._nearRoot = node.new()
@@ -168,6 +176,7 @@ function SpaceStage:open()
 		self:load()
 		self._loaded = true
 	end
+	self:initMenu()
 	self:loadStarfield(starfieldData)
 	
 	farLayer:add(self._farRoot)
@@ -179,7 +188,7 @@ function SpaceStage:open()
 	ui.defaultTouchHandler = self
 end
 
-function SpaceStage:close()
+function SpaceStage:close(onEnd)
 	farLayer:remove(self._farRoot)
 	nearLayer:remove(self._nearRoot)
 	sceneLayer:remove(self._sceneRoot)
@@ -187,6 +196,8 @@ function SpaceStage:close()
 	
 	ui.removeLayer(sceneLayer)
 	ui.defaultTouchHandler = nil
+	
+	onEnd()
 end
 
 return SpaceStage
