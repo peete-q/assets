@@ -10,7 +10,7 @@ local Image = require "gfx.Image"
 local blockOn = MOAIThread.blockOnAction
 local SpaceStage = {}
 
-function SpaceStage:init(homeStgae, gameStage)
+function SpaceStage:init(homeStage, gameStage)
 	self._homeStage = homeStage
 	self._gameStage = gameStage
 end

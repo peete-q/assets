@@ -40,7 +40,9 @@ end
 
 function node.setScissorRect(self, rect)
 	self._scissorRect = rect
-	self._preNodeSetScissorRect(self, rect)
+	if self._preNodeSetScissorRect then
+		self._preNodeSetScissorRect(self, rect)
+	end
 end
 
 function node.getScissorRect(self)
