@@ -241,7 +241,7 @@ function Unit:getAttackPower()
 end
 
 function Unit:_setLayer(layer)
-	layer:insertProp(self._root)
+	self._root:_setLayer(layer)
 end
 
 function Unit:setParent(parent)
