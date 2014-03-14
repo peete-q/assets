@@ -91,11 +91,12 @@ function interpolate.lagrange(x, y, t)
 	elseif n == 1 then
 		return y[1]
 	elseif n == 2 then
+		assert(x[1] ~= x[2], "wrong x in lagrange")
 		return (y[1] * (t - x[2]) - y[2] * (t - x[1])) / (x[1] - x[2])
 	end
 	
 	local i = 1
-	while x[i] < t and i <= n do
+	while i <= n and x[i] < t do
 		i = i + 1
 	end
 	
@@ -106,7 +107,7 @@ function interpolate.lagrange(x, y, t)
 		local s = 1
 		for j = k, m do
 			if j ~= i then
-				-- lagrange formula
+				assert(x[i] ~= x[j], "wrong x in lagrange")
 				s = s * (t - x[j]) / (x[i] - x[j])
 			end
 		end
@@ -122,8 +123,9 @@ function interpolate.newton(x, y)
 		g[i] = v
 	end
 	
-	for i = 2, #x do
-		for j = #x, i, -1 do
+	for i = 1, #x do
+		for j = #x, i + 1, -1 do
+			assert(x[j] ~= x[j - i], "wrong x in newton")
 			g[j] = (g[j] - g[j - 1]) / (x[j] - x[j - i])
 		end
 	end
