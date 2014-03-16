@@ -7,7 +7,7 @@ local breakstr = util.breakstr
 local Sprite = {}
 
 local function Sprite_getSize(self)
-	if not self or not self._deck or not self._deck.getSize then
+	if not self._deck or not self._deck.getSize then
 		return nil
 	end
 	return self._deck:getSize(self.deckLayer)
@@ -177,9 +177,43 @@ local function Sprite_setDeck(self, deck)
 	self._preSpriteSetDeck(self, deck)
 end
 
+local function Sprite_throttle(self, num)
+	self._anim:throttle(num)
+end
+
+local function _sequencedeck_getSize(self)
+	return unpack(self._size)
+end
+
+local function Sprite_loadSequence(self, textureName, animName, numFrames, interval)
+	local tex = resource.texture(textureName)
+	local w, h = tex:getSize()
+	local deck = MOAIGfxQuadDeck2D.new()
+	deck:reserve(numFrames)
+	deck._map = {}
+	deck._sizes = {}
+	local hw = w / numFrames / 2
+	local curve = MOAIAnimCurve.new()
+	curve:reserveKeys (numFrames)
+	for i = 1, numFrames do
+		deck:setUVRect(i, (i - 1) / numFrames, 0, i / numFrames, 1)
+		deck:setRect(i, -hw, 0, hw, h)
+		curve:setKey(i, (i - 1) * interval, i, MOAIEaseType.FLAT)
+	end
+	if not deck._animCurves then
+		deck._animCurves = {}
+	end
+	deck._animCurves[animName] = curve
+	deck:setTexture(tex)
+	deck.type = "sequencedeck"
+	deck.numFrames = numFrames
+	deck.getSize = _sequencedeck_getSize
+	deck._size = {hw * 2, h}
+	self:setDeck(deck)
+	self._sourceName = tostring(deck)
+end
+
 function Sprite.new(data)
-	assert(data, "need 'userdata' or url")
-	
 	local o = node.new(MOAIProp2D.new())
 	o._preSpriteSetDeck = o.setDeck
 	o.setDeck = Sprite_setDeck
@@ -190,8 +224,11 @@ function Sprite.new(data)
 	o.setImage = Sprite_setImage
 	o.playAnim = Sprite_playAnim
 	o.stopAnim = Sprite_stopAnim
+	o.loadSequence = Sprite_loadSequence
+	o.throttle = Sprite_throttle
 	
-	if type(data) == "userdata" then
+	local tname = type(data)
+	if tname == "userdata" then
 		local deck = MOAIGfxQuad2D.new()
 		do
 			local tex = data
@@ -201,10 +238,16 @@ function Sprite.new(data)
 			o:setDeck(deck)
 		end
 		o._sourceName = tostring(data)
-	else
+	elseif tname == "string" then
 		Sprite_parse(o, data)
 		o._sourceName = data
 	end
+	return o
+end
+
+function Sprite.newSequence(textureName, animName, numFrames, interval)
+	local o = Sprite.new()
+	o:loadSequence(textureName, animName, numFrames, interval)
 	return o
 end
 

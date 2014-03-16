@@ -122,7 +122,7 @@ function Unit.new(props, force)
 		_attackPowerFactor = Factor.new(),
 		_lastRecoverTicks = 0,
 		_moveSpeed = 0,
-		_writelog = true,
+		_writelog = nil,
 		_battlefield = nil,
 		_motionDriver = nil,
 		_target = nil,
@@ -241,7 +241,12 @@ function Unit:getAttackPower()
 end
 
 function Unit:_setLayer(layer)
-	self._root:_setLayer(layer)
+	if layer then
+		layer:insertProp(self._root)
+	else
+		self._layer:removeProp(self._root)
+	end
+	self._layer = layer
 end
 
 function Unit:setParent(parent)

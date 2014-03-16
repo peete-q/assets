@@ -13,6 +13,9 @@ local SpaceStage = {}
 function SpaceStage:init(homeStage, gameStage)
 	self._homeStage = homeStage
 	self._gameStage = gameStage
+	
+	self.initUserPanel = homeStage.initUserPanel
+	self.updateUserPanel = homeStage.updateUserPanel
 end
 
 function SpaceStage:initStageBG()
@@ -43,7 +46,7 @@ function SpaceStage:initMenu()
 	local w, h = menuPanel:getSize()
 	menuPanel:setAnchor("RB", -w / 2, h / 2)
 	menuPanel:setPriority(1)
-	menuBack = menuPanel:add(ui.Button.new("menu-icon.png?scl=-1,1", "menu-icon.png?scl=-1.1,1.1"))
+	menuBack = menuPanel:add(ui.Button.new("back.png?scl=-1,1", "back.png?scl=-1.1,1.1"))
 	menuBack:setPriority(2)
 	menuBack.onClick = function()
 		self:close(function()
@@ -88,24 +91,30 @@ function SpaceStage:load()
 	end)
 	
 	self:initStageBG()
+	self:initUserPanel()
+	self:updateUserPanel()
 end
 
-function SpaceStage:startFighting(o)
-	self:close()
-	self._gameStage:open(self, o._level)
+function SpaceStage:startFighting(level)
+	self:close(function()
+		self._gameStage:open(self, level)
+	end)
 end
 
 local starfieldData = {
-	units = {},
+	units = {
+		ship01 = {
+			props = {bodyGfx = "mothership000.png"},
+			loc = {300, 100},
+		},
+	},
 	width = device.width * 2,
 	height = device.height * 2,
-	spawnX = 0,
-	spawnY = 0,
-	initX = 0,
-	initY = 0,
+	spawnLoc = {0, 0},
+	cameraLoc = {0, 0},
 }
 
-function SpaceStage:loadStarfield(data)
+function SpaceStage:loadStarfield(starfieldData)
 	local planet = self._nearRoot:add(Sprite.new("mars.png"))
 	planet:setLoc(-500, 0)
 	
@@ -119,27 +128,29 @@ function SpaceStage:loadStarfield(data)
 	local enemy = self._forces[Unit.FORCE_ENEMY]
 	local player = self._forces[Unit.FORCE_PLAYER]
 	self._unitRoot:removeAll()
-	for i, v in ipairs(data.units) do
+	for k, v in pairs(starfieldData.units) do
 		local o = self._unitRoot:add(Unit.new(v.props, enemy))
-		o:setLoc(v.x, v.y)
+		o:setLoc(unpack(v.loc))
 		o._level = v.level
+		o.handleTouch = ui.handleTouch
 		o.onClick = self.onClickUnit
+		o:setTreePriority(2)
 	end
 	self._motherShip = self._unitRoot:add(Unit.new(profile.motherShip, player))
-	self._motherShip:setLoc(data.spawnX, data.spawnY)
-	self._motherShip:setPriority(10)
-	camera:setLoc(data.initX, data.initY)
-	self._xMin = (device.width - data.width) / 2
-	self._xMax = (data.width - device.width) / 2
-	self._yMin = (device.height - data.height) / 2
-	self._yMax = (data.height - device.height) / 2
+	self._motherShip:setLoc(unpack(starfieldData.spawnLoc))
+	self._motherShip:setTreePriority(3)
+	camera:setLoc(unpack(starfieldData.cameraLoc))
+	self._xMin = (device.width - starfieldData.width) / 2
+	self._xMax = (starfieldData.width - device.width) / 2
+	self._yMin = (device.height - starfieldData.height) / 2
+	self._yMax = (starfieldData.height - device.height) / 2
 end
 
 local self = SpaceStage
 function SpaceStage.onClickUnit(o, touchIdx, x, y, tapCount)
 	self._motherShip:moveTo(x, y)
 	self._motherShip:whenArrive(function()
-		self:startFighting(o)
+		self:startFighting(o._level)
 	end)
 end
 

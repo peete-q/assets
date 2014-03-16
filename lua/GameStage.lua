@@ -4,10 +4,18 @@ local Unit = require "Unit"
 local Battlefield = require "Battlefield"
 local profile = require "UserProfile"
 local node = require "node"
+local device = require "device"
 local Image = require "gfx.Image"
 local FillBar = require "gfx.FillBar"
+local TextBox = require "gfx.TextBox"
 
 local blockOn = MOAIThread.blockOnAction
+
+local FONT_SMALL = "normal@18"
+local FONT_MIDDLE = "normal@24"
+local BUTTON_IMAGE = {"button-normal.png", 1.1, 0.5}
+local FONT_COLOR_LIGHT = {120/255, 255/255, 220/255}
+local FONT_COLOR_GOLD = {255/255, 191/255, 7/255}
 
 local GameStage = {}
 local preparingSpace = 22
@@ -19,25 +27,21 @@ local skills = {
 function GameStage:init()
 end
 
-function GameStage:load()
-	self._uiRoot = node.new()
-	self._sceneRoot = node.new()
-	self._farRoot = node.new()
-	self._nearRoot = node.new()
-end
-
-function GameStage:setupFleet()
-	local x = 0
-	local y = 11
-	local space = 50
-	for k, v in ipairs(profile.fleet) do
+function GameStage:initFleetSlots()
+	local x = 50
+	local y = 50
+	local space = 80
+	for i = 1, 6 do
 		local slot = self._uiRoot:add(ui.Button.new("slot.png"))
-		slot:setAnchor("BL", x, y)
+		slot:setAnchor("LB", x, y)
 		slot.onClick = function()
 			GameStage:addPreparing(v, slot:getLoc())
 		end
-		x = x + 50
+		x = x + space
 	end
+end
+
+function GameStage:setupFleet()
 end
 
 function GameStage:setupSpells()
@@ -124,14 +128,77 @@ function GameStage:onDragMove(touchIdx, x, y, tapCount)
 	camera:setLoc(x, y)
 end
 
-function GameStage:loadLevel(data)
-	self._xMin = -data.width / 2
-	self._xMax = data.width / 2
-	self._yMin = -data.height / 2
-	self._yMax = data.height / 2
+function GameStage:load()
+	self._uiRoot = node.new()
+	self._uiRoot:setLayoutSize(device.width, device.height)
+	
+	self._sceneRoot = node.new()
+	self._farRoot = node.new()
+	self._nearRoot = node.new()
+	
+	self:initStageBG()
+	self:initFleetSlots()
+	self:initUserPanel()
+end
+
+function GameStage:initStageBG()
+	local bg = self._farRoot:add(node.new())
+	local deck = MOAITileDeck2D.new()
+	local tex = resource.texture("starfield.jpg")
+	deck:setTexture(tex)
+	local w, h = tex:getSize()
+	deck:setSize(1, 1)
+	deck:setRect (-0.5, 0.5, 0.5, -0.5)
+	local grid = MOAIGrid.new ()
+	grid:setSize(1, 1, w, h)
+	grid:setRepeat ( true )
+	grid:setRow(1, 1)
+	bg:setDeck(deck)
+	bg:setGrid(grid)
+end
+
+function GameStage:initUserPanel()
+	self._userPanel = self._uiRoot:add(Image.new("user_panel_02.png"))
+	local w, h = self._userPanel:getSize()
+	self._userPanel:setAnchor("LT", w / 2, -h / 2)
+	self._coinsNum = self._userPanel:add(TextBox.new("0", FONT_SMALL, nil, "MM", 60, 60))
+	self._diamondsNum = self._userPanel:add(TextBox.new("0", FONT_SMALL, nil, "MM", 60, 60))
+	self._expBar = self._userPanel:add(FillBar.new("exp-bar.png"))
+	self._avatar = self._userPanel:add(Image.new("avatar.png"))
+	
+	self._expBar:setFill(0, 0)
+	self._expBar:setLoc(5,-16)
+	self._coinsNum:setLoc(150, 28)
+	self._diamondsNum:setLoc(0, 28)
+	self._avatar:setLoc(-200, 0)
+end
+
+local testLevel = {
+	width = 960,
+	height = 640,
+	playerMotherShip = {
+		loc = {-480, 0},
+		dir = 180,
+	},
+	enemyMotherShip = {
+		props = {bodyGfx = "mothership000.png?rot=-90"},
+		loc = {480, 0},
+		dir = 180,
+	},
+	cameraLoc = {0, 0},
+}
+
+function GameStage:loadLevel(levelData)
+	self._xMin = -levelData.width / 2
+	self._xMax = levelData.width / 2
+	self._yMin = -levelData.height / 2
+	self._yMax = levelData.height / 2
 	self._battlefield = Battlefield.new(sceneLayer)
-	self._battlefield:addPlayerMontherShip(profile.motherShip, unpack(data.playerLoc))
-	self._battlefield:addEnemyMotherShip(data.enemyMotherShip, unpack(data.enemyLoc))
+	local playerMS = self._battlefield:addPlayerMontherShip(profile.motherShip, unpack(levelData.playerMotherShip.loc))
+	playerMS:setDir(levelData.playerMotherShip.dir)
+	local enemyMS = self._battlefield:addEnemyMotherShip(levelData.enemyMotherShip.props, unpack(levelData.enemyMotherShip.loc))
+	playerMS:setDir(levelData.enemyMotherShip.dir)
+	camera:setLoc(unpack(levelData.cameraLoc))
 end
 
 function GameStage:open(stage, level)
@@ -153,6 +220,8 @@ function GameStage:open(stage, level)
 	uiLayer:add(self._uiRoot)
 	
 	ui.defaultTouchHandler = self
+	
+	self:loadLevel(testLevel)
 end
 
 function GameStage:close()
