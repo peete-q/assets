@@ -95,8 +95,10 @@ function SpaceStage:startFighting(o)
 	self._gameStage:open(self, o._level)
 end
 
-local starfieldData = {
-	units = {},
+local testStarfield = {
+	units = {
+		enemy = {props = {bodyGfx = "test.png?scl=2"},},
+	},
 	width = device.width * 2,
 	height = device.height * 2,
 	spawnX = 0,
@@ -105,7 +107,7 @@ local starfieldData = {
 	initY = 0,
 }
 
-function SpaceStage:loadStarfield(data)
+function SpaceStage:loadStarfield(starfieldData)
 	local planet = self._nearRoot:add(Sprite.new("mars.png"))
 	planet:setLoc(-500, 0)
 	
@@ -119,20 +121,20 @@ function SpaceStage:loadStarfield(data)
 	local enemy = self._forces[Unit.FORCE_ENEMY]
 	local player = self._forces[Unit.FORCE_PLAYER]
 	self._unitRoot:removeAll()
-	for i, v in ipairs(data.units) do
+	for k, v in pairs(starfieldData.units) do
 		local o = self._unitRoot:add(Unit.new(v.props, enemy))
 		o:setLoc(v.x, v.y)
 		o._level = v.level
 		o.onClick = self.onClickUnit
 	end
 	self._motherShip = self._unitRoot:add(Unit.new(profile.motherShip, player))
-	self._motherShip:setLoc(data.spawnX, data.spawnY)
+	self._motherShip:setLoc(starfieldData.spawnX, starfieldData.spawnY)
 	self._motherShip:setPriority(10)
-	camera:setLoc(data.initX, data.initY)
-	self._xMin = (device.width - data.width) / 2
-	self._xMax = (data.width - device.width) / 2
-	self._yMin = (device.height - data.height) / 2
-	self._yMax = (data.height - device.height) / 2
+	camera:setLoc(starfieldData.initX, starfieldData.initY)
+	self._xMin = (device.width - starfieldData.width) / 2
+	self._xMax = (starfieldData.width - device.width) / 2
+	self._yMin = (device.height - starfieldData.height) / 2
+	self._yMax = (starfieldData.height - device.height) / 2
 end
 
 local self = SpaceStage
@@ -177,7 +179,7 @@ function SpaceStage:open()
 		self._loaded = true
 	end
 	self:initMenu()
-	self:loadStarfield(starfieldData)
+	self:loadStarfield(testStarfield)
 	
 	farLayer:add(self._farRoot)
 	nearLayer:add(self._nearRoot)

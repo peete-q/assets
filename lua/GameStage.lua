@@ -124,14 +124,21 @@ function GameStage:onDragMove(touchIdx, x, y, tapCount)
 	camera:setLoc(x, y)
 end
 
-function GameStage:loadLevel(data)
-	self._xMin = -data.width / 2
-	self._xMax = data.width / 2
-	self._yMin = -data.height / 2
-	self._yMax = data.height / 2
+local testLevel = {
+	width = 1920,
+	height = 640,
+	playerLoc = {-400, 0},
+	enemyLoc = {900, 0},
+}
+
+function GameStage:loadLevel(levelData)
+	self._xMin = -levelData.width / 2
+	self._xMax = levelData.width / 2
+	self._yMin = -levelData.height / 2
+	self._yMax = levelData.height / 2
 	self._battlefield = Battlefield.new(sceneLayer)
-	self._battlefield:addPlayerMontherShip(profile.motherShip, unpack(data.playerLoc))
-	self._battlefield:addEnemyMotherShip(data.enemyMotherShip, unpack(data.enemyLoc))
+	self._battlefield:addPlayerMontherShip(profile.motherShip, unpack(levelData.playerLoc))
+	self._battlefield:addEnemyMotherShip(levelData.enemyMotherShip, unpack(levelData.enemyLoc))
 end
 
 function GameStage:open(stage, level)
@@ -153,6 +160,8 @@ function GameStage:open(stage, level)
 	uiLayer:add(self._uiRoot)
 	
 	ui.defaultTouchHandler = self
+	
+	self:loadLevel(testLevel)
 end
 
 function GameStage:close()

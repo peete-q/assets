@@ -42,13 +42,13 @@ local _defaultProps = {
 	movable = true,
 	lockTarget = true,
 	
-	specialPower = undefined,
 	bodyGfx = undefined,
 	propellerGfx = undefined,
 	muzzleGfx = undefined,
 	fireSfx = undefined,
 	explodeGfx = undefined,
 	explodeSfx = undefined,
+	specialPower = undefined,
 	
 	bullet = {},
 	attackPriorities = {},
@@ -137,12 +137,12 @@ function Unit.new(props, force)
 	
 	self._root = self:add(node.new())
 	local body = self._root:add(Sprite.new(self.bodyGfx))
-	if props.propellerGfx then
-		self._propeller = Sprite.new(props.propellerGfx)
+	if self.propellerGfx then
+		self._propeller = Sprite.new(self.propellerGfx)
 		self._root:add(self._propeller)
 	end
-	if props.muzzleGfx then
-		self._muzzle = Sprite.new(props.muzzleGfx)
+	if self.muzzleGfx then
+		self._muzzle = Sprite.new(self.muzzleGfx)
 	end
 	self._drifting = MOAIThread.new()
 	self._drifting:run(function()
