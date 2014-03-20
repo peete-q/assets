@@ -385,20 +385,23 @@ function HomeStage:initPortal()
 end
 
 function HomeStage:initUserPanel()
-	self._userPanel = self._uiRoot:add(Image.new ("user-panel.png"))
+	self._userPanel = self._uiRoot:add(Image.new("user-panel.png"))
 	local w, h = self._userPanel:getSize()
 	self._userPanel:setAnchor("LT", w / 2, -h / 2)
 	self._coinsNum = self._userPanel:add(TextBox.new("0", FONT_SMALL, nil, "MM", 60, 60))
-    self._coinsNum:setLoc(0, 0)
 	self._diamondsNum = self._userPanel:add(TextBox.new("0", FONT_SMALL, nil, "MM", 60, 60))
-    self._diamondsNum:setLoc(0, 0)
 	self._expBar = self._userPanel:add(FillBar.new("exp-bar.png"))
-	self._expBar:setLoc(0, 0)
+	self._avatar = self._userPanel:add(Image.new("avatar.png"))
+	
+	self._expBar:setLoc(5,-16)
+	self._coinsNum:setLoc(150, 28)
+	self._diamondsNum:setLoc(0, 28)
+	self._avatar:setLoc(-200, 0)
 end
 
 function HomeStage:updateUserPanel()
 	local num = profile.currExp / profile.expList[profile.level]
-	self._expBar:setFill(num)
+	self._expBar:setFill(0, 1)
 	self._coinsNum:setString(tostring(profile.coins))
 	self._diamondsNum:setString(tostring(profile.diamonds))
 end
@@ -572,6 +575,7 @@ function HomeStage:open()
 	uiLayer:add(self._uiRoot)
 	sceneLayer:add(self._sceneRoot)
 	ui.insertLayer(sceneLayer, 1)
+	camera:setLoc(0, 0)
 	
 	self:updateUserPanel()
 end
