@@ -548,7 +548,7 @@ local function Button_handleTouch(self, eventType, touchIdx, x, y, tapCount)
 end
 
 local function _MakePage(o)
-	return gfxutil.parse(o)
+	return gfxutil.loadAssets(o)
 end
 
 local function Button_showPageUp(self)

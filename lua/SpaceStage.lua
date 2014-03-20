@@ -101,7 +101,7 @@ function SpaceStage:startFighting(level)
 	end)
 end
 
-local starfieldData = {
+local testStarfield = {
 	units = {
 		ship01 = {
 			props = {bodyGfx = "mothership000.png"},

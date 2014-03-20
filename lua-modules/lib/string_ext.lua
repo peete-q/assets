@@ -52,7 +52,7 @@ end
 --		 left-justify)
 --	 @param [p]: string to pad with [" "]
 -- @returns
---	 s_: justified string
+--	 @param s_: justified string
 function string.pad (s, w, p)
 	p = string.rep (p or " ", abs (w))
 	if w < 0 then
@@ -64,24 +64,29 @@ end
 -- @func split: Split a string at a given separator
 --	 @param s: string to split
 --	 @param sep: separator regex
+--	 @param [num]: number to split [nil]
+--	 @param [plain]: turns off the pattern matching facilities [nil]
 -- @returns
 --	 @param ...: list of strings
-function string.split (s, sep)
+function string.split (s, sep, num, plain)
 	local list = {}
 	local pos = 1
-	while true do
-		do
-			local first, last = string.find(s, sep, pos)
-			if first then
-				table.insert(list, string.sub(s, pos, first - 1))
-				pos = last + 1
-			else
-				table.insert(list, string.sub(s, pos))
-				break
-			end
+	local n = 1
+	while true and (not num or n <= num) do
+		local first, last = string.find(s, sep, pos, plain)
+		if first then
+			table.insert(list, string.sub(s, pos, first - 1))
+			pos = last + 1
+			n = n + 1
+		else
+			table.insert(list, string.sub(s, pos))
+			break
 		end
+	end
+	
+	if #list == 0 then
+		return s
 	end
 	return unpack(list)
 end
-
 

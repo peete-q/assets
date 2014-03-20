@@ -1,8 +1,6 @@
-local url = require "url"
-local util = require "util"
-local node = require "node"
 
-local breakstr = util.breakstr
+local url = require "url"
+local node = require "node"
 
 local Sprite = {}
 
@@ -13,9 +11,11 @@ local function Sprite_getSize(self)
 	return self._deck:getSize(self.deckLayer)
 end
 
-local function Sprite_parse(self, imageName)
-	local imageName, queryStr = breakstr(imageName, "?")
-	local deckName, layerName = breakstr(imageName, "#")
+local function Sprite_loadImage(self, urlStr)
+	self:stopAnim()
+	
+	local imageName, queryStr = string.split(urlStr, "?")
+	local deckName, layerName = string.split(imageName, "#")
 	local deck = resource.deck(deckName)
 	self:setDeck(deck)
 	if layerName then
@@ -25,13 +25,9 @@ local function Sprite_parse(self, imageName)
 	end
 	if queryStr then
 		local q = url.parse_query(queryStr)
-		local dur
-		if q.dur then
-			dur = tonumber(q.dur)
-		end
 		if q.scl then
-			local scl = tonumber(q.scl)
-			self:setScl(scl, scl)
+			local x, y = string.split(q.scl, ",")
+			self:setScl(tonumber(x), tonumber(x or y))
 		end
 		if q.rot then
 			local rot = tonumber(q.rot)
@@ -42,25 +38,56 @@ local function Sprite_parse(self, imageName)
 			self:setPriority(pri)
 		end
 		if q.loc then
-			local x, y = breakstr(q.loc, ",")
+			local x, y = string.split(q.loc, ",")
 			self:setLoc(tonumber(x), tonumber(y))
 		end
 		if q.alpha then
 			self:setColor(1, 1, 1, tonumber(q.alpha))
 		end
-		if q.image then
-			self:setIndex(deck:indexOf(q.image))
-		elseif q.index then
-			self:setIndex(tonumber(q.index))
-		elseif q.play then
-			self:playAnim(q.play, nil, true)
-		elseif q.playOnce then
-			self:playAnim(q.playOnce)
+	end
+end
+
+local function Sprite_loadAnim(self, urlStr)
+	self:stopAnim()
+	
+	local animName, queryStr = string.split(urlStr, "?")
+	local deckName, layerName = string.split(animName, "#")
+	local deck = resource.deck(deckName)
+	self:setDeck(deck)
+	if layerName then
+		self:playAnim(layerName)
+	end
+	if queryStr then
+		local q = url.parse_query(queryStr)
+		local dur
+		if q.dur then
+			dur = tonumber(q.dur)
+		end
+		if q.scl then
+			local x, y = string.split(q.scl, ",")
+			self:setScl(tonumber(x), tonumber(x or y))
+		end
+		if q.rot then
+			local rot = tonumber(q.rot)
+			self:setRot(rot)
+		end
+		if q.pri then
+			local pri = tonumber(q.pri)
+			self:setPriority(pri)
+		end
+		if q.loc then
+			local x, y = string.split(q.loc, ",")
+			self:setLoc(tonumber(x), tonumber(y))
+		end
+		if q.alpha then
+			self:setColor(1, 1, 1, tonumber(q.alpha))
 		end
 	end
 end
 
 local function Sprite_setImage(self, name)
+	self:stopAnim()
+	
 	local index = self._deck:indexOf(name)
 	self:setIndex(index)
 end
@@ -89,15 +116,8 @@ local function Sprite_stopAnim(self)
 end
 
 local function Sprite_playAnim(self, animName, callback, looping)
-	if self._anim then
-		self._anim:stop()
-		self._anim:clear()
-		self._anim = nil
-	end
-	if self._animProp then
-		self:remove(self._animProp)
-		self._animProp = nil
-	end
+	self:stopAnim()
+	
 	if not looping and not callback then
 		callback = Sprite_destroy
 	end
@@ -186,6 +206,8 @@ local function _sequencedeck_getSize(self)
 end
 
 local function Sprite_loadSequence(self, textureName, animName, numFrames, interval)
+	self:stopAnim()
+	
 	local tex = resource.texture(textureName)
 	local w, h = tex:getSize()
 	local deck = MOAIGfxQuadDeck2D.new()
@@ -220,10 +242,11 @@ function Sprite.new(data)
 	o._preSpriteDestroy = o.destroy
 	o.destroy = Sprite_destroy
 	o.getSize = Sprite_getSize
-	o.parse = Sprite_parse
 	o.setImage = Sprite_setImage
 	o.playAnim = Sprite_playAnim
 	o.stopAnim = Sprite_stopAnim
+	o.loadImage = Sprite_loadImage
+	o.loadAnim = Sprite_loadAnim
 	o.loadSequence = Sprite_loadSequence
 	o.throttle = Sprite_throttle
 	
@@ -239,15 +262,9 @@ function Sprite.new(data)
 		end
 		o._sourceName = tostring(data)
 	elseif tname == "string" then
-		Sprite_parse(o, data)
+		Sprite_loadImage(o, data)
 		o._sourceName = data
 	end
-	return o
-end
-
-function Sprite.newSequence(textureName, animName, numFrames, interval)
-	local o = Sprite.new()
-	o:loadSequence(textureName, animName, numFrames, interval)
 	return o
 end
 

@@ -5,9 +5,19 @@ local ParticleSystem = require "gfx.ParticleSystem"
 
 local gfxutil = {}
 
-function gfxutil.parse(o)
+local typemap = {
+	["img"] = Image.new,
+	["ani"] = Sprite.new,
+	["ps"] = ParticleSystem.new,
+}
+
+function gfxutil.loadAssets(o)
 	if type(o) == "string" then
-		return Image.new(o)
+		local typ, res = string.split(o, ":")
+		if not res then
+			return Image.new(o)
+		end
+		return typemap[typ](res)
 	elseif type(o) == "userdata" then
 		return o
 	end
