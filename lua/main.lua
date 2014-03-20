@@ -78,7 +78,7 @@ HomeStage:init(SpaceStage, GameStage)
 SpaceStage:init(HomeStage, GameStage)
 GameStage:init(SpaceStage, HomeStage)
 
-HomeStage:open()
+GameStage:open()
 
 local lastdate
 timer.new(0.1, function()

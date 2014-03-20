@@ -57,7 +57,12 @@ local _defaultProps = {
 }
 
 local ForceList = {}
-ForceList.__index = ForceList
+ForceList.__index = function(self, key)
+	if type(key) == "number" then
+		return self._list[key]
+	end
+	return ForceList[key]
+end
 
 function ForceList:addForce(id)
 	local o = {
@@ -67,12 +72,12 @@ function ForceList:addForce(id)
 		recoverHpFactor = Factor.new(),
 		attackPowerFactor = Factor.new(),
 	}
-	self[id] = o
+	self._list[id] = o
 	return o
 end
 
 function ForceList:update(ticks)
-	for k, v in pairs(self._forces) do
+	for k, v in pairs(self._list) do
 		v.attackSpeedFactor:update(ticks)
 		v.moveSpeedFactor:update(ticks)
 		v.recoverHpFactor:update(ticks)
@@ -81,7 +86,9 @@ function ForceList:update(ticks)
 end
 
 function Unit.newForceList()
-	local o = {}
+	local o = {
+		_list = {}
+	}
 	setmetatable(o, ForceList)
 	o:addForce(Unit.FORCE_PLAYER)
 	o:addForce(Unit.FORCE_ENEMY)
@@ -201,8 +208,21 @@ end
 
 function Unit:getPriority()
 	if self._root then
-		self._root:getPriority()
+		return self._root:getPriority()
 	end
+end
+
+function Unit:_setLayer(layer)
+	if layer then
+		layer:insertProp(self._root)
+	else
+		self._layer:removeProp(self._root)
+	end
+	self._layer = layer
+end
+
+function Unit:setParent(parent)
+	self._root:setParent(parent)
 end
 
 function Unit:addAttackSpeedFactor(value, duration)
@@ -240,19 +260,6 @@ function Unit:getAttackPower()
 	return self.attackPower + self._attackPowerFactor:calc() + self._force.attackPowerFactor:calc()
 end
 
-function Unit:_setLayer(layer)
-	if layer then
-		layer:insertProp(self._root)
-	else
-		self._layer:removeProp(self._root)
-	end
-	self._layer = layer
-end
-
-function Unit:setParent(parent)
-	self._root:setParent(parent)
-end
-
 function Unit:setScissorRect(rect)
 	self._root:setScissorRect(rect)
 end
@@ -285,7 +292,7 @@ function Unit:moveTo(x, y, speed)
 	self:stop()
 	local sx, sy = self:getLoc()
 	local dist = distance(sx, sy, x, y)
-	local dir = math2d.dir(sx - x, sy - y)
+	local dir = math2d.angle(sx - x, sy - y)
 	self:setDir(dir)
 	self._moveSpeed = speed or self:getMoveSpeed()
 	self._motionDriver = self._root:seekLoc(x, y, self._moveSpeed * dist, MOAIEaseType.LINEAR)
@@ -430,8 +437,9 @@ function Unit:stateChase(ticks)
 		return
 	end
 	
-	local x, y = self._target:getLoc()
-	if distance(self._tx, self._ty, x, y) > _LOCK_DIST then
+	local x, y = self:getLoc()
+	local tx, ty = self._target:getLoc()
+	if distanceSq(x, y, tx, ty) > self._lastDistSq then
 		self:chase(self._target)
 	end
 end
@@ -472,11 +480,9 @@ function Unit:move()
 
 	local x, y = self:getLoc()
 	if self._force.id == Unit.FORCE_PLAYER then
-		local _x, _y = self._battlefield:getEnemyLoc()
-		y = _y
+		x = self._battlefield:getEnemyLoc()
 	else
-		local _x, _y = self._battlefield:getPlayerLoc()
-		y = _y
+		x = self._battlefield:getPlayerLoc()
 	end
 	self:moveTo(x, y)
 	self._runState = self.stateMove
@@ -493,13 +499,12 @@ function Unit:chase(target)
 		return
 	end
 	
-	local sx, sy = self:getLoc()
-	local x, y = target:getLoc()
-	local mx = sx * self.attackRange * 2 / device.width
-	self._tx = x
-	self._ty = y
-	x = math.random(mx - self.bodySize, mx + self.bodySize)
-	self:moveTo(x, y)
+	local x, y = self:getLoc()
+	local tx, ty = target:getLoc()
+	local r = math.random(self.attackRange * 2)
+	self._lastDistSq = distanceSq(x, y, tx, ty)
+	local nx, ny = math2d.cartesian(math2d.angle(x - tx, y - ty) + math.pi / 4, r)
+	self:moveTo(nx - r, ny - r)
 	self._fireRange = self.attackRange - math.random(self.bodySize * 2)
 	self._runState = self.stateChase
 end
@@ -519,8 +524,8 @@ function Unit:fire(target)
 	self:stop()
 	local targets = self:getAttackTargets()
 	local x, y = self:getLoc()
-	local tx, ty = v:getLoc()
-	local dir = math2d.dir(x - tx, y - ty)
+	local tx, ty = target:getLoc()
+	local dir = math2d.angle(x - tx, y - ty)
 	self:setDir(dir)
 	local n = 0
 	for k, v in pairs(targets) do

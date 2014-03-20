@@ -205,7 +205,7 @@ local function _sequencedeck_getSize(self)
 	return unpack(self._size)
 end
 
-local function Sprite_loadSequence(self, textureName, animName, numFrames, interval)
+local function Sprite_loadSequence(self, textureName, numFrames, animName, interval)
 	self:stopAnim()
 	
 	local tex = resource.texture(textureName)

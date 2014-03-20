@@ -116,7 +116,7 @@ function _M.segmentsDistance(ax0, ay0, ax1, ay1, bx0, by0, bx1, by1)
 	return d
 end
 
-function _M.dir(x, y)
+function _M.angle(x, y)
 	return math.deg(math.atan2(y, x))
 end
 

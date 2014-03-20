@@ -5,6 +5,7 @@ local Battlefield = require "Battlefield"
 local profile = require "UserProfile"
 local node = require "node"
 local device = require "device"
+local timer = require "timer"
 local Image = require "gfx.Image"
 local FillBar = require "gfx.FillBar"
 local TextBox = require "gfx.TextBox"
@@ -19,7 +20,7 @@ local FONT_COLOR_GOLD = {255/255, 191/255, 7/255}
 
 local GameStage = {}
 local preparingSpace = 22
-local skills = {
+local spells = {
 	light = function()
 	end,
 }
@@ -31,17 +32,27 @@ function GameStage:initFleetSlots()
 	local x = 50
 	local y = 50
 	local space = 80
+	self._slots = {}
 	for i = 1, 6 do
 		local slot = self._uiRoot:add(ui.Button.new("slot.png"))
 		slot:setAnchor("LB", x, y)
-		slot.onClick = function()
-			GameStage:addPreparing(v, slot:getLoc())
-		end
+		self._slots[i] = slot
 		x = x + space
 	end
 end
 
 function GameStage:setupFleet()
+	for i = 1, 6 do
+		local slot = self._slots[i]
+		local ship = profile.fleet[i]
+		if ship then
+			local o = slot:add(Image.new(ship.icon))
+			o.handleTouch = ui.handleTouch
+			o.onClick = function()
+				GameStage:addPreparing(ship, slot:getLoc())
+			end
+		end
+	end
 end
 
 function GameStage:setupSpells()
@@ -70,7 +81,8 @@ function GameStage:addPreparing(props, x, y)
 	e:setListener(MOAITimer.EVENT_STOP, function()
 		self._preparings.n = self._preparings.n - 1
 		self:removePreparing(index)
-		self._battlefield:spawnPlayerUnit(props)
+		local o = self._battlefield:spawnPlayerUnit(props)
+		o:setTreePriority(3)
 	end)
 	local icon = self._uiRoot:add(Image.new(props.icon))
 	unit:setLoc(x, y)
@@ -126,6 +138,13 @@ function GameStage:onDragMove(touchIdx, x, y, tapCount)
 	x = math.clamp(x - diffX, self._xMin, self._xMax)
 	y = math.clamp(y + diffY, self._yMin, self._yMax)
 	camera:setLoc(x, y)
+end
+
+function GameStage:onClick(touchIdx, x, y, tapCount)
+	print(x, y, sceneLayer:worldToWnd(x, y))
+	local x, y = sceneLayer:worldToWnd(x, y)
+	local o = self._battlefield:addUnit(nil, Unit.FORCE_PLAYER, x, y)
+	o:move()
 end
 
 function GameStage:load()
@@ -194,8 +213,6 @@ function GameStage:loadLevel(levelData)
 	self._yMin = -levelData.height / 2
 	self._yMax = levelData.height / 2
 	self._battlefield = Battlefield.new(sceneLayer)
-
-
 	local playerMS = self._battlefield:addPlayerMontherShip(profile.motherShip, unpack(levelData.playerMotherShip.loc))
 	playerMS:setDir(levelData.playerMotherShip.dir)
 	local enemyMS = self._battlefield:addEnemyMotherShip(levelData.enemyMotherShip.props, unpack(levelData.enemyMotherShip.loc))
@@ -223,10 +240,19 @@ function GameStage:open(stage, level)
 	
 	ui.defaultTouchHandler = self
 	
+	self:setupFleet()
+	self:setupSpells()
 	self:loadLevel(testLevel)
+	
+	self._timer = timer.new(0.1, function()
+		self:update()
+	end)
 end
 
 function GameStage:close()
+	self._timer:close()
+	self._timer = nil
+	
 	self._battlefield:destroy()
 	self._battlefield = nil
 	

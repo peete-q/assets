@@ -7,6 +7,8 @@ local ship = {
 	upgradeCurve = {
 		[1] = {
 			info = {
+				"attack: 1",
+				"hp: 1",
 				"cost: 1",
 				"prepareTime: 1",
 			},
@@ -18,6 +20,8 @@ local ship = {
 		},
 		[2] = {
 			info = {
+				"attack: 2",
+				"hp: 2",
 				"cost: 2",
 				"prepareTime: 2",
 			},
@@ -30,6 +34,7 @@ local ship = {
 	
 	cost = 0,
 	upgradeCost = 0,
+	prepareTime = 3,
 }
 
 local Profile = {

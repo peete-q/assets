@@ -16,9 +16,10 @@ local _defaultProps = {
 	bombRun = undefined,
 	bombCmd = undefined,
 	
-	bodyGfx = "alienAntiCapital01WeaponBasic.atlas.png?play=projectile&rot=90",
+	bodyGfx = "test.png",
+	-- bodyGfx = "alienAntiCapital01WeaponBasic.atlas.png?play=projectile&rot=90",
 	propellerGfx = undefined,
-	bombGfx = "alienBomberWeaponBasic.atlas.png?playOnce=impact&scl=5",
+	-- bombGfx = "alienBomberWeaponBasic.atlas.png?playOnce=impact&scl=5",
 	bombSfx = undefined,
 }
 
@@ -139,7 +140,7 @@ function Bullet.update(self)
 		return
 	end
 	local x, y = self:getLoc()
-	self:setDir(math2d.dir(x - tx, y - ty))
+	self:setDir(math2d.angle(x - tx, y - ty))
 	self._tx = tx
 	self._ty = ty
 	if self._easeDriver then
@@ -164,21 +165,37 @@ function Bullet.destroy(self)
 	end
 end
 
-function Bullet.setLayer(self, layer)
-	self._root:setLayer(layer)
+function Bullet:_setLayer(layer)
+	if layer then
+		layer:insertProp(self._root)
+	else
+		self._layer:removeProp(self._root)
+	end
+	self._layer = layer
+end
+
+function Bullet:setParent(parent)
+	self._root:setParent(parent)
 end
 
 function Bullet:setPriority(value)
 	self._root:setPriority(value)
 end
 
+function Bullet:getPriority(value)
+	if self._root then
+		return self._root:getPriority()
+	end
+end
+
 function Bullet.new(props)
-	local self = {
+	local self = node.new {
 		_props = props,
 	}
 	setmetatable(self, Bullet)
 	
-	self._root = node.new(MOAIProp2D.new())
+	self._setLayer = Bullet._setLayer
+	self._root = self:add(node.new(MOAIProp2D.new()))
 	local body = self._root:add(Sprite.new(self.bodyGfx))
 	if self.propellerGfx then
 		local o = Sprite.new(self.propellerGfx)

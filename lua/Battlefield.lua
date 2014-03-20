@@ -6,7 +6,7 @@ local device = require "device"
 local Battlefield = {}
 
 local LANE_WIDTH = 20
-local LANE_COUNT = math.floor(device.width / 2 / LANE_WIDTH)
+local LANE_COUNT = math.floor(device.height * 0.5 / LANE_WIDTH)
 
 Battlefield.__index = Battlefield
 
@@ -78,17 +78,17 @@ function Battlefield:remove(o)
 end
 
 function Battlefield:spawnPlayerUnit(props)
-	local x = math.random(-LANE_COUNT, LANE_COUNT) * LANE_WIDTH
-	local _, y = self._playerMotherShip:getLoc()
-	local o = self:addUnit(props, Unit.FORCE_PLAYER, x, self._playerOffset + y)
+	local y = math.random(-LANE_COUNT, LANE_COUNT) * LANE_WIDTH
+	local x = self:getPlayerLoc()
+	local o = self:addUnit(props, Unit.FORCE_PLAYER, self._playerOffset + x, y)
 	o:move()
 	return o
 end
 
 function Battlefield:spawnEnemyUnit(props)
-	local x = math.random(-LANE_COUNT, LANE_COUNT) * LANE_WIDTH
-	local _, y = self._enemyMotherShip:getLoc()
-	local o = self:addUnit(props, Unit.FORCE_ENEMY, x, self._enemyOffset + y)
+	local y = math.random(-LANE_COUNT, LANE_COUNT) * LANE_WIDTH
+	local x = self:getEnemyLoc()
+	local o = self:addUnit(props, Unit.FORCE_ENEMY, self._enemyOffset + x, y)
 	o:move()
 	return o
 end
