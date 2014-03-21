@@ -159,6 +159,18 @@ function Unit.new(props, force)
 			MOAIThread.blockOnAction(self._root:seekScl(1, 1, n * 2, MOAIEaseType.SOFT_SMOOTH))
 		end
 	end)
+	local debugDeck = MOAIScriptDeck.new ()
+	debugDeck:setDrawCallback (function()
+		if self:isMoving() then
+			local x, y = self:getLoc()
+			
+			MOAIGfxDevice.setPenColor(1, 0, 0, 1)
+			MOAIGfxDevice.setPenWidth(1)
+			MOAIDraw.drawLine(x, y, self._dx, self._dy)
+		end
+	end)
+	local debugNode = self._root:add(node.new())
+	debugNode:setDeck(debugDeck)
 	return self
 end
 
@@ -202,16 +214,6 @@ function Unit:loadDB(db)
 	self._db = db
 end
 
-function Unit:setPriority(value)
-	self._root:setPriority(value)
-end
-
-function Unit:getPriority()
-	if self._root then
-		return self._root:getPriority()
-	end
-end
-
 function Unit:_setLayer(layer)
 	if layer then
 		layer:insertProp(self._root)
@@ -223,6 +225,16 @@ end
 
 function Unit:setParent(parent)
 	self._root:setParent(parent)
+end
+
+function Unit:setPriority(value)
+	self._root:setPriority(value)
+end
+
+function Unit:getPriority()
+	if self._root then
+		return self._root:getPriority()
+	end
 end
 
 function Unit:addAttackSpeedFactor(value, duration)
@@ -489,7 +501,7 @@ function Unit:move()
 end
 
 function Unit:chase(target)
-	self:log("Unit:chase", self)
+	self:log("Unit:chase", target)
 	if not self.movable then
 		self:attack(target)
 		return
@@ -503,8 +515,9 @@ function Unit:chase(target)
 	local tx, ty = target:getLoc()
 	local r = math.random(self.attackRange * 2)
 	self._lastDistSq = distanceSq(x, y, tx, ty)
-	local nx, ny = math2d.cartesian(math2d.angle(x - tx, y - ty) + math.pi / 4, r)
-	self:moveTo(nx - r, ny - r)
+	local x1, y1 = math2d.cartesian(math.atan2(tx - x, ty - x) + math.pi / 2, self.attackRange)
+	local x2, y2 = math2d.cartesian(math.atan2(x - tx, y - ty) + math.pi / 2, r)
+	self:moveTo(tx + x1 + x2, ty + y1 + y2)
 	self._fireRange = self.attackRange - math.random(self.bodySize * 2)
 	self._runState = self.stateChase
 end

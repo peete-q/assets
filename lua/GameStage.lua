@@ -141,8 +141,7 @@ function GameStage:onDragMove(touchIdx, x, y, tapCount)
 end
 
 function GameStage:onClick(touchIdx, x, y, tapCount)
-	print(x, y, sceneLayer:worldToWnd(x, y))
-	local x, y = sceneLayer:worldToWnd(x, y)
+	local x, y = sceneLayer:wndToWorld(x, y)
 	local o = self._battlefield:addUnit(nil, Unit.FORCE_PLAYER, x, y)
 	o:move()
 end
@@ -212,7 +211,7 @@ function GameStage:loadLevel(levelData)
 	self._xMax = levelData.width / 2
 	self._yMin = -levelData.height / 2
 	self._yMax = levelData.height / 2
-	self._battlefield = Battlefield.new(sceneLayer)
+	self._battlefield = Battlefield.new(self._sceneRoot)
 	local playerMS = self._battlefield:addPlayerMontherShip(profile.motherShip, unpack(levelData.playerMotherShip.loc))
 	playerMS:setDir(levelData.playerMotherShip.dir)
 	local enemyMS = self._battlefield:addEnemyMotherShip(levelData.enemyMotherShip.props, unpack(levelData.enemyMotherShip.loc))
