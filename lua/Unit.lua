@@ -31,12 +31,12 @@ local _defaultProps = {
 	hp = 100,
 	maxHp = 100,
 	recoverHp = 1,
-	bodySize = 10,
+	bodySize = 20,
 	moveSpeed = 0.01,
 	attackPower = 1,
 	attackSpeed = 10,
 	attackRange = 100,
-	guardRange = 150,
+	guardRange = 200,
 	shots = 1,
 	kind = "normal",
 	movable = true,
@@ -462,7 +462,7 @@ function Unit:stateAttack(ticks)
 		return
 	end
 	
-	if ticks >= self._attackTicks then
+	if nil and ticks >= self._attackTicks then
 		if self:isInRange(self._target, self.attackRange) then
 			self:fire(self._target)
 			self._attackTicks = self._attackTicks + self:getAttackSpeed()
@@ -515,8 +515,8 @@ function Unit:chase(target)
 	local tx, ty = target:getLoc()
 	local r = math.random(self.attackRange * 2)
 	self._lastDistSq = distanceSq(x, y, tx, ty)
-	local x1, y1 = math2d.cartesian(math.atan2(tx - x, ty - x) + math.pi / 2, self.attackRange)
-	local x2, y2 = math2d.cartesian(math.atan2(x - tx, y - ty) + math.pi / 2, r)
+	local x1, y1 = math2d.cartesian(math.atan2(ty - y, tx - x) + math.pi / 2, self.attackRange)
+	local x2, y2 = math2d.cartesian(math.atan2(y - ty, x - tx) + math.pi / 2, r)
 	self:moveTo(tx + x1 + x2, ty + y1 + y2)
 	self._fireRange = self.attackRange - math.random(self.bodySize * 2)
 	self._runState = self.stateChase

@@ -142,7 +142,7 @@ end
 
 function GameStage:onClick(touchIdx, x, y, tapCount)
 	local x, y = sceneLayer:wndToWorld(x, y)
-	local o = self._battlefield:addUnit(nil, Unit.FORCE_PLAYER, x, y)
+	local o = self._battlefield:addUnit(profile.fleet[1], Unit.FORCE_PLAYER, x, y)
 	o:move()
 end
 
