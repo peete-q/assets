@@ -142,4 +142,36 @@ function interpolate.newton(x, y)
 	end
 end
 
+function interpolate.newton2d(x, y, ...)
+	local c = interpolate.makeCurve(...)
+	local t = interpolate.makeLinearList(#x, c:getLength())
+	local fx = interpolate.newton(t, x)
+	local fy = interpolate.newton(t, y)
+	return function(t)
+		local v = c:getValueAtTime(t)
+		return fx(v), fy(v)
+	end
+end
+
+function interpolate.makeLinearList(n, length)
+	local t = {}
+	for i = 1, n do
+		t[i] = length * (i - 1) / (n - 1)
+	end
+	return t
+end
+
+function interpolate.makeCurve(...)
+	local n = select("#", ...)
+	local t = {...}
+	local curve = MOAIAnimCurve.new()
+	local c = n / 2 + 1
+	curve:reserveKeys(c)
+	curve:setKey(1, 0, 0, t[2])
+	for i = 2, c do
+		curve:setKey(i, t[i - 1], t[i - 1], t[i + 1])
+	end
+	return curve
+end
+
 return interpolate
