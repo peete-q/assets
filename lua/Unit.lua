@@ -513,12 +513,12 @@ function Unit:chase(target)
 	
 	local x, y = self:getLoc()
 	local tx, ty = target:getLoc()
-	local r = math.random(self.attackRange * 2)
+	local r = math.random(self.attackRange / 5) * 5
 	self._lastDistSq = distanceSq(x, y, tx, ty)
-	local x1, y1 = math2d.cartesian(math.atan2(ty - y, tx - x) + math.pi / 2, self.attackRange)
+	local x1, y1 = math2d.cartesian(math.atan2(ty - y, tx - x) + math.pi / 2, self.attackRange / 2)
 	local x2, y2 = math2d.cartesian(math.atan2(y - ty, x - tx) + math.pi / 2, r)
 	self:moveTo(tx + x1 + x2, ty + y1 + y2)
-	self._fireRange = self.attackRange - math.random(self.bodySize * 2)
+	self._fireRange = self.attackRange - math.random(self.bodySize / 5) * 10
 	self._runState = self.stateChase
 end
 
