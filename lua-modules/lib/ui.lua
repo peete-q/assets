@@ -266,13 +266,18 @@ function ui.handleTouch(self, eventType, touchIdx, x, y, tapCount)
 	return true
 end
 
-function ui.defaultHandleTouch(eventType, touchIdx, x, y, tapCount)
+function ui.handleDefaultTouch(eventType, touchIdx, x, y, tapCount)
 	local self = ui.defaultTouchHandler
 	if not self then
 		return false
 	end
 	
 	if eventType == ui.TOUCH_UP then
+		if self.onTouchUp then
+			if self:onTouchUp(eventType, touchIdx, x, y, tapCount) then
+				return true
+			end
+		end
 		if self._isDragging then
 			if self.onDragEnd then
 				self:onDragEnd(touchIdx, x, y, tapCount)
@@ -284,19 +289,22 @@ function ui.defaultHandleTouch(eventType, touchIdx, x, y, tapCount)
 			end
 			self._isDown = nil
 		end
-		if self.onTouchUp then
-			self:onTouchUp()
-		end
 	elseif eventType == ui.TOUCH_DOWN then
 		if not self._isDown then
-			if self.onTouchDown then
-				self:onTouchDown()
-			end
 			self._isDown = true
 			self._downX = x
 			self._downY = y
+			
+			if self.onTouchDown then
+				self:onTouchDown(eventType, touchIdx, x, y, tapCount)
+			end
 		end
 	elseif eventType == ui.TOUCH_MOVE and touchIdx == ui.TOUCH_ONE then
+		if self.onTouchMove then
+			if self:onTouchMove(eventType, touchIdx, x, y, tapCount) then
+				return true
+			end
+		end
 		if not self._isDragging and dragHappen(self._downX, self._downY, x, y) then
 			if self.onDragBegin then
 				self._isDragging = self:onDragBegin(touchIdx, x, y, tapCount)
@@ -323,7 +331,7 @@ local mouseY = 0
 local mouseIsDown = false
 local mouseTapCount = 0
 local mouseDownTime
-local function onMouseUpdate(x, y)
+local function onMouseMove(x, y)
 	mouseX = x
 	mouseY = y
 	if mouseIsDown then
@@ -331,7 +339,7 @@ local function onMouseUpdate(x, y)
 	end
 end
 
-local function onMouseLeft(down)
+local function onMouseKey(down, touchIdx)
 	mouseIsDown = down
 	if down then
 		do
@@ -343,10 +351,10 @@ local function onMouseLeft(down)
 				mouseTapCount = mouseTapCount + 1
 			end
 			mouseDownTime = t
-			onTouch(ui.TOUCH_DOWN, ui.TOUCH_ONE, mouseX, mouseY, mouseTapCount)
+			onTouch(ui.TOUCH_DOWN, touchIdx, mouseX, mouseY, mouseTapCount)
 		end
 	else
-		onTouch(ui.TOUCH_UP, ui.TOUCH_ONE, mouseX, mouseY, mouseTapCount)
+		onTouch(ui.TOUCH_UP, touchIdx, mouseX, mouseY, mouseTapCount)
 	end
 end
 
@@ -365,13 +373,20 @@ local function onKeyboard(key, down)
 end
 
 function ui.init(defaultTouchHandler, defaultKeyHandler)
-	defaultTouchCallback = defaultTouchHandler or ui.defaultHandleTouch
+	defaultTouchCallback = defaultTouchHandler or ui.handleDefaultTouch
 	defaultKeyCallback = defaultKeyHandler
 	if MOAIInputMgr.device.pointer ~= nil then
-		MOAIInputMgr.device.pointer:setCallback(onMouseUpdate)
+		MOAIInputMgr.device.pointer:setCallback(onMouseMove)
 	end
 	if MOAIInputMgr.device.mouseLeft ~= nil then
-		MOAIInputMgr.device.mouseLeft:setCallback(onMouseLeft)
+		MOAIInputMgr.device.mouseLeft:setCallback(function(down)
+			onMouseKey(down, ui.TOUCH_ONE)
+		end)
+	end
+	if MOAIInputMgr.device.mouseRight ~= nil then
+		MOAIInputMgr.device.mouseRight:setCallback(function(down)
+			onMouseKey(down, ui.TOUCH_ONE + 1)
+		end)
 	end
 	if MOAIInputMgr.device.touch ~= nil then
 		MOAIInputMgr.device.touch:setCallback(onTouch)
