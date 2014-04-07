@@ -142,23 +142,17 @@ function interpolate.newton(x, y)
 	end
 end
 
-function interpolate.newton2d(x, y, ...)
-	local c = interpolate.makeCurve(...)
-	local t = interpolate.makeLinearList(#x, c:getLength())
+function interpolate.newton2d(x, y, c)
+	local t = {}
+	for i = 1, n do
+		t[i] = length * (i - 1) / (n - 1)
+	end
 	local fx = interpolate.newton(t, x)
 	local fy = interpolate.newton(t, y)
 	return function(t)
 		local v = c:getValueAtTime(t)
 		return fx(v), fy(v)
 	end
-end
-
-function interpolate.makeLinearList(n, length)
-	local t = {}
-	for i = 1, n do
-		t[i] = length * (i - 1) / (n - 1)
-	end
-	return t
 end
 
 function interpolate.makeCurve(...)
