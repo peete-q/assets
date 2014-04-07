@@ -54,12 +54,10 @@ local function Sprite_loadAnim(self, urlStr)
 	local deckName, layerName = string.split(animName, "#")
 	local deck = resource.deck(deckName)
 	self:setDeck(deck)
-	if layerName then
-		self:playAnim(layerName)
-	end
+	
+	local dur
 	if queryStr then
 		local q = url.parse_query(queryStr)
-		local dur
 		if q.dur then
 			dur = tonumber(q.dur)
 		end
@@ -82,6 +80,9 @@ local function Sprite_loadAnim(self, urlStr)
 		if q.alpha then
 			self:setColor(1, 1, 1, tonumber(q.alpha))
 		end
+	end
+	if layerName then
+		self:playAnim(layerName)
 	end
 end
 
@@ -205,7 +206,7 @@ local function _sequencedeck_getSize(self)
 	return unpack(self._size)
 end
 
-local function Sprite_loadSequence(self, textureName, numFrames, animName, interval)
+local function Sprite_loadSequence(self, textureName, numFrames, animName, fps)
 	self:stopAnim()
 	
 	local tex = resource.texture(textureName)
@@ -215,17 +216,21 @@ local function Sprite_loadSequence(self, textureName, numFrames, animName, inter
 	deck._map = {}
 	deck._sizes = {}
 	local hw = w / numFrames / 2
-	local curve = MOAIAnimCurve.new()
-	curve:reserveKeys (numFrames)
 	for i = 1, numFrames do
 		deck:setUVRect(i, (i - 1) / numFrames, 0, i / numFrames, 1)
 		deck:setRect(i, -hw, 0, hw, h)
-		curve:setKey(i, (i - 1) * interval, i, MOAIEaseType.FLAT)
 	end
-	if not deck._animCurves then
-		deck._animCurves = {}
+	if animName then
+		local curve = MOAIAnimCurve.new()
+		curve:reserveKeys (numFrames)
+		for i = 1, numFrames do
+			curve:setKey(i, (i - 1) / fps, i, MOAIEaseType.FLAT)
+		end
+		if not deck._animCurves then
+			deck._animCurves = {}
+		end
+		deck._animCurves[animName] = curve
 	end
-	deck._animCurves[animName] = curve
 	deck:setTexture(tex)
 	deck.type = "sequencedeck"
 	deck.numFrames = numFrames
@@ -262,7 +267,12 @@ function Sprite.new(data)
 		end
 		o._sourceName = tostring(data)
 	elseif tname == "string" then
-		Sprite_loadImage(o, data)
+		local head, body = string.split(data, ":")
+		if body and head == "ani" then
+			Sprite_loadAnim(o, body)
+		else
+			Sprite_loadImage(o, data)
+		end
 		o._sourceName = data
 	end
 	return o
