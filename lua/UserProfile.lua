@@ -10,11 +10,11 @@ local ship = {
 				"attack: 1",
 				"hp: 1",
 				"cost: 1",
-				"prepareTime: 1",
+				"readyTime: 1",
 			},
 			data = {
 				cost = 1,
-				prepareTime = 1,
+				readyTime = 1,
 				upgradeCost = 10,
 			},
 		},
@@ -23,18 +23,18 @@ local ship = {
 				"attack: 2",
 				"hp: 2",
 				"cost: 2",
-				"prepareTime: 2",
+				"readyTime: 2",
 			},
 			data = {
 				cost = 2,
-				prepareTime = 2,
+				readyTime = 2,
 			},
 		},
 	},
 	
 	cost = 0,
 	upgradeCost = 0,
-	prepareTime = 3,
+	readyTime = 3,
 }
 
 local Profile = {
@@ -55,7 +55,7 @@ local Profile = {
 	colonies = {
 	},
 	motherShip = ship,
-	prepareMax = 5,
+	readyMax = 5,
 	energyRecover = 5,
 	energyMax = 500,
 	energyInitial = 100,

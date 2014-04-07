@@ -19,7 +19,7 @@ local FONT_COLOR_LIGHT = {120/255, 255/255, 220/255}
 local FONT_COLOR_GOLD = {255/255, 191/255, 7/255}
 
 local GameStage = {}
-local preparingSpace = 22
+local readySpace = 22
 local spells = {
 	light = function()
 	end,
@@ -49,7 +49,7 @@ function GameStage:setupFleet()
 			local o = slot:add(Image.new(ship.icon))
 			o.handleTouch = ui.handleTouch
 			o.onClick = function()
-				GameStage:addPreparing(ship, slot:getLoc())
+				GameStage:addReadyQ(ship, slot:getLoc())
 			end
 		end
 	end
@@ -61,7 +61,7 @@ end
 function GameStage:updateProfile()
 end
 
-function GameStage:addPreparing(props, x, y)
+function GameStage:addReadyQ(props, x, y)
 	if props.cost > self._energy then
 		return
 	end
@@ -71,44 +71,44 @@ function GameStage:addPreparing(props, x, y)
 	end
 	
 	self._energy = self._energy - props.cost
-	local unit = self._uiRoot:add(Image.new("prepare-bg.png"))
-	local prog = unit:add(FillBar.new("prepare-progress.png"))
-	prog:setLoc(0, -30)
-	local e = prog:seekFill(0, 0, 0, 1, props.prepareTime)
-	self._preparings.index = self._preparings.index + 1
-	self._preparings.n = self._preparings.n + 1
-	local index = self._preparings.index
+	local box = self._uiRoot:add(Image.new("ready_box.png"))
+	local bar = box:add(FillBar.new("ready_bar.png"))
+	bar:setLoc(0, -30)
+	local e = bar:seekFill(0, 0, 0, 1, props.readyTime)
+	self._readyQ.index = self._readyQ.index + 1
+	self._readyQ.n = self._readyQ.n + 1
+	local index = self._readyQ.index
 	e:setListener(MOAITimer.EVENT_STOP, function()
-		self._preparings.n = self._preparings.n - 1
-		self:removePreparing(index)
+		self._readyQ.n = self._readyQ.n - 1
+		self:removeReadyQ(index)
 		local o = self._battlefield:spawnPlayerUnit(props)
 		o:setTreePriority(3)
 	end)
-	local icon = self._uiRoot:add(Image.new(props.icon))
-	unit:setLoc(x, y)
-	unit:seekLoc(tx, ty, 1)
-	self._preparings[index] = unit
+	local icon = box:add(Image.new(props.icon))
+	box:setLoc(x, y)
+	box:seekLoc(tx, ty, 1)
+	self._readyQ[index] = box
 end
 
-function GameStage:removePreparing(index)
-	local unit = self._preparings[index]
-	unit:remove()
-	for i = index + 1, self._preparings.index do
-		local o = self._preparings[i]
+function GameStage:removeReadyQ(index)
+	local o = self._readyQ[index]
+	o:remove()
+	for i = index + 1, self._readyQ.index do
+		local o = self._readyQ[i]
 		if o then
-			o:moveLoc(-preparingSpace, 0, 0.5)
+			o:moveLoc(-readySpace, 0, 0.5)
 		end
 	end
-	self._preparings[index] = nil
+	self._readyQ[index] = nil
 end
 
 function GameStage:getFreeLoc()
-	if self._preparings.n >= profile.prepareMax then
+	if self._readyQ.n >= profile.readyMax then
 		return
 	end
 	
-	if self._preparings.n > 0 then
-		return preparingSpace * self._preparings.n, 0
+	if self._readyQ.n > 0 then
+		return readySpace * self._readyQ.n, 0
 	end
 	return 0, 0
 end
@@ -142,7 +142,7 @@ end
 
 function GameStage:onClick(touchIdx, x, y, tapCount)
 	local x, y = sceneLayer:wndToWorld(x, y)
-	local o = self._battlefield:addUnit(nil, Unit.FORCE_PLAYER, x, y)
+	local o = self._battlefield:addUnit(profile.fleet[1], Unit.FORCE_PLAYER, x, y)
 	o:move()
 end
 
@@ -220,7 +220,7 @@ function GameStage:loadLevel(levelData)
 end
 
 function GameStage:open(stage, level)
-	self._preparings = {
+	self._readyQ = {
 		n = 0,
 		index = 0,
 	}
