@@ -143,9 +143,10 @@ function interpolate.newton(x, y)
 end
 
 function interpolate.newton2d(x, y, c)
+	local n = #x
 	local t = {}
 	for i = 1, n do
-		t[i] = length * (i - 1) / (n - 1)
+		t[i] = c:getLength() * (i - 1) / (n - 1)
 	end
 	local fx = interpolate.newton(t, x)
 	local fy = interpolate.newton(t, y)
@@ -156,14 +157,15 @@ function interpolate.newton2d(x, y, c)
 end
 
 function interpolate.makeCurve(...)
-	local n = select("#", ...)
+	local n = argc(...)
 	local t = {...}
 	local curve = MOAIAnimCurve.new()
-	local c = n / 2 + 1
+	local c = math.ceil(n / 3)
 	curve:reserveKeys(c)
-	curve:setKey(1, 0, 0, t[2])
-	for i = 2, c do
-		curve:setKey(i, t[i - 1], t[i - 1], t[i + 1])
+	local j = 1
+	for i = 1, c do
+		curve:setKey(i, t[j], t[j + 1], t[j + 2])
+		j = j + 3
 	end
 	return curve
 end

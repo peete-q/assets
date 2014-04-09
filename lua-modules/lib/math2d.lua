@@ -57,6 +57,11 @@ function _M.cartesian(theta, r)
 	return cos(theta) * r, sin(theta) * r
 end
 
+function _M.cartesian2d(x, y, r)
+	local theta = math.atan2(y, x)
+	return cos(theta) * r, sin(theta) * r
+end
+
 function _M.segmentsIntersect(ax0, ay0, ax1, ay1, bx0, by0, bx1, by1)
 	local dx_a = ax1 - ax0
 	local dy_a = ay1 - ay0
@@ -118,6 +123,10 @@ end
 
 function _M.angle(x, y)
 	return math.deg(math.atan2(y, x))
+end
+
+function _M.theta(x, y)
+	return math.atan2(y, x)
 end
 
 
